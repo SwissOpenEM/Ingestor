@@ -1,0 +1,44 @@
+# This workflow will build a golang project
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-go
+
+name: Build and Test Workflow
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.21'
+
+    - name: Test internal
+      run: go test -C internal -v
+
+    - name: Install Wails dependencies
+      run: sudo apt-get install -qq -y libwebkit2gtk-4.0-dev libgtk-3-dev npm pkg-config
+
+    - name: Set up Wails
+      run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
+
+    - name: Build Desktop App
+      working-directory: cmd/openem-ingestor-app/
+      run: wails build
+
+    - name: Test Desktop App
+      run: go test -C cmd/openem-ingestor-app/ -v
+
+    - name: Build Service
+      run: go build -C cmd/openem-ingestor-service/ -v
+
+    - name: Test Service
+      run: go test -C cmd/openem-ingestor-service/ -v
