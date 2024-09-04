@@ -1,0 +1,3 @@
+# This folder needs to exist in order for the golangci-lint to allow an embed command
+.*
+!.gitignore
