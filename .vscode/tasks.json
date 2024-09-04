@@ -1,0 +1,76 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "copy app config",
+      "type": "shell",
+      "command": "cp",
+      "args": [
+        "${workspaceFolder}/desktop-app/openem-ingestor-config.yaml",
+        "${workspaceFolder}/desktop-app/build/bin/"
+      ]
+    },
+    {
+      "label": "copy service config",
+      "type": "shell",
+      "command": "cp",
+      "args": [
+        "${workspaceFolder}/service/openem-ingestor-config.yaml",
+        "${workspaceFolder}/service/build/bin/"
+      ]
+    },
+    {
+      "label": "build desktop app",
+      "type": "shell",
+      "options": {
+        "cwd": "${workspaceFolder}/desktop-app/"
+      },
+      "command": "wails",
+      "args": [
+        "build",
+        "-debug"
+      ]
+    },
+    {
+      "label": "build service app",
+      "type": "shell",
+      "options": {
+        "cwd": "${workspaceFolder}/service/"
+      },
+      "command": "go",
+      "args": [
+        "build",
+        "-tags",
+        "dev",
+        "-gcflags",
+        "all=-N -l",
+        "-o",
+        "build/bin/openem-ingestor"
+      ]
+    },
+    {
+      "label": "build app",
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "dependsOn": [
+        "build desktop app",
+        // Enable this to use local config during debugging
+        // "copy app config"
+      ]
+    },
+    {
+      "label": "build service",
+      "group": {
+        "kind": "build",
+        "isDefault": false
+      },
+      "dependsOn": [
+        "build service app",
+        // Enable this to use local config during debugging
+        // "copy service config"
+      ]
+    },
+  ]
+}

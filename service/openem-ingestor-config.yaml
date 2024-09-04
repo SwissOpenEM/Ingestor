@@ -1,0 +1,13 @@
+Scicat:
+  Host: http://scicat:8080/api/v3
+  AccessToken: "token"
+Transfer:
+  Method: S3
+  S3:
+    Endpoint: s3:9000
+    Bucket: landingzone
+    Checksum: true
+  Globus:
+    Endpoint: globus.psi.ch
+Misc:
+  ConcurrencyLimit: 2
