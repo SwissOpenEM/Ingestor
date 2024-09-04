@@ -6,8 +6,8 @@
       "type": "shell",
       "command": "cp",
       "args": [
-        "${workspaceFolder}/desktop-app/openem-ingestor-config.yaml",
-        "${workspaceFolder}/desktop-app/build/bin/"
+        "${workspaceFolder}/configs/openem-ingestor-config.yaml",
+        "${workspaceFolder}/cmd/openem-ingestor-app/build/bin/"
       ]
     },
     {
@@ -16,14 +16,14 @@
       "command": "cp",
       "args": [
         "${workspaceFolder}/service/openem-ingestor-config.yaml",
-        "${workspaceFolder}/service/build/bin/"
+        "${workspaceFolder}/cmd/openem-ingestor-service/build/bin/"
       ]
     },
     {
       "label": "build desktop app",
       "type": "shell",
       "options": {
-        "cwd": "${workspaceFolder}/desktop-app/"
+        "cwd": "${workspaceFolder}/cmd/openem-ingestor-app"
       },
       "command": "wails",
       "args": [
@@ -35,7 +35,7 @@
       "label": "build service app",
       "type": "shell",
       "options": {
-        "cwd": "${workspaceFolder}/service/"
+        "cwd": "${workspaceFolder}/cmd/openem-ingestor-service"
       },
       "command": "go",
       "args": [
@@ -45,7 +45,7 @@
         "-gcflags",
         "all=-N -l",
         "-o",
-        "build/bin/openem-ingestor"
+        "build/bin/openem-ingestor-service"
       ]
     },
     {

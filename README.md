@@ -4,7 +4,7 @@ This repository provides an ingestion app and service for dataset transfer and m
 
 Data can be transfered via [Globus](https://www.globus.org) or via S3 to a compatible endpoint.
 
-There are two entrypoints, i.e. applications: a [desktop app](./desktop-app) providing a minimal UI and a headless [service](./service). Both provide a REST API in order to interact with each. Common functionality is extracted in the [core](./core) package.
+There are two entrypoints, i.e. applications: a [desktop app](./cmd/openem-ingestor-app/) providing a minimal UI and a headless [service](./cmd/openem-ingestor-service/). Both provide a REST API in order to interact with each. Common functionality is extracted in the [core](./internal/) package.
 
 ## Core
 

@@ -2,7 +2,8 @@ package main
 
 import (
 	"context"
-	"openem-ingestor/core"
+
+	core "github.com/SwissOpenEM/Ingestor/internal"
 
 	"github.com/google/uuid"
 	"github.com/wailsapp/wails/v2/pkg/runtime"

@@ -3,7 +3,8 @@ package main
 import (
 	"fmt"
 	"log"
-	"openem-ingestor/core"
+
+	core "github.com/SwissOpenEM/Ingestor/internal"
 
 	"github.com/spf13/viper"
 )

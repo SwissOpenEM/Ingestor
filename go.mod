@@ -1,4 +1,4 @@
-module openem-ingestor
+module github.com/SwissOpenEM/Ingestor
 
 go 1.21
 
