@@ -86,7 +86,6 @@ func (w *TaskQueue) CreateTask(folder DatasetFolder) error {
 func (w *TaskQueue) startWorker() {
 	for ingestionTask := range w.inputChannel {
 		task_context, cancel := context.WithCancel(w.AppContext)
-		defer cancel()
 
 		ingestionTask.Cancel = cancel
 
