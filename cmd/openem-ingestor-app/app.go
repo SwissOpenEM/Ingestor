@@ -9,6 +9,29 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
+type WailsNotifier struct {
+	AppContext context.Context
+}
+
+func (w *WailsNotifier) OnTaskScheduled(id uuid.UUID) {
+	runtime.EventsEmit(w.AppContext, "upload-scheduled", id)
+}
+func (w *WailsNotifier) OnTaskCanceled(id uuid.UUID) {
+	runtime.EventsEmit(w.AppContext, "upload-canceled", id)
+}
+func (w *WailsNotifier) OnTaskRemoved(id uuid.UUID) {
+	runtime.EventsEmit(w.AppContext, "folder-removed", id)
+}
+func (w *WailsNotifier) OnTaskFailed(id uuid.UUID, err error) {
+	runtime.EventsEmit(w.AppContext, "upload-failed", id, err)
+}
+func (w *WailsNotifier) OnTaskCompleted(id uuid.UUID, seconds_elapsed int) {
+	runtime.EventsEmit(w.AppContext, "upload-completed", id, seconds_elapsed)
+}
+func (w *WailsNotifier) OnTaskProgress(id uuid.UUID, current_file int, total_files int, elapsed_seconds int) {
+	runtime.EventsEmit(w.AppContext, "progress-update", id, current_file, total_files, elapsed_seconds)
+}
+
 // App struct
 type App struct {
 	ctx       context.Context
@@ -18,7 +41,7 @@ type App struct {
 
 // NewApp creates a new App application struct
 func NewApp(config core.Config) *App {
-	return &App{config: config, taskqueue: core.TaskQueue{Config: config}}
+	return &App{config: config}
 }
 
 // Show prompt before closing the app
@@ -39,7 +62,10 @@ func (b *App) beforeClose(ctx context.Context) (prevent bool) {
 // so we can call the runtime methods
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
-	a.taskqueue.AppContext = a.ctx
+	a.taskqueue = core.TaskQueue{Config: a.config,
+		AppContext: a.ctx,
+		Notifier:   &WailsNotifier{AppContext: a.ctx},
+	}
 	a.taskqueue.Startup()
 }
 

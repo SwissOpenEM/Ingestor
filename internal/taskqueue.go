@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 type TaskQueue struct {
@@ -17,6 +16,7 @@ type TaskQueue struct {
 	resultChannel        chan TaskResult    // The result of the upload is put into this channel
 	AppContext           context.Context
 	Config               Config
+	Notifier             ProgressNotifier
 }
 
 type TransferMethods int
@@ -101,7 +101,7 @@ func (w *TaskQueue) CancelTask(id uuid.UUID) {
 		if f.Cancel != nil {
 			f.Cancel()
 		}
-		runtime.EventsEmit(w.AppContext, "upload-canceled", id)
+		w.Notifier.OnTaskCanceled(id)
 	}
 }
 
@@ -113,7 +113,7 @@ func (w *TaskQueue) RemoveTask(id uuid.UUID) {
 			f.Cancel()
 		}
 		w.datasetSourceFolders.Delete(id)
-		runtime.EventsEmit(w.AppContext, "folder-removed", id)
+		w.Notifier.OnTaskRemoved(id)
 	}
 }
 
@@ -131,10 +131,10 @@ func (w *TaskQueue) ScheduleTask(id uuid.UUID) {
 	go func(id uuid.UUID) {
 		taskResult := <-w.resultChannel
 		if taskResult.Error != nil {
-			runtime.EventsEmit(w.AppContext, "upload-failed", id, fmt.Sprint(taskResult.Error))
+			w.Notifier.OnTaskFailed(id, taskResult.Error)
 			println(fmt.Sprint(taskResult.Error))
 		} else {
-			runtime.EventsEmit(w.AppContext, "upload-completed", id, taskResult.Elapsed_seconds)
+			w.Notifier.OnTaskCompleted(id, taskResult.Elapsed_seconds)
 			println(taskResult.Dataset_PID, taskResult.Elapsed_seconds)
 		}
 	}(task.DatasetFolder.Id)
@@ -142,7 +142,7 @@ func (w *TaskQueue) ScheduleTask(id uuid.UUID) {
 	// Go routine to schedule the upload asynchronously
 	go func(folder DatasetFolder) {
 		fmt.Println("Scheduled upload for: ", folder)
-		runtime.EventsEmit(w.AppContext, "upload-scheduled", folder.Id)
+		w.Notifier.OnTaskScheduled(folder.Id)
 
 		// this channel is read by the go routines that does the actual upload
 		w.inputChannel <- task
@@ -150,12 +150,23 @@ func (w *TaskQueue) ScheduleTask(id uuid.UUID) {
 
 }
 
+func TestIngestionFunction(task_context context.Context, task IngestionTask, notifier ProgressNotifier) (string, error) {
+
+	start := time.Now()
+
+	for i := 0; i < 10; i++ {
+		time.Sleep(time.Second * 1)
+		now := time.Now()
+		elapsed := now.Sub(start)
+		notifier.OnTaskProgress(task.DatasetFolder.Id, i+1, 10, int(elapsed.Seconds()))
+	}
+	return "1", nil
+
+}
+
 func (w *TaskQueue) IngestDataset(task_context context.Context, task IngestionTask) TaskResult {
 	start := time.Now()
-	// TODO: add ingestion function
-	// dataset_id, err := IngestDataset(task_context, w.AppContext, task)
-	time.Sleep(time.Second * 5)
-	datasetPID := "1"
+	datasetPID, _ := TestIngestionFunction(task_context, task, w.Notifier)
 	end := time.Now()
 	elapsed := end.Sub(start)
 	return TaskResult{Dataset_PID: datasetPID, Elapsed_seconds: int(elapsed.Seconds()), Error: nil}
