@@ -5,6 +5,7 @@ import (
 	"os"
 	"path"
 
+	"github.com/paulscherrerinstitute/scicat-cli/cmd/cliutils"
 	"github.com/spf13/viper"
 )
 
@@ -16,6 +17,9 @@ type Scicat struct {
 type S3 struct {
 	Endpoint string `string:"Endpoint"`
 	Bucket   string `string:"Bucket"`
+	Location string `string:"Location"`
+	User     string `string:"User"`
+	Password string `string:"Password"`
 	Checksum bool   `bool:"Checksum"`
 }
 
@@ -24,9 +28,9 @@ type Globus struct {
 }
 
 type Transfer struct {
-	Method string `string:"Method"`
-	S3     S3     `mapstructure:"S3"`
-	Globus Globus `mapstructure:"Globus"`
+	Method string                `string:"Method"`
+	S3     S3                    `mapstructure:"S3"`
+	Globus cliutils.GlobusConfig `mapstructure:"cliutils.GlobusConfig"`
 }
 
 type Misc struct {
