@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 
-	core "github.com/SwissOpenEM/Ingestor/internal"
+	core "github.com/SwissOpenEM/Ingestor/internal/core"
 
 	"github.com/google/uuid"
 	"github.com/wailsapp/wails/v2/pkg/runtime"

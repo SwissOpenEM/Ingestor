@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log"
 
-	core "github.com/SwissOpenEM/Ingestor/internal"
+	core "github.com/SwissOpenEM/Ingestor/internal/core"
 
 	"github.com/spf13/viper"
 )

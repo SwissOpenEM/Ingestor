@@ -34,7 +34,7 @@ jobs:
         go-version: '1.21'
 
     - name: Test internal
-      run: go test -C internal -v
+      run: go test -C internal/* -v
 
     - name: Build Service
       run: go build -C cmd/openem-ingestor-service/ -v
