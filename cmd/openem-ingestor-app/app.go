@@ -2,8 +2,10 @@ package main
 
 import (
 	"context"
+	"log"
 
 	core "github.com/SwissOpenEM/Ingestor/internal/core"
+	webserver "github.com/SwissOpenEM/Ingestor/internal/webserver"
 
 	"github.com/google/uuid"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
@@ -67,6 +69,12 @@ func (a *App) startup(ctx context.Context) {
 		Notifier:   &WailsNotifier{AppContext: a.ctx},
 	}
 	a.taskqueue.Startup()
+
+	go func(port int) {
+		ingestor := webserver.NewIngestorWebServer("0.0.1")
+		s := webserver.NewIngesterServer(ingestor, port)
+		log.Fatal(s.ListenAndServe())
+	}(a.config.Misc.Port)
 }
 
 func (a *App) SelectFolder() {
