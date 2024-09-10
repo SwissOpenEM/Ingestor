@@ -1,0 +1,202 @@
+openapi: 3.0.3
+info:
+    title: SciCat Ingestor API
+    description: |-
+        Rest API for communication between the Ingestor UI and Ingestor backend service. The backend service communicates with the EM-SciCat service. 
+        The API allows the transfer of data, automatic metadata extraction and status message queries.
+    version: 1.0.0
+servers:
+    - url: https://api.localhost/v1
+tags:
+    - name: dataset
+      description: Operations related to datasets
+    - name: transfer
+      description: Operations related to data transfers
+    - name: other
+      description: Further operations for general information
+
+paths:
+    /dataset:
+        post:
+            tags:
+                - dataset
+            summary: Ingest a new dataset
+            description: Create a dataset element in SciCat and send the data to SciCat.
+            operationId: DatasetController_ingestDataset
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: "#/components/schemas/IngestorUiPostDatasetRequest"
+            responses:
+                "200":
+                    description: Dataset ingestion successful
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/IngestorUiPostDatasetResponse"
+                "400":
+                    description: Invalid request
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/IngestorUiInvalidRequestResponse"
+            security:
+                - bearerAuth: []
+
+    /transfer:
+        get:
+            tags:
+                - transfer
+            summary: Get list of transfers. Optional use the transferId parameter to only get one item.
+            description: Retrieve a paginated list of transfers with optional filtering.
+            operationId: TransferController_getTransfer
+            parameters:
+                - name: transferId
+                  in: query
+                  required: false
+                  schema:
+                      type: string
+                - name: page
+                  in: query
+                  required: false
+                  schema:
+                      type: integer
+                      description: Page number for pagination.
+                - name: pageSize
+                  in: query
+                  required: false
+                  schema:
+                      type: integer
+                      description: Number of transfers per page.
+            responses:
+                "200":
+                    description: Get Transfer status retrieved successfully
+                    content:
+                        application/json:
+                            schema:
+                                oneOf:
+                                    - type: array
+                                      items:
+                                          $ref: "#/components/schemas/IngestorUiGetTransferResponse"
+                                    - $ref: "#/components/schemas/IngestorUiGetTransferResponse"
+                "400":
+                    description: Invalid request
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/IngestorUiInvalidRequestResponse"
+            security:
+                - bearerAuth: []
+        delete:
+            tags:
+                - transfer
+            summary: Cancel a data transfer
+            operationId: TransferController_deleteTransfer
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: "#/components/schemas/IngestorUiDeleteTransferRequest"
+            responses:
+                "200":
+                    description: Transfer canceled successfully
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/IngestorUiDeleteTransferResponse"
+                "400":
+                    description: Invalid request
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/IngestorUiInvalidRequestResponse"
+            security:
+                - bearerAuth: []
+
+    /version:
+        get:
+            tags:
+                - other
+            summary: Get the used ingestor version
+            description: Retrieve the current version of the ingestor.
+            operationId: OtherController_getVersion
+            responses:
+                "200":
+                    description: Ingestor version retrieved successfully
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/IngestorUiOtherVersionResponse"
+                "400":
+                    description: Invalid request
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/IngestorUiInvalidRequestResponse"
+            security:
+                - bearerAuth: []
+
+components:
+    schemas:
+        IngestorUiPostDatasetRequest:
+            type: object
+            properties:
+                metaData:
+                    type: string
+                    description: The metadata of the dataset.
+        IngestorUiPostDatasetResponse:
+            type: object
+            properties:
+                ingestId:
+                    type: string
+                    description: The unique ingestion id of the dataset.
+                status:
+                    type: string
+                    description: The status of the ingestion. Can be used to send a message back to the ui.
+        IngestorUiGetTransferItem:
+            type: object
+            properties:
+                transferId:
+                    type: string
+                status:
+                    type: string
+        IngestorUiGetTransferResponse:
+            type: object
+            properties:
+                transfers:
+                    type: array
+                    items:
+                        $ref: "#/components/schemas/IngestorUiGetTransferItem"
+                total:
+                    type: integer
+                    description: Total number of transfers.
+        IngestorUiDeleteTransferRequest:
+            type: object
+            properties:
+                ingestId:
+                    type: string
+                    description: Ingestion id to abort the ingestion
+        IngestorUiDeleteTransferResponse:
+            type: object
+            properties:
+                ingestId:
+                    type: string
+                    description: Ingestion id to abort the ingestion
+                status:
+                    type: string
+                    description: New status of the ingestion.
+        IngestorUiOtherVersionResponse:
+            type: object
+            properties:
+                version:
+                    type: string
+                    description: Version of the ingestor.
+        IngestorUiInvalidRequestResponse:
+            type: object
+            properties:
+                message:
+                    type: string
+                    description: Error message describing the invalid request.
