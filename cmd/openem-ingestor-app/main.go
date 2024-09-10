@@ -16,7 +16,12 @@ import (
 //go:embed all:frontend/dist
 var assets embed.FS
 
+// String can be overwritten by using linker flags: -ldflags "-X main.version=VERSION"
+var version string = "DEVELOPMENT_VERSION"
+
 func main() {
+
+	log.Printf("Version %s", version)
 
 	if err := core.ReadConfig(); err != nil {
 		log.Print(fmt.Errorf("failed to read config file: %w", err))
