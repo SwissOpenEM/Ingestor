@@ -15,6 +15,11 @@ tags:
     - name: other
       description: Further operations for general information
 
+# Uncomment this do enable authentication for all endpoints
+# security:
+#     - bearerAuth: []
+
+
 paths:
     /dataset:
         post:
@@ -42,8 +47,6 @@ paths:
                         application/json:
                             schema:
                                 $ref: "#/components/schemas/IngestorUiInvalidRequestResponse"
-            security:
-                - bearerAuth: []
 
     /transfer:
         get:
@@ -87,8 +90,6 @@ paths:
                         application/json:
                             schema:
                                 $ref: "#/components/schemas/IngestorUiInvalidRequestResponse"
-            security:
-                - bearerAuth: []
         delete:
             tags:
                 - transfer
@@ -113,8 +114,6 @@ paths:
                         application/json:
                             schema:
                                 $ref: "#/components/schemas/IngestorUiInvalidRequestResponse"
-            security:
-                - bearerAuth: []
 
     /version:
         get:
@@ -136,8 +135,6 @@ paths:
                         application/json:
                             schema:
                                 $ref: "#/components/schemas/IngestorUiInvalidRequestResponse"
-            security:
-                - bearerAuth: []
 
 components:
     schemas:
