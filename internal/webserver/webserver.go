@@ -28,7 +28,6 @@ func NewIngesterServer(ingestor *IngestorWebServerImplemenation, port int) *http
 	// OpenAPI schema.
 	r.Use(middleware.OapiRequestValidator(swagger))
 
-	// We now register our petStore above as the handler for the interface
 	RegisterHandlers(r, ingestor)
 
 	s := &http.Server{
