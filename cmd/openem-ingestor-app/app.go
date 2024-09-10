@@ -39,11 +39,12 @@ type App struct {
 	ctx       context.Context
 	taskqueue core.TaskQueue
 	config    core.Config
+	version   string
 }
 
 // NewApp creates a new App application struct
-func NewApp(config core.Config) *App {
-	return &App{config: config}
+func NewApp(config core.Config, version string) *App {
+	return &App{config: config, version: version}
 }
 
 // Show prompt before closing the app
@@ -71,7 +72,7 @@ func (a *App) startup(ctx context.Context) {
 	a.taskqueue.Startup()
 
 	go func(port int) {
-		ingestor := webserver.NewIngestorWebServer("0.0.1")
+		ingestor := webserver.NewIngestorWebServer(a.version)
 		s := webserver.NewIngesterServer(ingestor, port)
 		log.Fatal(s.ListenAndServe())
 	}(a.config.Misc.Port)
