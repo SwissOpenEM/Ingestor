@@ -1,0 +1,60 @@
+info:
+  contact:
+    email: spencer.bliven@psi.ch
+    name: SwissOpenEM
+    url: https://swissopenem.github.io
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+paths:
+  /datasets:
+    post:
+      consumes:
+      - application/json
+      description: Ingest a new dataset
+      produces:
+      - application/json
+      responses: {}
+      tags:
+      - datasets
+  /transfer:
+    delete:
+      consumes:
+      - application/json
+      description: Cancel a data transfer
+      produces:
+      - application/json
+      responses: {}
+      tags:
+      - transfer
+    get:
+      consumes:
+      - application/json
+      description: Get list of transfers. Optional use the transferId parameter to
+        only get one item.
+      parameters:
+      - in: path
+        name: page
+        type: integer
+      - in: path
+        name: pageSize
+        type: integer
+      - in: path
+        name: transferId
+        type: string
+      produces:
+      - application/json
+      responses: {}
+      tags:
+      - transfer
+  /version:
+    get:
+      consumes:
+      - application/json
+      description: Get the used ingestor version
+      produces:
+      - application/json
+      responses: {}
+      tags:
+      - other
+swagger: "2.0"

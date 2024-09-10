@@ -6,7 +6,11 @@ import (
 	"net/http"
 	"os"
 
+	docs "github.com/SwissOpenEM/Ingestor/docs"
 	"github.com/gin-gonic/gin"
+	swaggerfiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
+
 	middleware "github.com/oapi-codegen/gin-middleware"
 )
 
@@ -23,6 +27,10 @@ func NewIngesterServer(ingestor *IngestorWebServerImplemenation, port int) *http
 
 	// This is how you set up a basic gin router
 	r := gin.Default()
+
+	// The swagger docs have to come before the default handlers
+	docs.SwaggerInfo.BasePath = r.BasePath()
+	r.GET("/docs/*any", ginSwagger.WrapHandler(swaggerfiles.Handler))
 
 	// Use our validation middleware to check all requests against the
 	// OpenAPI schema.
