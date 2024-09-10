@@ -150,7 +150,7 @@ func (w *TaskQueue) ScheduleTask(id uuid.UUID) {
 
 }
 
-func TestIngestionFunction(task_context context.Context, task IngestionTask, notifier ProgressNotifier) (string, error) {
+func TestIngestionFunction(task_context context.Context, task IngestionTask, config Config, notifier ProgressNotifier) (string, error) {
 
 	start := time.Now()
 
@@ -166,8 +166,9 @@ func TestIngestionFunction(task_context context.Context, task IngestionTask, not
 
 func (w *TaskQueue) IngestDataset(task_context context.Context, task IngestionTask) TaskResult {
 	start := time.Now()
-	datasetPID, _ := TestIngestionFunction(task_context, task, w.Notifier)
+	// datasetPID, _ := TestIngestionFunction(task_context, task, w.Config, w.Notifier)
+	datasetPID, err := IngestDataset(task_context, task, w.Config, w.Notifier)
 	end := time.Now()
 	elapsed := end.Sub(start)
-	return TaskResult{Dataset_PID: datasetPID, Elapsed_seconds: int(elapsed.Seconds()), Error: nil}
+	return TaskResult{Dataset_PID: datasetPID, Elapsed_seconds: int(elapsed.Seconds()), Error: err}
 }

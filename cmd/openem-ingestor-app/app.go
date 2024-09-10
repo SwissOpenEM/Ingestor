@@ -23,7 +23,7 @@ func (w *WailsNotifier) OnTaskRemoved(id uuid.UUID) {
 	runtime.EventsEmit(w.AppContext, "folder-removed", id)
 }
 func (w *WailsNotifier) OnTaskFailed(id uuid.UUID, err error) {
-	runtime.EventsEmit(w.AppContext, "upload-failed", id, err)
+	runtime.EventsEmit(w.AppContext, "upload-failed", id, err.Error())
 }
 func (w *WailsNotifier) OnTaskCompleted(id uuid.UUID, seconds_elapsed int) {
 	runtime.EventsEmit(w.AppContext, "upload-completed", id, seconds_elapsed)
