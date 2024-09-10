@@ -37,9 +37,7 @@ jobs:
       run: go test ./internal/... -v
     
     - name: Generate REST API and Docs
-      run: |
-        go install github.com/swaggo/swag/cmd/swag@latest
-        go generate ./internal/webserver
+      run: go generate ./internal/webserver
 
     - name: Build Service
       run: go build -C ./cmd/openem-ingestor-service/ -v
