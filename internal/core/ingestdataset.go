@@ -174,7 +174,7 @@ func IngestDataset(
 	case TransferS3:
 		_, err = UploadS3(task_context, datasetId, task.DatasetFolder.FolderPath, task.DatasetFolder.Id, config.Transfer.S3, notifier)
 	case TransferGlobus:
-		err = GlobusTransfer(config.Transfer.Globus, task.DatasetFolder.FolderPath)
+		err = GlobusTransfer(config.Transfer.Globus, task_context, task.DatasetFolder.Id, task.DatasetFolder.FolderPath, notifier)
 	_:
 	}
 

@@ -31,7 +31,7 @@ type GlobusTransferConfig struct {
 	SourcePrefixPath      string   `yaml:"source-prefix-path,omitempty"`
 	DestinationCollection string   `yaml:"destination-collection"`
 	DestinationPrefixPath string   `yaml:"destination-prefix-path,omitempty"`
-	RenewalToken          string   `yaml:"renewal-token,omitempty"`
+	RefreshToken          string   `yaml:"refresh-token,omitempty"`
 }
 
 type TransferConfig struct {
