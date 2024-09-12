@@ -117,7 +117,7 @@ func IngestDataset(
 		Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}},
 		Timeout:   120 * time.Second}
 
-	SCIAT_API_URL := config.Scicat.Host
+	SCICAT_API_URL := config.Scicat.Host
 
 	const TAPECOPIES = 2 // dummy value, unused
 	const DATASETFILELISTTXT = ""
@@ -133,9 +133,9 @@ func IngestDataset(
 		return "", err
 	}
 
-	accessGroups := []string{}
+	user, accessGroups := ScicatExtractUserInfo(http_client, SCICAT_API_URL, config.Scicat.AccessToken)
 
-	newMetaDataMap, metadataSourceFolder, _, err := datasetIngestor.ReadAndCheckMetadata(http_client, SCIAT_API_URL, metadatafile, user, accessGroups)
+	newMetaDataMap, metadataSourceFolder, _, err := datasetIngestor.ReadAndCheckMetadata(http_client, SCICAT_API_URL, metadatafile, user, accessGroups)
 
 	_ = metadataSourceFolder
 	if err != nil {
@@ -158,14 +158,14 @@ func IngestDataset(
 		return "", err
 	}
 	originalMetaDataMap := map[string]string{}
-	datasetIngestor.UpdateMetaData(http_client, SCIAT_API_URL, user, originalMetaDataMap, newMetaDataMap, startTime, endTime, owner, TAPECOPIES)
+	datasetIngestor.UpdateMetaData(http_client, SCICAT_API_URL, user, originalMetaDataMap, newMetaDataMap, startTime, endTime, owner, TAPECOPIES)
 
 	newMetaDataMap["datasetlifecycle"] = map[string]interface{}{}
 	newMetaDataMap["datasetlifecycle"].(map[string]interface{})["isOnCentralDisk"] = false
 	newMetaDataMap["datasetlifecycle"].(map[string]interface{})["archiveStatusMessage"] = "filesNotYetAvailable"
 	newMetaDataMap["datasetlifecycle"].(map[string]interface{})["archivable"] = false
 
-	datasetId, err := datasetIngestor.IngestDataset(http_client, SCIAT_API_URL, newMetaDataMap, fullFileArray, user)
+	datasetId, err := datasetIngestor.IngestDataset(http_client, SCICAT_API_URL, newMetaDataMap, fullFileArray, user)
 	if err != nil {
 		return "", err
 	}
@@ -183,7 +183,7 @@ func IngestDataset(
 	}
 
 	// mark dataset archivable
-	err = datasetIngestor.MarkFilesReady(http_client, SCIAT_API_URL, datasetId, user)
+	err = datasetIngestor.MarkFilesReady(http_client, SCICAT_API_URL, datasetId, user)
 	return datasetId, err
 
 }
