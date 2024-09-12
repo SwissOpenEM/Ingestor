@@ -76,6 +76,14 @@ func ReadConfig() error {
 	return err
 }
 
+func GetCurrentConfigFilePath() string {
+	return viperConf.ConfigFileUsed()
+}
+
+func GetFullConfig() map[string]any {
+	return viperConf.AllSettings()
+}
+
 func SetConfKey(key string, value any) {
 	viperConf.Set(key, value)
 }
