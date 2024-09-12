@@ -99,7 +99,13 @@ func GlobusTransfer(globusConf GlobusTransferConfig, taskCtx context.Context, lo
 
 	// for now, we're using recursive folder sync of globus, it does not handle symlinks how we want however
 	// TODO: use TransferFileList (but potentially it'll still not handle symlinks how we want it to...)
-	result, err := globusClient.TransferFolderSync(globusConf.SourceCollection, datasetFolder, globusConf.DestinationCollection, "somepath", true)
+	result, err := globusClient.TransferFolderSync(
+		globusConf.SourceCollection,
+		globusConf.SourcePrefixPath+"/"+datasetFolder,
+		globusConf.DestinationCollection,
+		globusConf.DestinationPrefixPath+"/"+datasetFolder,
+		true,
+	)
 	if err != nil {
 		return fmt.Errorf("globus: an error occured when requesting dataset transfer: %v", err)
 	}
