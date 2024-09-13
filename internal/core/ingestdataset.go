@@ -133,8 +133,16 @@ func IngestDataset(
 		return "", err
 	}
 
-	user, accessGroups := ScicatExtractUserInfo(http_client, SCICAT_API_URL, config.Scicat.AccessToken)
+	/*user, accessGroups, err := ScicatExtractUserInfo(http_client, SCICAT_API_URL, config.Scicat.AccessToken)
+	if err != nil {
+		return "", err
+	}*/
 
+	metaDataMap, err := datasetIngestor.ReadMetadataFromFile(metadatafile)
+	if err != nil {
+		return "", err
+	}
+	accessGroups := []string{metaDataMap["ownerGroup"].(string)}
 	newMetaDataMap, metadataSourceFolder, _, err := datasetIngestor.ReadAndCheckMetadata(http_client, SCICAT_API_URL, metadatafile, user, accessGroups)
 
 	_ = metadataSourceFolder
