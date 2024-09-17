@@ -50,13 +50,17 @@ func GlobusLoginWithRefreshToken(gConfig GlobusTransferConfig) {
 	clientConfig := globus.AuthGenerateOauthClientConfig(ctx, gConfig.ClientID, gConfig.ClientSecret, gConfig.RedirectURL, gConfig.Scopes)
 	tok := oauth2.Token{
 		RefreshToken: gConfig.RefreshToken,
-		Expiry:       time.Date(1950, 1, 1, 0, 0, 0, 0, nil),
+		Expiry:       time.Date(1950, 1, 1, 0, 0, 0, 0, time.UTC),
 		AccessToken:  "",
 		TokenType:    "Bearer",
 	}
 	ts := clientConfig.TokenSource(ctx, &tok)
 	client := oauth2.NewClient(ctx, ts)
 	GlobusSetHttpClient(client)
+}
+
+func GlobusIsClientReady() bool {
+	return globusClient.IsClientSet()
 }
 
 func GlobusSetHttpClient(client *http.Client) {
