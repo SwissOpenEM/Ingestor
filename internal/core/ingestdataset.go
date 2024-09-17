@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/SwissOpenEM/Ingestor/internal/scicat"
 	"github.com/fatih/color"
 	"github.com/paulscherrerinstitute/scicat-cli/datasetIngestor"
 )
@@ -133,17 +134,13 @@ func IngestDataset(
 		return "", err
 	}
 
-	/*user, accessGroups, err := ScicatExtractUserInfo(http_client, SCICAT_API_URL, config.Scicat.AccessToken)
-	if err != nil {
-		return "", err
-	}*/
-
 	metaDataMap, err := datasetIngestor.ReadMetadataFromFile(metadatafile)
 	if err != nil {
 		return "", err
 	}
 	accessGroups := []string{metaDataMap["ownerGroup"].(string)}
-	newMetaDataMap, metadataSourceFolder, _, err := datasetIngestor.ReadAndCheckMetadata(http_client, SCICAT_API_URL, metadatafile, user, accessGroups)
+
+	newMetaDataMap, metadataSourceFolder, _, err := scicat.ReadMetadata(http_client, SCICAT_API_URL, metadatafile, user, accessGroups)
 
 	_ = metadataSourceFolder
 	if err != nil {
@@ -161,6 +158,7 @@ func IngestDataset(
 	_ = startTime
 	_ = endTime
 	_ = owner
+	_ = fullFileArray
 	if err != nil {
 		log.Printf("")
 		return "", err
@@ -173,7 +171,12 @@ func IngestDataset(
 	newMetaDataMap["datasetlifecycle"].(map[string]interface{})["archiveStatusMessage"] = "filesNotYetAvailable"
 	newMetaDataMap["datasetlifecycle"].(map[string]interface{})["archivable"] = false
 
-	datasetId, err := datasetIngestor.IngestDataset(http_client, SCICAT_API_URL, newMetaDataMap, fullFileArray, user)
+	//datasetId, err := datasetIngestor.IngestDataset(http_client, SCICAT_API_URL, newMetaDataMap, fullFileArray, user)
+	datasetId, err := scicat.CreateDataset(http_client, SCICAT_API_URL, newMetaDataMap, user)
+	if err != nil {
+		return "", err
+	}
+	err = scicat.CreateOrigDatablocks(http_client, SCICAT_API_URL, fullFileArray, datasetId, user)
 	if err != nil {
 		return "", err
 	}

@@ -1,4 +1,4 @@
-package core
+package scicat
 
 import (
 	"encoding/json"
@@ -62,7 +62,7 @@ func getUserInfoFromToken(client *http.Client, APIServer string, token string) (
 	return u, accessGroups, nil
 }
 
-func ScicatExtractUserInfo(httpClient *http.Client, apiServer string, token string) (map[string]string, []string, error) {
+func ExtractUserInfo(httpClient *http.Client, apiServer string, token string) (map[string]string, []string, error) {
 	if token == "" {
 		return map[string]string{}, []string{}, fmt.Errorf("scicat: no access token was provided")
 	}
