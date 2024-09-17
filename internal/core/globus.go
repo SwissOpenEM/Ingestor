@@ -67,7 +67,7 @@ func GlobusSetHttpClient(client *http.Client) {
 	globusClient = globus.HttpClientToGlobusClient(client)
 }
 
-func globusCheckTransfer(globusTaskId string, localTaskId uuid.UUID) (filesTransferred int, totalFiles int, completed bool, err error) {
+func globusCheckTransfer(globusTaskId string) (filesTransferred int, totalFiles int, completed bool, err error) {
 	task, err := globusClient.TransferGetTaskByID(globusTaskId)
 	if err != nil {
 		return 0, 1, false, fmt.Errorf("globus: can't continue transfer because an error occured while polling the task \"%s\": %v", globusTaskId, err)
@@ -126,7 +126,7 @@ func GlobusTransfer(globusConf GlobusTransferConfig, taskCtx context.Context, lo
 
 	var taskCompleted bool
 	var filesTransferred, totalFiles int
-	filesTransferred, totalFiles, taskCompleted, err = globusCheckTransfer(globusTaskId, localTaskId)
+	filesTransferred, totalFiles, taskCompleted, err = globusCheckTransfer(globusTaskId)
 	if err != nil {
 		return err
 	}
@@ -159,7 +159,7 @@ func GlobusTransfer(globusConf GlobusTransferConfig, taskCtx context.Context, lo
 		case <-transferUpdater:
 			// check state of transfer
 			transferUpdater = time.After(1 * time.Minute)
-			filesTransferred, totalFiles, taskCompleted, err = globusCheckTransfer(globusTaskId, localTaskId)
+			filesTransferred, totalFiles, taskCompleted, err = globusCheckTransfer(globusTaskId)
 			if err != nil {
 				return err // transfer cannot be finished: irrecoverable error
 			}
