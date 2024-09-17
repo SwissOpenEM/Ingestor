@@ -196,5 +196,4 @@ func IngestDataset(
 	// mark dataset archivable
 	err = datasetIngestor.MarkFilesReady(http_client, SCICAT_API_URL, datasetId, user)
 	return datasetId, err
-
 }

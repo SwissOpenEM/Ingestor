@@ -67,10 +67,10 @@ func GlobusSetHttpClient(client *http.Client) {
 	globusClient = globus.HttpClientToGlobusClient(client)
 }
 
-func globusCheckTransfer(globusTaskId string, localTaskId uuid.UUID, notifier ProgressNotifier) (completed bool, err error) {
+func globusCheckTransfer(globusTaskId string, localTaskId uuid.UUID) (filesTransferred int, totalFiles int, completed bool, err error) {
 	task, err := globusClient.TransferGetTaskByID(globusTaskId)
 	if err != nil {
-		return false, fmt.Errorf("globus: can't continue transfer because an error occured while polling the task \"%s\": %v", globusTaskId, err)
+		return 0, 1, false, fmt.Errorf("globus: can't continue transfer because an error occured while polling the task \"%s\": %v", globusTaskId, err)
 	}
 	switch task.Status {
 	case "ACTIVE":
@@ -78,17 +78,19 @@ func globusCheckTransfer(globusTaskId string, localTaskId uuid.UUID, notifier Pr
 		if task.FilesSkipped != nil {
 			totalFiles -= *task.FilesSkipped
 		}
-		notifier.OnTaskProgress(localTaskId, task.FilesTransferred, totalFiles, 0)
-		return false, nil
+		return task.FilesTransferred, totalFiles, false, nil
 	case "INACTIVE":
-		return false, fmt.Errorf("globus: transfer became inactive, manual intervention required")
+		return 0, 1, false, fmt.Errorf("globus: transfer became inactive, manual intervention required")
 	case "SUCCEEDED":
-		notifier.OnTaskCompleted(localTaskId, 0)
-		return true, nil
+		totalFiles := task.Files
+		if task.FilesSkipped != nil {
+			totalFiles -= *task.FilesSkipped
+		}
+		return task.FilesTransferred, totalFiles, true, nil
 	case "FAILED":
-		return false, fmt.Errorf("globus: task failed with the following error - code: \"%s\" description: \"%s\"", task.FatalError.Code, task.FatalError.Description)
+		return 0, 1, false, fmt.Errorf("globus: task failed with the following error - code: \"%s\" description: \"%s\"", task.FatalError.Code, task.FatalError.Description)
 	default:
-		return false, fmt.Errorf("globus: unknown task status: %s", task.Status)
+		return 0, 1, false, fmt.Errorf("globus: unknown task status: %s", task.Status)
 	}
 }
 
@@ -119,15 +121,24 @@ func GlobusTransfer(globusConf GlobusTransferConfig, taskCtx context.Context, lo
 
 	globusTaskId := result.TaskId
 
-	// periodically check transfer until done, failed or cancelled
+	// start periodically checking transfer until done, failed or cancelled
+	startTime := time.Now()
+
 	var taskCompleted bool
-	taskCompleted, err = globusCheckTransfer(globusTaskId, localTaskId, notifier)
+	var filesTransferred, totalFiles int
+	filesTransferred, totalFiles, taskCompleted, err = globusCheckTransfer(globusTaskId, localTaskId)
 	if err != nil {
 		return err
 	}
 	if taskCompleted {
 		return nil
 	}
+	if totalFiles == 0 {
+		totalFiles = 1 // needed because percentage meter goes NaN otherwise
+	}
+	notifier.OnTaskProgress(localTaskId, filesTransferred, totalFiles, int(time.Since(startTime).Seconds()))
+	timerUpdater := time.After(1 * time.Second)
+	transferUpdater := time.After(1 * time.Minute)
 	for {
 		select {
 		case <-taskCtx.Done():
@@ -141,14 +152,23 @@ func GlobusTransfer(globusConf GlobusTransferConfig, taskCtx context.Context, lo
 			}
 			notifier.OnTaskCanceled(localTaskId)
 			return nil
-		case <-time.After(1 * time.Minute):
+		case <-timerUpdater:
+			// update timer every second
+			timerUpdater = time.After(1 * time.Second)
+			notifier.OnTaskProgress(localTaskId, filesTransferred, totalFiles, int(time.Since(startTime).Seconds()))
+		case <-transferUpdater:
 			// check state of transfer
-			taskCompleted, err = globusCheckTransfer(globusTaskId, localTaskId, notifier)
+			transferUpdater = time.After(1 * time.Minute)
+			filesTransferred, totalFiles, taskCompleted, err = globusCheckTransfer(globusTaskId, localTaskId)
 			if err != nil {
-				return err
+				return err // transfer cannot be finished: irrecoverable error
 			}
+			if totalFiles == 0 {
+				totalFiles = 1 // needed because percentage meter goes NaN otherwise
+			}
+			notifier.OnTaskProgress(localTaskId, filesTransferred, totalFiles, int(time.Since(startTime).Seconds()))
 			if taskCompleted {
-				return nil
+				return nil // we're done!
 			}
 		}
 	}
