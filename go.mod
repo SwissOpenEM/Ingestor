@@ -5,7 +5,7 @@ go 1.22.2
 toolchain go1.22.6
 
 require (
-	github.com/SwissOpenEM/globus v0.1.0
+	github.com/SwissOpenEM/globus v0.1.1
 	github.com/fatih/color v1.14.1
 	github.com/google/uuid v1.6.0
 	github.com/minio/minio-go/v7 v7.0.76
