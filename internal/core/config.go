@@ -23,21 +23,21 @@ type S3TransferConfig struct {
 }
 
 type GlobusTransferConfig struct {
-	ClientID              string   `yaml:"client-id"`
-	ClientSecret          string   `yaml:"client-secret,omitempty"`
-	RedirectURL           string   `yaml:"redirect-url"`
+	ClientID              string   `yaml:"clientId"`
+	ClientSecret          string   `yaml:"clientSecret,omitempty"`
+	RedirectURL           string   `yaml:"redirectUrl"`
 	Scopes                []string `yaml:"scopes,omitempty"`
-	SourceCollection      string   `yaml:"source-collection"`
-	SourcePrefixPath      string   `yaml:"source-prefix-path,omitempty"`
-	DestinationCollection string   `yaml:"destination-collection"`
-	DestinationPrefixPath string   `yaml:"destination-prefix-path,omitempty"`
-	RefreshToken          string   `yaml:"refresh-token,omitempty"`
+	SourceCollection      string   `yaml:"sourceCollection"`
+	SourcePrefixPath      string   `yaml:"sourcePrefixPath,omitempty"`
+	DestinationCollection string   `yaml:"destinationCollection"`
+	DestinationPrefixPath string   `yaml:"destinationPrefixPath,omitempty"`
+	RefreshToken          string   `yaml:"refreshToken,omitempty"`
 }
 
 type TransferConfig struct {
-	Method string               `string:"Method"`
-	S3     S3TransferConfig     `mapstructure:"S3"`
-	Globus GlobusTransferConfig `mapstructure:"cliutils.GlobusConfig"`
+	Method string               `string:"method"`
+	S3     S3TransferConfig     `mapstructure:"s3"`
+	Globus GlobusTransferConfig `mapstructure:"globus"`
 }
 
 type MiscConfig struct {
