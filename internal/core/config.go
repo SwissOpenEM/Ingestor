@@ -31,6 +31,7 @@ type Transfer struct {
 
 type Misc struct {
 	ConcurrencyLimit int `int:"ConcurrencyLimit"`
+	Port             int `int:"Port"`
 }
 
 type Config struct {
@@ -51,6 +52,8 @@ func GetConfig() (Config, error) {
 func ReadConfig() error {
 	viper.SetConfigName("openem-ingestor-config") // name of config file (without extension)
 	viper.SetConfigType("yaml")
+
+	viper.SetDefault("Misc.Port", 8888)
 
 	userConfigDir, _ := os.UserConfigDir()
 	executablePath, _ := os.Executable()

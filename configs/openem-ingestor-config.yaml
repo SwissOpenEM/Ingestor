@@ -11,3 +11,4 @@ Transfer:
     Endpoint: globus.psi.ch
 Misc:
   ConcurrencyLimit: 2
+  Port: 8888
