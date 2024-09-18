@@ -33,14 +33,14 @@ jobs:
       with:
         go-version: '1.21'
 
-    - name: Test internal
-      run: go test -C internal/* -v
+    - name: Test internal packages
+      run: go test ./internal/... -v
 
     - name: Build Service
       run: go build -C cmd/openem-ingestor-service/ -v
 
     - name: Test Service
-      run: go test -C cmd/openem-ingestor-service/ -v
+      run: go test cmd/openem-ingestor-service/ -v
 
     - name: Install Wails dependencies
       run: sudo apt-get install -qq -y libwebkit2gtk-4.0-dev libgtk-3-dev npm pkg-config
@@ -53,4 +53,4 @@ jobs:
       run: wails build
 
     - name: Test Desktop App
-      run: go test -C cmd/openem-ingestor-app/ -v
+      run: go test cmd/openem-ingestor-app/ -v
