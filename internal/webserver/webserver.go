@@ -7,11 +7,11 @@ import (
 	"os"
 
 	docs "github.com/SwissOpenEM/Ingestor/docs"
-	"github.com/gin-gonic/gin"
+	cors "github.com/gin-contrib/cors"
+	gin "github.com/gin-gonic/gin"
+	middleware "github.com/oapi-codegen/gin-middleware"
 	swaggerfiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
-
-	middleware "github.com/oapi-codegen/gin-middleware"
 )
 
 func NewIngesterServer(ingestor *IngestorWebServerImplemenation, port int) *http.Server {
@@ -27,6 +27,12 @@ func NewIngesterServer(ingestor *IngestorWebServerImplemenation, port int) *http
 
 	// This is how you set up a basic gin router
 	r := gin.Default()
+
+	r.Use(cors.New(cors.Config{
+		AllowAllOrigins: true,
+		AllowMethods:    []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowHeaders:    []string{"Origin", "Content-Type", "Accept"},
+	}))
 
 	// The swagger docs have to come before the default handlers
 	docs.SwaggerInfo.BasePath = r.BasePath()
