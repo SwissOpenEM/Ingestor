@@ -5,9 +5,13 @@
 package webserver
 
 import (
+	"encoding/json"
+	"io"
 	"net/http"
 
+	"github.com/SwissOpenEM/Ingestor/internal/core"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 var _ ServerInterface = (*IngestorWebServerImplemenation)(nil)
@@ -27,6 +31,8 @@ func NewIngestorWebServer(version string) *IngestorWebServerImplemenation {
 	return &IngestorWebServerImplemenation{version: version}
 }
 
+var taskQueue core.TaskQueue
+
 // DatasetControllerIngestDataset implements ServerInterface.
 //
 //	@Description	Ingest a new dataset
@@ -36,7 +42,33 @@ func NewIngestorWebServer(version string) *IngestorWebServerImplemenation {
 //
 //	@Router			/datasets [post]
 func (i *IngestorWebServerImplemenation) DatasetControllerIngestDataset(c *gin.Context) {
+	var request IngestorUiPostDatasetRequest
 	var result IngestorUiPostDatasetResponse
+
+	reqBody, err := io.ReadAll(c.Request.Body)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to read request body"})
+	}
+	err = json.Unmarshal(reqBody, &request)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid JSON data"})
+	}
+	if request.MetaData == nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Metadata is empty"})
+	}
+
+	metadataString := *request.MetaData
+	var metadata map[string]interface{}
+	err = json.Unmarshal([]byte(metadataString), &metadata)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Metadata is not a valid JSON document."})
+	}
+
+	var smth core.DatasetFolder
+	smth.Id = uuid.New()
+	//smth.FolderPath =
+
+	taskQueue.CreateTask()
 
 	c.JSON(http.StatusOK, result)
 }
