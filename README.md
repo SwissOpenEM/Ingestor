@@ -2,7 +2,7 @@
 
 This repository provides an ingestion app and service for dataset transfer and metadata registration in a catalog. It targets [Scicat](https://scicatproject.github.io) as dataset catalog.
 
-Data can be transfered via [Globus](https://www.globus.org) or via S3 to a compatible endpoint.
+Data can be transferred via [Globus](https://www.globus.org) or via S3 to a compatible endpoint.
 
 There are two entrypoints, i.e. applications: a [desktop app](./cmd/openem-ingestor-app/) providing a minimal UI and a headless [service](./cmd/openem-ingestor-service/). Both provide a REST API in order to interact with each. Common functionality is extracted in the [core](./internal/) package.
 
@@ -46,7 +46,10 @@ see [wails.io](https://wails.io) for details.
 
 ## Configuration
 
-Both the desktop app and the service will use a configuration file named  `openem-ingestor-config.yaml` expected to be located next to the executable or in `os.UserConfigDir()/openem-ingestor` (with [os.UserConfigDir from Golang](https://pkg.go.dev/os#UserConfigDir)) where the first takes precedence.
+Both the desktop app and the service will use a configuration file named  `openem-ingestor-config.yaml` expected to be located next to the executable or in `os.UserConfigDir()/openem-ingestor` where the first takes precedence. As documented [here](https://pkg.go.dev/os#UserConfigDir)), the following config locations are considered:
+- Unix: `$XDG_CONFIG_HOME/openem-ingestor/openem-ingestor-config.yaml` if non-empty, else `$HOME/.config/openem-ingestor/openem-ingestor-config.yaml`
+- MacOS: `$HOME/Library/Application Support/openem-ingestor/openem-ingestor-config.yaml`
+- Windows: `%AppData%\openem-ingestor\openem-ingestor-config.yaml`
 
 ```yaml
 Scicat:
