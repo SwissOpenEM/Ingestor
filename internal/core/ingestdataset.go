@@ -20,7 +20,7 @@ import (
 func createLocalSymlinkCallbackForFileLister(skipSymlinks *string, skippedLinks *uint) func(symlinkPath string, sourceFolder string) (bool, error) {
 	scanner := bufio.NewScanner(os.Stdin)
 	return func(symlinkPath string, sourceFolder string) (bool, error) {
-		keep := true
+		var keep bool
 		pointee, _ := os.Readlink(symlinkPath) // just pass the file name
 		if !filepath.IsAbs(pointee) {
 			symlinkAbs, err := filepath.Abs(filepath.Dir(symlinkPath))
