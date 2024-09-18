@@ -6,6 +6,7 @@ toolchain go1.22.1
 
 require (
 	github.com/getkin/kin-openapi v0.124.0
+	github.com/gin-contrib/cors v1.7.2
 	github.com/gin-gonic/gin v1.10.0
 	github.com/google/uuid v1.5.0
 	github.com/oapi-codegen/oapi-codegen/v2 v2.3.0
