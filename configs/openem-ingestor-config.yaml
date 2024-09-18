@@ -2,12 +2,22 @@ Scicat:
   Host: http://scicat:8080/api/v3
   AccessToken: "token"
 Transfer:
-  Method: S3
+  Method: Globus
   S3:
     Endpoint: s3:9000
     Bucket: landingzone
     Checksum: true
+    Location: "eu-west-1"
+    User: "minio_user"
+    Password: "minio_pass"
   Globus:
-    Endpoint: globus.psi.ch
+    ClientID: ""
+    ClientSecret: ""
+    RedirectURL: ""
+    Scopes: []
+    SourceCollection: ""
+    SourcePrefixPath: ""
+    DestinationCollection: ""
+    DestinationPrefixPath: ""
 Misc:
   ConcurrencyLimit: 2

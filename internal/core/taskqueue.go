@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -32,15 +33,16 @@ type TransferOptions struct {
 	Md5checksum bool
 }
 
+type TaskTransferConfig struct {
+	S3TransferConfig
+	GlobusTransferConfig
+}
+
 type IngestionTask struct {
 	// DatasetFolderId   uuid.UUID
-	DatasetFolder     DatasetFolder
-	ScicatUrl         string
-	ScicatAccessToken string
-	TransferMethod    TransferMethods
-	TransferOptions   TransferOptions
-	RequestContext    context.Context
-	Cancel            context.CancelFunc
+	DatasetFolder
+	TransferMethod TransferMethods
+	Cancel         context.CancelFunc
 }
 
 type TaskResult struct {
@@ -62,21 +64,21 @@ func (w *TaskQueue) Startup() {
 }
 
 func (w *TaskQueue) CreateTask(folder DatasetFolder) error {
+	var transferMethod TransferMethods
+	switch strings.ToLower(w.Config.Transfer.Method) {
+	case "globus":
+		transferMethod = TransferGlobus
+	case "s3":
+		transferMethod = TransferS3
+	}
 
 	task := IngestionTask{
-		DatasetFolder:     folder,
-		ScicatUrl:         w.Config.Scicat.Host,
-		ScicatAccessToken: w.Config.Scicat.AccessToken,
-		TransferMethod:    TransferS3,
-		TransferOptions: TransferOptions{
-			S3_endpoint: w.Config.Transfer.S3.Endpoint,
-			S3_Bucket:   w.Config.Transfer.S3.Bucket,
-			Md5checksum: w.Config.Transfer.S3.Checksum,
-		},
+		DatasetFolder:  folder,
+		TransferMethod: transferMethod,
 	}
 	_, found := w.datasetSourceFolders.Load(task.DatasetFolder.Id)
 	if found {
-		return errors.New("Key  exists")
+		return errors.New("key exists")
 	}
 	w.datasetSourceFolders.Store(task.DatasetFolder.Id, task)
 	return nil
@@ -150,7 +152,7 @@ func (w *TaskQueue) ScheduleTask(id uuid.UUID) {
 
 }
 
-func TestIngestionFunction(task_context context.Context, task IngestionTask, notifier ProgressNotifier) (string, error) {
+func TestIngestionFunction(task_context context.Context, task IngestionTask, config Config, notifier ProgressNotifier) (string, error) {
 
 	start := time.Now()
 
@@ -166,8 +168,9 @@ func TestIngestionFunction(task_context context.Context, task IngestionTask, not
 
 func (w *TaskQueue) IngestDataset(task_context context.Context, task IngestionTask) TaskResult {
 	start := time.Now()
-	datasetPID, _ := TestIngestionFunction(task_context, task, w.Notifier)
+	// datasetPID, _ := TestIngestionFunction(task_context, task, w.Config, w.Notifier)
+	datasetPID, err := IngestDataset(task_context, task, w.Config, w.Notifier)
 	end := time.Now()
 	elapsed := end.Sub(start)
-	return TaskResult{Dataset_PID: datasetPID, Elapsed_seconds: int(elapsed.Seconds()), Error: nil}
+	return TaskResult{Dataset_PID: datasetPID, Elapsed_seconds: int(elapsed.Seconds()), Error: err}
 }
