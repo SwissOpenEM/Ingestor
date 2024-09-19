@@ -52,20 +52,32 @@ Both the desktop app and the service will use a configuration file named  `opene
 - Windows: `%AppData%\openem-ingestor\openem-ingestor-config.yaml`
 
 ```yaml
-Scicat:
-  Host: http://scicat:8080/api/v3
-  AccessToken: "token"
-Transfer:
-  Method: S3
-  S3:
-    Endpoint: s3:9000
-    Bucket: landingzone
-    Checksum: true
-  Globus:
-    Endpoint: globus.psi.ch
-Misc:
-  ConcurrencyLimit: 2
-  Port: 8888
+scicat:
+  host: "http://scicat/api/v3"
+  accesstoken: "some-valid-access-token"
+transfer:
+  method: globus
+  s3:
+    endpoint: some-s3-endpoint:9000
+    bucket: some-s3-bucket
+    location: some-s3-location
+    user: some-s3-user
+    password: some-s3-pass
+    checksum: true
+  globus:
+    clientId: "some-client-id-from-globus"
+    redirectUrl: "https://redirect/v2/web/auth-code"
+    sourceCollection: "collection-uuid-1"
+    sourcePrefixPath: "(optional prefix path)"
+    destinationCollection: "collection-uuid-2"
+    destinationPrefixPath: "(optional prefix path)"
+    refreshToken: "some-valid-refresh-token"
+    scopes: # not needed at all when using refresh token
+      - "some-optional-access-scope"
+      - "another-optional-access-scope"
+misc:
+  concurrencylimit: 3
+  port: 8888
 ```
 
 ## Debugging
