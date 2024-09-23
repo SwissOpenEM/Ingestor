@@ -6,7 +6,7 @@ toolchain go1.22.6
 
 require (
 	github.com/SwissOpenEM/globus v0.1.1
-	github.com/fatih/color v1.14.1
+	github.com/fatih/color v1.17.0
 	github.com/getkin/kin-openapi v0.124.0
 	github.com/gin-contrib/cors v1.7.2
 	github.com/gin-gonic/gin v1.10.0
@@ -15,13 +15,13 @@ require (
 	github.com/oapi-codegen/gin-middleware v1.0.2
 	github.com/oapi-codegen/oapi-codegen/v2 v2.3.0
 	github.com/oapi-codegen/runtime v1.1.1
-	github.com/paulscherrerinstitute/scicat-cli v0.1.6-0.20240905105622-f6eaf0dd713f
+	github.com/paulscherrerinstitute/scicat-cli/v3 v3.0.0-alpha3.0.20240923114554-40b0ae5da12e
 	github.com/spf13/viper v1.19.0
 	github.com/swaggo/files v1.0.1
 	github.com/swaggo/gin-swagger v1.6.0
 	github.com/swaggo/swag v1.16.3
 	github.com/wailsapp/wails/v2 v2.9.1
-	golang.org/x/oauth2 v0.19.0
+	golang.org/x/oauth2 v0.23.0
 )
 
 require (
@@ -57,7 +57,7 @@ require (
 	github.com/bytedance/sonic/loader v0.2.0 // indirect
 	github.com/cloudwego/base64x v0.1.4 // indirect
 	github.com/cloudwego/iasm v0.2.0 // indirect
-	github.com/creack/pty v1.1.17 // indirect
+	github.com/creack/pty v1.1.23 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.5 // indirect
 	github.com/gin-contrib/sse v0.1.0 // indirect
