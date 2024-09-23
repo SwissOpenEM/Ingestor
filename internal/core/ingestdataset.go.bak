@@ -113,7 +113,6 @@ func IngestDataset(
 	config Config,
 	notifier ProgressNotifier,
 ) (string, error) {
-
 	var http_client = &http.Client{
 		Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}},
 		Timeout:   120 * time.Second}
@@ -128,31 +127,71 @@ func IngestDataset(
 	user := map[string]string{
 		"accessToken": config.Scicat.AccessToken,
 	}
-	// check if dataset already exists (identified by source folder)
-	metadatafile := filepath.Join(task.DatasetFolder.FolderPath, "metadata.json")
-	if _, err := os.Stat(metadatafile); errors.Is(err, os.ErrNotExist) {
-		return "", err
+
+	var metaDataMap map[string]interface{}
+	var datasetFolder string
+	if len(task.DatasetMetadata) > 0 {
+		metaDataMap = task.DatasetMetadata
+
+		var ok bool
+		_, ok = metaDataMap["sourceFolder"]
+		if !ok {
+			return "", errors.New("no sourceFolder specified in metadata")
+		}
+		switch v := metaDataMap["sourceFolder"].(type) {
+		case string:
+			datasetFolder = v
+		default:
+			return "", errors.New("sourceFolder in metadata isn't a string")
+		}
+
+		fileInfo, err := os.Stat(datasetFolder)
+		if err != nil {
+			return "", err
+		}
+		if !fileInfo.IsDir() {
+			return "", errors.New("'sourceFolder' is not a directory")
+		}
+	} else {
+		// check if dataset already exists (identified by source folder)
+		var err error
+		datasetFolder = task.DatasetFolder.FolderPath
+		metadatafile := filepath.Join(datasetFolder, "metadata.json")
+		if _, err = os.Stat(metadatafile); errors.Is(err, os.ErrNotExist) {
+			return "", err
+		}
+
+		metaDataMap, err = datasetIngestor.ReadMetadataFromFile(metadatafile)
+		if err != nil {
+			return "", err
+		}
 	}
 
-	metaDataMap, err := datasetIngestor.ReadMetadataFromFile(metadatafile)
+	// HACK: use ownerGroup as the accessGroup
+	// TODO: replace with SciCat backend userInfo check from scicat-cli!
+	if _, ok := metaDataMap["ownerGroup"]; !ok {
+		return "", errors.New("metadata doesn't contain 'ownerGroup'")
+	}
+	var accessGroups []string
+	switch v := metaDataMap["ownerGroup"].(type) {
+	case string:
+		accessGroups = []string{v}
+	default:
+		return "", errors.New("'ownerGroup' isn't a string")
+	}
+
+	_, _, err := scicat.CheckMetadata(http_client, SCICAT_API_URL, metaDataMap, user, accessGroups)
 	if err != nil {
 		return "", err
 	}
-	accessGroups := []string{metaDataMap["ownerGroup"].(string)}
 
-	newMetaDataMap, metadataSourceFolder, _, err := scicat.ReadMetadata(http_client, SCICAT_API_URL, metadatafile, user, accessGroups)
-
-	_ = metadataSourceFolder
-	if err != nil {
-		return "", err
-	}
 	var skippedLinks uint = 0
 	var illegalFileNames uint = 0
 	localSymlinkCallback := createLocalSymlinkCallbackForFileLister(&skipSymlinks, &skippedLinks)
 	localFilepathFilterCallback := createLocalFilenameFilterCallback(&illegalFileNames)
 
 	// collect (local) files
-	fullFileArray, startTime, endTime, owner, numFiles, totalSize, err := datasetIngestor.GetLocalFileList(task.DatasetFolder.FolderPath, DATASETFILELISTTXT, localSymlinkCallback, localFilepathFilterCallback)
+	fullFileArray, startTime, endTime, owner, numFiles, totalSize, err := datasetIngestor.GetLocalFileList(datasetFolder, DATASETFILELISTTXT, localSymlinkCallback, localFilepathFilterCallback)
 	_ = numFiles
 	_ = totalSize
 	_ = startTime
@@ -164,15 +203,15 @@ func IngestDataset(
 		return "", err
 	}
 	originalMetaDataMap := map[string]string{}
-	datasetIngestor.UpdateMetaData(http_client, SCICAT_API_URL, user, originalMetaDataMap, newMetaDataMap, startTime, endTime, owner, TAPECOPIES)
+	datasetIngestor.UpdateMetaData(http_client, SCICAT_API_URL, user, originalMetaDataMap, metaDataMap, startTime, endTime, owner, TAPECOPIES)
 
-	newMetaDataMap["datasetlifecycle"] = map[string]interface{}{}
-	newMetaDataMap["datasetlifecycle"].(map[string]interface{})["isOnCentralDisk"] = false
-	newMetaDataMap["datasetlifecycle"].(map[string]interface{})["archiveStatusMessage"] = "filesNotYetAvailable"
-	newMetaDataMap["datasetlifecycle"].(map[string]interface{})["archivable"] = false
+	metaDataMap["datasetlifecycle"] = map[string]interface{}{}
+	metaDataMap["datasetlifecycle"].(map[string]interface{})["isOnCentralDisk"] = false
+	metaDataMap["datasetlifecycle"].(map[string]interface{})["archiveStatusMessage"] = "filesNotYetAvailable"
+	metaDataMap["datasetlifecycle"].(map[string]interface{})["archivable"] = false
 
 	//datasetId, err := datasetIngestor.IngestDataset(http_client, SCICAT_API_URL, newMetaDataMap, fullFileArray, user)
-	datasetId, err := scicat.CreateDataset(http_client, SCICAT_API_URL, newMetaDataMap, user)
+	datasetId, err := scicat.CreateDataset(http_client, SCICAT_API_URL, metaDataMap, user)
 	if err != nil {
 		return "", err
 	}
@@ -183,9 +222,9 @@ func IngestDataset(
 
 	switch task.TransferMethod {
 	case TransferS3:
-		_, err = UploadS3(task_context, datasetId, task.DatasetFolder.FolderPath, task.DatasetFolder.Id, config.Transfer.S3, notifier)
+		_, err = UploadS3(task_context, datasetId, datasetFolder, task.DatasetFolder.Id, config.Transfer.S3, notifier)
 	case TransferGlobus:
-		err = GlobusTransfer(config.Transfer.Globus, task_context, task.DatasetFolder.Id, task.DatasetFolder.FolderPath, notifier)
+		err = GlobusTransfer(config.Transfer.Globus, task_context, task.DatasetFolder.Id, datasetFolder, fullFileArray, notifier)
 	_:
 	}
 
