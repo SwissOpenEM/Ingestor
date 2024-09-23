@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/paulscherrerinstitute/scicat-cli/datasetIngestor"
+	"github.com/paulscherrerinstitute/scicat-cli/v3/datasetIngestor"
 )
 
 // TODO: this file can be removed once scicat-cli is updated
