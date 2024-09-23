@@ -13,39 +13,39 @@ import (
 )
 
 // clone function from scicat-cli, TODO: remove once scicat-cli is updated
-func ReadMetadata(client *http.Client, APIServer string, metadatafile string, user map[string]string, accessGroups []string) (metaDataMap map[string]interface{}, sourceFolder string, beamlineAccount bool, err error) {
-	metaDataMap, err = datasetIngestor.ReadMetadataFromFile(metadatafile)
-	if err != nil {
-		return nil, "", false, err
-	}
-
+func CheckMetadata(client *http.Client, APIServer string, metaDataMap map[string]interface{}, user map[string]string, accessGroups []string) (sourceFolder string, beamlineAccount bool, err error) {
 	if keys := datasetIngestor.CollectIllegalKeys(metaDataMap); len(keys) > 0 {
-		return nil, "", false, errors.New("illegal keys" + ": \"" + strings.Join(keys, "\", \"") + "\"")
+		return "", false, errors.New("illegal keys" + ": \"" + strings.Join(keys, "\", \"") + "\"")
 	}
 
 	beamlineAccount, err = datasetIngestor.CheckUserAndOwnerGroup(user, accessGroups, metaDataMap)
 	if err != nil {
-		return nil, "", false, err
+		return "", false, err
 	}
 
+	// the gather missing metadata fills out this field correctly so....
+	_, hadHost := metaDataMap["sourceFolderHost"]
 	err = datasetIngestor.GatherMissingMetadata(user, metaDataMap, client, APIServer, accessGroups)
 	if err != nil {
-		return nil, "", false, err
+		return "", false, err
 	}
 
-	delete(metaDataMap, "sourceFolderHost")
+	if !hadHost {
+		delete(metaDataMap, "sourceFolderHost") // we delete it if it was filled out automatically
+	}
 
+	// I don't know what is the endpoint for the metadata checking in v4
 	/*err = checkMetadataValidity(client, APIServer, metaDataMap, user["accessToken"])
 	if err != nil {
-		return nil, "", false, err
+		return "", false, err
 	}*/
 
 	sourceFolder, err = datasetIngestor.GetSourceFolder(metaDataMap)
 	if err != nil {
-		return nil, "", false, err
+		return "", false, err
 	}
 
-	return metaDataMap, sourceFolder, beamlineAccount, nil
+	return sourceFolder, beamlineAccount, nil
 }
 
 // tied to CreateDataset, to be removed
