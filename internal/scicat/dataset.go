@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/paulscherrerinstitute/scicat-cli/datasetIngestor"
+	"github.com/paulscherrerinstitute/scicat-cli/v3/datasetIngestor"
 )
 
 // clone function from scicat-cli, TODO: remove once scicat-cli is updated

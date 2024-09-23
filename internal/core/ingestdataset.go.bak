@@ -14,7 +14,7 @@ import (
 
 	"github.com/SwissOpenEM/Ingestor/internal/scicat"
 	"github.com/fatih/color"
-	"github.com/paulscherrerinstitute/scicat-cli/datasetIngestor"
+	"github.com/paulscherrerinstitute/scicat-cli/v3/datasetIngestor"
 )
 
 func createLocalSymlinkCallbackForFileLister(skipSymlinks *string, skippedLinks *uint) func(symlinkPath string, sourceFolder string) (bool, error) {
