@@ -21,6 +21,9 @@ func (w *WailsNotifier) OnTaskScheduled(id uuid.UUID) {
 func (w *WailsNotifier) OnTaskCanceled(id uuid.UUID) {
 	runtime.EventsEmit(w.AppContext, "upload-canceled", id)
 }
+func (w *WailsNotifier) OnTaskAdded(id uuid.UUID, folder string) {
+	runtime.EventsEmit(w.AppContext, "folder-added", id, folder)
+}
 func (w *WailsNotifier) OnTaskRemoved(id uuid.UUID) {
 	runtime.EventsEmit(w.AppContext, "folder-removed", id)
 }
@@ -72,7 +75,7 @@ func (a *App) startup(ctx context.Context) {
 	a.taskqueue.Startup()
 
 	go func(port int) {
-		ingestor := webserver.NewIngestorWebServer(a.version)
+		ingestor := webserver.NewIngestorWebServer(a.version, &a.taskqueue)
 		s := webserver.NewIngesterServer(ingestor, port)
 		log.Fatal(s.ListenAndServe())
 	}(a.config.Misc.Port)

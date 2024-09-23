@@ -81,6 +81,8 @@ func (w *TaskQueue) CreateTask(folder DatasetFolder) error {
 		return errors.New("key exists")
 	}
 	w.datasetSourceFolders.Store(task.DatasetFolder.Id, task)
+
+	w.Notifier.OnTaskAdded(task.DatasetFolder.Id, task.DatasetFolder.FolderPath)
 	return nil
 }
 
