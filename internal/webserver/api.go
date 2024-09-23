@@ -17,7 +17,8 @@ import (
 var _ ServerInterface = (*IngestorWebServerImplemenation)(nil)
 
 type IngestorWebServerImplemenation struct {
-	version string
+	version   string
+	taskQueue *core.TaskQueue
 }
 
 //	@contact.name	SwissOpenEM
@@ -27,11 +28,9 @@ type IngestorWebServerImplemenation struct {
 // @license.name	Apache 2.0
 // @license.url	http://www.apache.org/licenses/LICENSE-2.0.html
 
-func NewIngestorWebServer(version string) *IngestorWebServerImplemenation {
-	return &IngestorWebServerImplemenation{version: version}
+func NewIngestorWebServer(version string, taskQueue *core.TaskQueue) *IngestorWebServerImplemenation {
+	return &IngestorWebServerImplemenation{version: version, taskQueue: taskQueue}
 }
-
-var taskQueue core.TaskQueue
 
 // DatasetControllerIngestDataset implements ServerInterface.
 //
@@ -80,8 +79,8 @@ func (i *IngestorWebServerImplemenation) DatasetControllerIngestDataset(c *gin.C
 	}
 	datasetFolder.Id = uuid.New()
 
-	taskQueue.CreateTask(datasetFolder)
-	taskQueue.ScheduleTask(datasetFolder.Id)
+	i.taskQueue.CreateTask(datasetFolder)
+	i.taskQueue.ScheduleTask(datasetFolder.Id)
 
 	// NOTE: because of the way the tasks are created, right now it'll search for a metadata.json
 	//   in the dataset folder to get the metadata, we can't pass on the one we got through this
