@@ -12,18 +12,18 @@ import (
 )
 
 type TaskQueue struct {
-	datasetSourceFolders sync.Map           // Datastructure to store all the upload requests
-	inputChannel         chan IngestionTask // Requests to upload data are put into this channel
-	resultChannel        chan TaskResult    // The result of the upload is put into this channel
-	AppContext           context.Context
-	Config               Config
-	Notifier             ProgressNotifier
+	datasetUploadTasks sync.Map           // Datastructure to store all the upload requests
+	inputChannel       chan IngestionTask // Requests to upload data are put into this channel
+	resultChannel      chan TaskResult    // The result of the upload is put into this channel
+	AppContext         context.Context
+	Config             Config
+	Notifier           ProgressNotifier
 }
 
-type TransferMethods int
+type TransferMethod int
 
 const (
-	TransferS3 TransferMethods = iota + 1
+	TransferS3 TransferMethod = iota + 1
 	TransferGlobus
 )
 
@@ -41,8 +41,9 @@ type TaskTransferConfig struct {
 type IngestionTask struct {
 	// DatasetFolderId   uuid.UUID
 	DatasetFolder
-	TransferMethod TransferMethods
-	Cancel         context.CancelFunc
+	DatasetMetadata map[string]interface{}
+	TransferMethod  TransferMethod
+	Cancel          context.CancelFunc
 }
 
 type TaskResult struct {
@@ -63,27 +64,32 @@ func (w *TaskQueue) Startup() {
 
 }
 
-func (w *TaskQueue) CreateTask(folder DatasetFolder) error {
-	var transferMethod TransferMethods
-	switch strings.ToLower(w.Config.Transfer.Method) {
-	case "globus":
-		transferMethod = TransferGlobus
-	case "s3":
-		transferMethod = TransferS3
-	}
+func (w *TaskQueue) CreateTaskFromDatasetFolder(folder DatasetFolder) error {
+	transferMethod := w.getTransferMethod()
 
 	task := IngestionTask{
 		DatasetFolder:  folder,
 		TransferMethod: transferMethod,
 	}
-	_, found := w.datasetSourceFolders.Load(task.DatasetFolder.Id)
+	_, found := w.datasetUploadTasks.Load(task.DatasetFolder.Id)
 	if found {
 		return errors.New("key exists")
 	}
-	w.datasetSourceFolders.Store(task.DatasetFolder.Id, task)
+	w.datasetUploadTasks.Store(task.DatasetFolder.Id, task)
 
 	w.Notifier.OnTaskAdded(task.DatasetFolder.Id, task.DatasetFolder.FolderPath)
 	return nil
+}
+
+func (w *TaskQueue) CreateTaskFromMetadata(id uuid.UUID, metadata map[string]interface{}) {
+	transferMethod := w.getTransferMethod()
+
+	task := IngestionTask{
+		DatasetMetadata: metadata,
+		TransferMethod:  transferMethod,
+	}
+
+	w.datasetUploadTasks.Store(id, task)
 }
 
 // Go routine that listens on the channel continously for upload requests and executes uploads.
@@ -99,7 +105,7 @@ func (w *TaskQueue) startWorker() {
 }
 
 func (w *TaskQueue) CancelTask(id uuid.UUID) {
-	value, found := w.datasetSourceFolders.Load(id)
+	value, found := w.datasetUploadTasks.Load(id)
 	if found {
 		f := value.(IngestionTask)
 		if f.Cancel != nil {
@@ -110,20 +116,20 @@ func (w *TaskQueue) CancelTask(id uuid.UUID) {
 }
 
 func (w *TaskQueue) RemoveTask(id uuid.UUID) {
-	value, found := w.datasetSourceFolders.Load(id)
+	value, found := w.datasetUploadTasks.Load(id)
 	if found {
 		f := value.(IngestionTask)
 		if f.Cancel != nil {
 			f.Cancel()
 		}
-		w.datasetSourceFolders.Delete(id)
+		w.datasetUploadTasks.Delete(id)
 		w.Notifier.OnTaskRemoved(id)
 	}
 }
 
 func (w *TaskQueue) ScheduleTask(id uuid.UUID) {
 
-	value, found := w.datasetSourceFolders.Load(id)
+	value, found := w.datasetUploadTasks.Load(id)
 	if !found {
 		fmt.Println("Scheduling upload failed for: ", id)
 		return
@@ -175,4 +181,14 @@ func (w *TaskQueue) IngestDataset(task_context context.Context, task IngestionTa
 	end := time.Now()
 	elapsed := end.Sub(start)
 	return TaskResult{Dataset_PID: datasetPID, Elapsed_seconds: int(elapsed.Seconds()), Error: err}
+}
+
+func (w *TaskQueue) getTransferMethod() (transferMethod TransferMethod) {
+	switch strings.ToLower(w.Config.Transfer.Method) {
+	case "globus":
+		transferMethod = TransferGlobus
+	case "s3":
+		transferMethod = TransferS3
+	}
+	return transferMethod
 }

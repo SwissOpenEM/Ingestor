@@ -87,7 +87,7 @@ func (a *App) SelectFolder() {
 		return
 	}
 
-	err = a.taskqueue.CreateTask(folder)
+	err = a.taskqueue.CreateTaskFromDatasetFolder(folder)
 	if err != nil {
 		return
 	}

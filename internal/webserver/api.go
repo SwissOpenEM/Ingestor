@@ -48,13 +48,16 @@ func (i *IngestorWebServerImplemenation) DatasetControllerIngestDataset(c *gin.C
 	reqBody, err := io.ReadAll(c.Request.Body)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to read request body"})
+		return
 	}
 	err = json.Unmarshal(reqBody, &request)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid JSON data"})
+		return
 	}
 	if request.MetaData == nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Metadata is empty"})
+		return
 	}
 
 	// get sourcefolder from metadata
@@ -63,32 +66,21 @@ func (i *IngestorWebServerImplemenation) DatasetControllerIngestDataset(c *gin.C
 	err = json.Unmarshal([]byte(metadataString), &metadata)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Metadata is not a valid JSON document."})
-	}
-	sourceFolder, ok := metadata["sourceFolder"]
-	if !ok {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Metadata doesn't have a 'sourceFolder' field"})
+		return
 	}
 
-	// create DatasetFolder struct
-	var datasetFolder core.DatasetFolder
-	switch v := sourceFolder.(type) {
-	case string:
-		datasetFolder.FolderPath = v
-	default:
-		c.JSON(http.StatusBadRequest, gin.H{"error": "'sourceFolder' field is not a string"})
-	}
-	datasetFolder.Id = uuid.New()
-
-	i.taskQueue.CreateTask(datasetFolder)
-	i.taskQueue.ScheduleTask(datasetFolder.Id)
+	// create and start task
+	id := uuid.New()
+	i.taskQueue.CreateTaskFromMetadata(id, metadata)
+	i.taskQueue.ScheduleTask(id)
 
 	// NOTE: because of the way the tasks are created, right now it'll search for a metadata.json
 	//   in the dataset folder to get the metadata, we can't pass on the one we got through this
 	//   request
 	// TODO: change this so that a task will accept a struct containing the dataset
-	id := datasetFolder.Id.String()
 	status := "started"
-	result.IngestId = &id
+	idString := id.String()
+	result.IngestId = &idString
 	result.Status = &status
 	c.JSON(http.StatusOK, result)
 }

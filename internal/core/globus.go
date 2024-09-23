@@ -4,10 +4,13 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/SwissOpenEM/globus"
 	"github.com/google/uuid"
+	"github.com/paulscherrerinstitute/scicat-cli/v3/datasetIngestor"
 	"golang.org/x/oauth2"
 )
 
@@ -94,7 +97,7 @@ func globusCheckTransfer(globusTaskId string) (filesTransferred int, totalFiles 
 	}
 }
 
-func GlobusTransfer(globusConf GlobusTransferConfig, taskCtx context.Context, localTaskId uuid.UUID, datasetFolder string, notifier ProgressNotifier) error {
+func GlobusTransfer(globusConf GlobusTransferConfig, taskCtx context.Context, localTaskId uuid.UUID, datasetFolder string, fileList []datasetIngestor.Datafile, notifier ProgressNotifier) error {
 	// check if globus client is properly set up, use refresh token if available
 	if !globusClient.IsClientSet() {
 		if globusConf.RefreshToken == "" {
@@ -103,13 +106,25 @@ func GlobusTransfer(globusConf GlobusTransferConfig, taskCtx context.Context, lo
 		GlobusLoginWithRefreshToken(globusConf)
 	}
 
-	// for now, we're using recursive folder sync of globus, it does not handle symlinks how we want however
-	// TODO: use TransferFileList (but potentially it'll still not handle symlinks how we want it to...)
-	result, err := globusClient.TransferFolderSync(
+	// transfer given filelist
+	var filePathList []string
+	var fileIsSymlinkList []bool
+	for _, file := range fileList {
+		filePathList = append(filePathList, filepath.ToSlash(file.Path))
+		fileIsSymlinkList = append(fileIsSymlinkList, file.IsSymlink)
+	}
+	datasetFolder = filepath.ToSlash(datasetFolder)
+
+	s := strings.Split(strings.Trim(datasetFolder, "/"), "/")
+	datasetFolderName := s[len(s)-1]
+
+	result, err := globusClient.TransferFileList(
 		globusConf.SourceCollection,
 		globusConf.SourcePrefixPath+"/"+datasetFolder,
 		globusConf.DestinationCollection,
-		globusConf.DestinationPrefixPath+"/"+datasetFolder,
+		globusConf.DestinationPrefixPath+"/"+datasetFolderName,
+		filePathList,
+		fileIsSymlinkList,
 		true,
 	)
 	if err != nil {
@@ -119,13 +134,12 @@ func GlobusTransfer(globusConf GlobusTransferConfig, taskCtx context.Context, lo
 		return fmt.Errorf("globus: transfer was not accepted - code: \"%s\", message: \"%s\"", result.Code, result.Message)
 	}
 
+	// task monitoring
 	globusTaskId := result.TaskId
-
-	// start periodically checking transfer until done, failed or cancelled
 	startTime := time.Now()
-
 	var taskCompleted bool
 	var filesTransferred, totalFiles int
+
 	filesTransferred, totalFiles, taskCompleted, err = globusCheckTransfer(globusTaskId)
 	if err != nil {
 		return err
