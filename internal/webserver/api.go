@@ -6,6 +6,7 @@ package webserver
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 
@@ -47,12 +48,12 @@ func (i *IngestorWebServerImplemenation) DatasetControllerIngestDataset(c *gin.C
 	// convert body to struct
 	reqBody, err := io.ReadAll(c.Request.Body)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to read request body"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Failed to read request body: %v", err)})
 		return
 	}
 	err = json.Unmarshal(reqBody, &request)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid JSON data"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Invalid JSON data: %v", err)})
 		return
 	}
 	if request.MetaData == nil {
@@ -65,7 +66,7 @@ func (i *IngestorWebServerImplemenation) DatasetControllerIngestDataset(c *gin.C
 	var metadata map[string]interface{}
 	err = json.Unmarshal([]byte(metadataString), &metadata)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Metadata is not a valid JSON document."})
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Metadata is not a valid JSON document: %v", err)})
 		return
 	}
 
@@ -109,7 +110,31 @@ func (i *IngestorWebServerImplemenation) OtherControllerGetVersion(c *gin.Contex
 //
 //	@Router			/transfer [delete]
 func (i *IngestorWebServerImplemenation) TransferControllerDeleteTransfer(c *gin.Context) {
+	var request IngestorUiDeleteTransferRequest
 	var result IngestorUiDeleteTransferResponse
+
+	reqBody, err := io.ReadAll(c.Request.Body)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Failed to read request body: %v", err)})
+	}
+	err = json.Unmarshal(reqBody, &request)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Invalid JSON data: %v", err)})
+	}
+	if request.IngestId == nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Ingest ID was not specified in the request"})
+	}
+
+	id := *request.IngestId
+	uuid, err := uuid.Parse(id)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Ingest ID is not a valid uuid: %v", err)})
+	}
+
+	err = i.taskQueue.RemoveTask(uuid)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Task not found"})
+	}
 
 	c.JSON(http.StatusOK, result)
 }
@@ -126,5 +151,37 @@ func (i *IngestorWebServerImplemenation) TransferControllerDeleteTransfer(c *gin
 func (i *IngestorWebServerImplemenation) TransferControllerGetTransfer(c *gin.Context, params TransferControllerGetTransferParams) {
 	var result IngestorUiGetTransferResponse
 
-	c.JSON(http.StatusOK, result)
+	if params.TransferId != nil {
+		id := *params.TransferId
+		uuid, err := uuid.Parse(id)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Can't parse UUID: %v", err)})
+		}
+
+		//_, err = i.taskQueue.GetTaskStatus(uuid)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("No such task with id '%s'", uuid.String())})
+		}
+
+		status := ""
+		resultNo := 1
+
+		transferItems := []IngestorUiGetTransferItem{
+			IngestorUiGetTransferItem{
+				Status:     &status,
+				TransferId: &id,
+			},
+		}
+
+		result.Total = &resultNo
+		result.Transfers = &transferItems
+
+		c.JSON(http.StatusOK, result)
+	}
+
+	if params.Page != nil {
+		c.JSON(http.StatusOK, result)
+	}
+
+	c.JSON(http.StatusBadRequest, gin.H{"error": "Not enough parameters"})
 }

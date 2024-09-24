@@ -5,6 +5,7 @@ import (
 	"log"
 
 	core "github.com/SwissOpenEM/Ingestor/internal/core"
+	"github.com/SwissOpenEM/Ingestor/internal/task"
 	webserver "github.com/SwissOpenEM/Ingestor/internal/webserver"
 
 	"github.com/google/uuid"
@@ -82,7 +83,7 @@ func (a *App) startup(ctx context.Context) {
 }
 
 func (a *App) SelectFolder() {
-	folder, err := core.SelectFolder(a.ctx)
+	folder, err := task.SelectFolder(a.ctx)
 	if err != nil {
 		return
 	}
