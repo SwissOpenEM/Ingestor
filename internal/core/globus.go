@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/SwissOpenEM/Ingestor/internal/task"
 	"github.com/SwissOpenEM/globus"
 	"github.com/google/uuid"
 	"github.com/paulscherrerinstitute/scicat-cli/v3/datasetIngestor"
@@ -16,7 +17,7 @@ import (
 
 var globusClient globus.GlobusClient
 
-func GlobusCliLogIn(gConfig *GlobusTransferConfig) error {
+func GlobusCliLogIn(gConfig *task.GlobusTransferConfig) error {
 	// config setup
 	ctx := context.Background()
 	clientConfig := globus.AuthGenerateOauthClientConfig(ctx, gConfig.ClientID, gConfig.ClientSecret, gConfig.RedirectURL, gConfig.Scopes)
@@ -48,7 +49,7 @@ func GlobusCliLogIn(gConfig *GlobusTransferConfig) error {
 	return nil
 }
 
-func GlobusLoginWithRefreshToken(gConfig GlobusTransferConfig) {
+func GlobusLoginWithRefreshToken(gConfig task.GlobusTransferConfig) {
 	ctx := context.Background()
 	clientConfig := globus.AuthGenerateOauthClientConfig(ctx, gConfig.ClientID, gConfig.ClientSecret, gConfig.RedirectURL, gConfig.Scopes)
 	tok := oauth2.Token{
@@ -97,7 +98,7 @@ func globusCheckTransfer(globusTaskId string) (filesTransferred int, totalFiles 
 	}
 }
 
-func GlobusTransfer(globusConf GlobusTransferConfig, taskCtx context.Context, localTaskId uuid.UUID, datasetFolder string, fileList []datasetIngestor.Datafile, notifier ProgressNotifier) error {
+func GlobusTransfer(globusConf task.GlobusTransferConfig, taskCtx context.Context, localTaskId uuid.UUID, datasetFolder string, fileList []datasetIngestor.Datafile, notifier ProgressNotifier) error {
 	// check if globus client is properly set up, use refresh token if available
 	if !globusClient.IsClientSet() {
 		if globusConf.RefreshToken == "" {

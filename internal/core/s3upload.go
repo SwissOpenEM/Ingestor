@@ -7,6 +7,7 @@ import (
 	"path"
 	"time"
 
+	"github.com/SwissOpenEM/Ingestor/internal/task"
 	"github.com/google/uuid"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
@@ -35,7 +36,7 @@ func (pn *MinioProgressNotifier) Read(p []byte) (n int, err error) {
 }
 
 // Upload all files in a folder to a minio bucket
-func UploadS3(task_ctx context.Context, dataset_pid string, datasetSourceFolder string, uploadId uuid.UUID, options S3TransferConfig, notifier ProgressNotifier) (string, error) {
+func UploadS3(task_ctx context.Context, dataset_pid string, datasetSourceFolder string, uploadId uuid.UUID, options task.S3TransferConfig, notifier ProgressNotifier) (string, error) {
 	accessKeyID := options.User
 	secretAccessKey := options.Password
 	creds := credentials.NewStaticV4(accessKeyID, secretAccessKey, "")

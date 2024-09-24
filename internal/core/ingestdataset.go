@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/SwissOpenEM/Ingestor/internal/scicat"
+	"github.com/SwissOpenEM/Ingestor/internal/task"
 	"github.com/fatih/color"
 	"github.com/paulscherrerinstitute/scicat-cli/v3/datasetIngestor"
 )
@@ -109,7 +110,7 @@ func createLocalFilenameFilterCallback(illegalFileNamesCounter *uint) func(filep
 
 func IngestDataset(
 	task_context context.Context,
-	task IngestionTask,
+	ingestionTask task.IngestionTask,
 	config Config,
 	notifier ProgressNotifier,
 ) (string, error) {
@@ -130,8 +131,8 @@ func IngestDataset(
 
 	var metaDataMap map[string]interface{}
 	var datasetFolder string
-	if len(task.DatasetMetadata) > 0 {
-		metaDataMap = task.DatasetMetadata
+	if len(ingestionTask.DatasetMetadata) > 0 {
+		metaDataMap = ingestionTask.DatasetMetadata
 
 		var ok bool
 		_, ok = metaDataMap["sourceFolder"]
@@ -155,7 +156,7 @@ func IngestDataset(
 	} else {
 		// check if dataset already exists (identified by source folder)
 		var err error
-		datasetFolder = task.DatasetFolder.FolderPath
+		datasetFolder = ingestionTask.DatasetFolder.FolderPath
 		metadatafile := filepath.Join(datasetFolder, "metadata.json")
 		if _, err = os.Stat(metadatafile); errors.Is(err, os.ErrNotExist) {
 			return "", err
@@ -220,11 +221,11 @@ func IngestDataset(
 		return "", err
 	}
 
-	switch task.TransferMethod {
-	case TransferS3:
-		_, err = UploadS3(task_context, datasetId, datasetFolder, task.DatasetFolder.Id, config.Transfer.S3, notifier)
-	case TransferGlobus:
-		err = GlobusTransfer(config.Transfer.Globus, task_context, task.DatasetFolder.Id, datasetFolder, fullFileArray, notifier)
+	switch ingestionTask.TransferMethod {
+	case task.TransferS3:
+		_, err = UploadS3(task_context, datasetId, datasetFolder, ingestionTask.DatasetFolder.Id, config.Transfer.S3, notifier)
+	case task.TransferGlobus:
+		err = GlobusTransfer(config.Transfer.Globus, task_context, ingestionTask.DatasetFolder.Id, datasetFolder, fullFileArray, notifier)
 	_:
 	}
 
