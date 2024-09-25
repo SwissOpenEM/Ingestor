@@ -153,22 +153,21 @@ func (i *IngestorWebServerImplemenation) TransferControllerGetTransfer(c *gin.Co
 
 	if params.TransferId != nil {
 		id := *params.TransferId
-		uuid, err := uuid.Parse(id)
+		uid, err := uuid.Parse(id)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Can't parse UUID: %v", err)})
 		}
 
-		//_, err = i.taskQueue.GetTaskStatus(uuid)
+		status, err := i.taskQueue.GetTaskStatus(uid)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("No such task with id '%s'", uuid.String())})
+			c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("No such task with id '%s'", uid.String())})
 		}
 
-		status := ""
 		resultNo := 1
 
 		transferItems := []IngestorUiGetTransferItem{
-			IngestorUiGetTransferItem{
-				Status:     &status,
+			{
+				Status:     &status.StatusMessage,
 				TransferId: &id,
 			},
 		}
