@@ -9,48 +9,57 @@ import (
 	"time"
 
 	"github.com/SwissOpenEM/Ingestor/internal/task"
+	"github.com/elliotchance/orderedmap/v2"
 	"github.com/google/uuid"
 )
 
 type TaskQueue struct {
-	datasetUploadTasks sync.Map                // Datastructure to store all the upload requests
-	inputChannel       chan task.IngestionTask // Requests to upload data are put into this channel
-	resultChannel      chan task.Result        // The result of the upload is put into this channel
+	taskListLock       sync.RWMutex                                          // locking mechanism for uploadIds and datasetUploadTasks
+	datasetUploadTasks *orderedmap.OrderedMap[uuid.UUID, task.IngestionTask] // For storing requests, mapped to the id's above
+	inputChannel       chan task.IngestionTask                               // Requests to upload data are put into this channel
+	resultChannel      chan task.Result                                      // The result of the upload is put into this channel
 	AppContext         context.Context
 	Config             Config
 	Notifier           ProgressNotifier
 }
 
 func (w *TaskQueue) Startup() {
-
 	w.inputChannel = make(chan task.IngestionTask)
 	w.resultChannel = make(chan task.Result)
+	w.datasetUploadTasks = orderedmap.NewOrderedMap[uuid.UUID, task.IngestionTask]()
 
 	// start multiple go routines/workers that will listen on the input channel
 	for worker := 1; worker <= w.Config.Misc.ConcurrencyLimit; worker++ {
 		go w.startWorker()
 	}
-
 }
 
 func (w *TaskQueue) CreateTaskFromDatasetFolder(folder task.DatasetFolder) error {
 	transferMethod := w.getTransferMethod()
 
+	var unlockOnce sync.Once
+	w.taskListLock.Lock()
+	defer unlockOnce.Do(w.taskListLock.Unlock)
+
 	task := task.CreateIngestionTask(folder, map[string]interface{}{}, transferMethod, nil)
-	_, found := w.datasetUploadTasks.Load(task.DatasetFolder.Id)
+	_, found := w.datasetUploadTasks.Get(task.DatasetFolder.Id)
 	if found {
 		return errors.New("key exists")
 	}
-	w.datasetUploadTasks.Store(task.DatasetFolder.Id, task)
 
+	w.datasetUploadTasks.Set(task.DatasetFolder.Id, task)
+	unlockOnce.Do(w.taskListLock.Unlock)
 	w.Notifier.OnTaskAdded(task.DatasetFolder.Id, task.DatasetFolder.FolderPath)
+
 	return nil
 }
 
 func (w *TaskQueue) CreateTaskFromMetadata(id uuid.UUID, metadata map[string]interface{}) {
 	transferMethod := w.getTransferMethod()
 	task := task.CreateIngestionTask(task.DatasetFolder{}, metadata, transferMethod, nil)
-	w.datasetUploadTasks.Store(id, task)
+	w.taskListLock.Lock()
+	defer w.taskListLock.Unlock()
+	w.datasetUploadTasks.Set(id, task)
 }
 
 // Go routine that listens on the channel continously for upload requests and executes uploads.
@@ -66,39 +75,45 @@ func (w *TaskQueue) startWorker() {
 }
 
 func (w *TaskQueue) CancelTask(id uuid.UUID) {
-	value, found := w.datasetUploadTasks.Load(id)
-	if found {
-		f := value.(task.IngestionTask)
-		if f.Cancel != nil {
-			f.Cancel()
-		}
-		w.Notifier.OnTaskCanceled(id)
+	w.taskListLock.RLock()
+	task, ok := w.datasetUploadTasks.Get(id)
+	w.taskListLock.RUnlock()
+	if !ok {
+		return
 	}
+	if task.Cancel != nil {
+		task.Cancel()
+	}
+	w.Notifier.OnTaskCanceled(id)
 }
 
 func (w *TaskQueue) RemoveTask(id uuid.UUID) error {
-	value, found := w.datasetUploadTasks.Load(id)
+	var unlockOnce sync.Once
+	w.taskListLock.Lock()
+	defer unlockOnce.Do(w.taskListLock.Unlock)
+
+	f, found := w.datasetUploadTasks.Get(id)
 	if !found {
 		return errors.New("task not found")
 	}
-	f := value.(task.IngestionTask)
 	if f.Cancel != nil {
 		f.Cancel()
 	}
+
 	w.datasetUploadTasks.Delete(id)
+	unlockOnce.Do(w.taskListLock.Unlock)
 	w.Notifier.OnTaskRemoved(id)
 	return nil
 }
 
 func (w *TaskQueue) ScheduleTask(id uuid.UUID) {
-
-	value, found := w.datasetUploadTasks.Load(id)
+	w.taskListLock.RLock()
+	ingestionTask, found := w.datasetUploadTasks.Get(id)
+	w.taskListLock.RUnlock()
 	if !found {
 		fmt.Println("Scheduling upload failed for: ", id)
 		return
 	}
-
-	ingestionTask := value.(task.IngestionTask)
 
 	// Go routine to handle result and errors
 	go func(id uuid.UUID) {
@@ -123,16 +138,44 @@ func (w *TaskQueue) ScheduleTask(id uuid.UUID) {
 }
 
 func (w *TaskQueue) GetTaskStatus(id uuid.UUID) (task.TaskStatus, error) {
-	value, found := w.datasetUploadTasks.Load(id)
+	w.taskListLock.RLock()
+	t, found := w.datasetUploadTasks.Get(id)
+	w.taskListLock.RUnlock()
 	if !found {
 		return task.TaskStatus{}, fmt.Errorf("no task exists with id '%s'", id.String())
 	}
-	t := value.(task.IngestionTask)
 	return t.GetStatus(), nil
 }
 
-func TestIngestionFunction(task_context context.Context, task task.IngestionTask, config Config, notifier ProgressNotifier) (string, error) {
+func (w *TaskQueue) GetTaskStatusList(start uint, end uint) (statusList []task.TaskStatus, err error) {
+	if end < start {
+		return statusList, errors.New("end index is smaller than start index")
+	}
 
+	w.taskListLock.RLock()
+	defer w.taskListLock.RUnlock()
+
+	taskListLen := w.datasetUploadTasks.Len()
+	if start > uint(taskListLen) {
+		return statusList, err
+	}
+	if end > uint(taskListLen) {
+		end = uint(taskListLen)
+	}
+	if start == 0 {
+		start = 1
+	}
+
+	keys := w.datasetUploadTasks.Keys()
+	for i := start - 1; i < end; i++ {
+		task, _ := w.datasetUploadTasks.Get(keys[i])
+		statusList = append(statusList, task.GetStatus())
+	}
+
+	return statusList, err
+}
+
+func TestIngestionFunction(task_context context.Context, task task.IngestionTask, config Config, notifier ProgressNotifier) (string, error) {
 	start := time.Now()
 
 	for i := 0; i < 10; i++ {
@@ -147,7 +190,6 @@ func TestIngestionFunction(task_context context.Context, task task.IngestionTask
 
 func (w *TaskQueue) IngestDataset(task_context context.Context, ingestionTask task.IngestionTask) task.Result {
 	start := time.Now()
-	// datasetPID, _ := TestIngestionFunction(task_context, task, w.Config, w.Notifier)
 	datasetPID, err := IngestDataset(task_context, ingestionTask, w.Config, w.Notifier)
 	end := time.Now()
 	elapsed := end.Sub(start)
