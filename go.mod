@@ -59,6 +59,7 @@ require (
 	github.com/cloudwego/iasm v0.2.0 // indirect
 	github.com/creack/pty v1.1.23 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
+	github.com/elliotchance/orderedmap/v2 v2.4.0
 	github.com/gabriel-vasile/mimetype v1.4.5 // indirect
 	github.com/gin-contrib/sse v0.1.0 // indirect
 	github.com/go-ini/ini v1.67.0 // indirect
