@@ -29,6 +29,7 @@ type TaskStatus struct {
 	FilesTransferred int
 	FilesTotal       int
 	Failed           bool
+	Started          bool
 	Finished         bool
 	StatusMessage    string
 }
@@ -73,6 +74,7 @@ func (t *IngestionTask) SetStatus(
 	filesTransferred *int,
 	filesTotal *int,
 	failed *bool,
+	started *bool,
 	finished *bool,
 	statusMessage *string,
 ) {
@@ -92,6 +94,9 @@ func (t *IngestionTask) SetStatus(
 	}
 	if failed != nil {
 		t.status.Failed = *failed
+	}
+	if started != nil {
+		t.status.Started = *started
 	}
 	if finished != nil {
 		t.status.Finished = *finished
