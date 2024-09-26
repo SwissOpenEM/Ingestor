@@ -206,6 +206,11 @@ func IngestDataset(
 	originalMetaDataMap := map[string]string{}
 	datasetIngestor.UpdateMetaData(http_client, SCICAT_API_URL, user, originalMetaDataMap, metaDataMap, startTime, endTime, owner, TAPECOPIES)
 
+	intTotalSize := int(totalSize)
+	totalFiles := len(fullFileArray)
+	trueVal := true
+	ingestionTask.SetStatus(nil, &intTotalSize, nil, &totalFiles, nil, &trueVal, nil, nil)
+
 	metaDataMap["datasetlifecycle"] = map[string]interface{}{}
 	metaDataMap["datasetlifecycle"].(map[string]interface{})["isOnCentralDisk"] = false
 	metaDataMap["datasetlifecycle"].(map[string]interface{})["archiveStatusMessage"] = "filesNotYetAvailable"
@@ -225,7 +230,7 @@ func IngestDataset(
 	case task.TransferS3:
 		_, err = UploadS3(task_context, datasetId, datasetFolder, ingestionTask.DatasetFolder.Id, config.Transfer.S3, notifier)
 	case task.TransferGlobus:
-		err = GlobusTransfer(config.Transfer.Globus, task_context, ingestionTask.DatasetFolder.Id, datasetFolder, fullFileArray, notifier)
+		err = GlobusTransfer(config.Transfer.Globus, ingestionTask, task_context, ingestionTask.DatasetFolder.Id, datasetFolder, fullFileArray, notifier)
 	_:
 	}
 
