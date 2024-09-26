@@ -70,6 +70,16 @@ func (w *TaskQueue) startWorker() {
 		ingestionTask.Cancel = cancel
 
 		result := w.IngestDataset(task_context, ingestionTask)
+		if result.Error == nil {
+			falseVal := false
+			trueVal := true
+			message := "finished"
+			ingestionTask.SetStatus(nil, nil, nil, nil, &falseVal, nil, &trueVal, &message)
+		} else {
+			trueVal := true
+			message := fmt.Sprintf("failed - error: %s", result.Error.Error())
+			ingestionTask.SetStatus(nil, nil, nil, nil, &trueVal, nil, &trueVal, &message)
+		}
 		w.resultChannel <- result
 	}
 }
@@ -147,9 +157,9 @@ func (w *TaskQueue) GetTaskStatus(id uuid.UUID) (task.TaskStatus, error) {
 	return t.GetStatus(), nil
 }
 
-func (w *TaskQueue) GetTaskStatusList(start uint, end uint) (statusList []task.TaskStatus, err error) {
+func (w *TaskQueue) GetTaskStatusList(start uint, end uint) (idList []uuid.UUID, statusList []task.TaskStatus, err error) {
 	if end < start {
-		return statusList, errors.New("end index is smaller than start index")
+		return idList, statusList, errors.New("end index is smaller than start index")
 	}
 
 	w.taskListLock.RLock()
@@ -157,7 +167,7 @@ func (w *TaskQueue) GetTaskStatusList(start uint, end uint) (statusList []task.T
 
 	taskListLen := w.datasetUploadTasks.Len()
 	if start > uint(taskListLen) {
-		return statusList, err
+		return idList, statusList, err
 	}
 	if end > uint(taskListLen) {
 		end = uint(taskListLen)
@@ -169,10 +179,17 @@ func (w *TaskQueue) GetTaskStatusList(start uint, end uint) (statusList []task.T
 	keys := w.datasetUploadTasks.Keys()
 	for i := start - 1; i < end; i++ {
 		task, _ := w.datasetUploadTasks.Get(keys[i])
+		idList = append(idList, keys[i])
 		statusList = append(statusList, task.GetStatus())
 	}
 
-	return statusList, err
+	return idList, statusList, err
+}
+
+func (w *TaskQueue) GetTaskCount() int {
+	w.taskListLock.RLock()
+	defer w.taskListLock.RUnlock()
+	return w.datasetUploadTasks.Len()
 }
 
 func TestIngestionFunction(task_context context.Context, task task.IngestionTask, config Config, notifier ProgressNotifier) (string, error) {

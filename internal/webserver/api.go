@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math"
 	"net/http"
 
 	"github.com/SwissOpenEM/Ingestor/internal/core"
@@ -116,24 +117,29 @@ func (i *IngestorWebServerImplemenation) TransferControllerDeleteTransfer(c *gin
 	reqBody, err := io.ReadAll(c.Request.Body)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Failed to read request body: %v", err)})
+		return
 	}
 	err = json.Unmarshal(reqBody, &request)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Invalid JSON data: %v", err)})
+		return
 	}
 	if request.IngestId == nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Ingest ID was not specified in the request"})
+		return
 	}
 
 	id := *request.IngestId
 	uuid, err := uuid.Parse(id)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Ingest ID is not a valid uuid: %v", err)})
+		return
 	}
 
 	err = i.taskQueue.RemoveTask(uuid)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Task not found"})
+		return
 	}
 
 	c.JSON(http.StatusOK, result)
@@ -156,15 +162,14 @@ func (i *IngestorWebServerImplemenation) TransferControllerGetTransfer(c *gin.Co
 		uid, err := uuid.Parse(id)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Can't parse UUID: %v", err)})
+			return
 		}
 
 		status, err := i.taskQueue.GetTaskStatus(uid)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("No such task with id '%s'", uid.String())})
+			return
 		}
-
-		resultNo := 1
-
 		transferItems := []IngestorUiGetTransferItem{
 			{
 				Status:     &status.StatusMessage,
@@ -172,14 +177,64 @@ func (i *IngestorWebServerImplemenation) TransferControllerGetTransfer(c *gin.Co
 			},
 		}
 
-		result.Total = &resultNo
 		result.Transfers = &transferItems
 
 		c.JSON(http.StatusOK, result)
+		return
 	}
 
 	if params.Page != nil {
+		var start, end, pageIndex, pageSize uint
+
+		pageSize = 50
+		if params.PageSize != nil {
+			pageSize = uint(*params.PageSize)
+		}
+
+		if *params.Page <= 0 {
+			pageIndex = 1
+		} else {
+			pageIndex = uint(*params.Page)
+		}
+
+		start = (pageIndex - 1) * pageSize
+		end = pageIndex * pageSize
+
+		resultNo := i.taskQueue.GetTaskCount()
+		ids, statuses, err := i.taskQueue.GetTaskStatusList(start, end)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
+		transferItems := []IngestorUiGetTransferItem{}
+		for i, status := range statuses {
+			idString := ids[i].String()
+			s := status.StatusMessage
+			if !status.Failed {
+				if status.Finished {
+					s = "finished"
+				} else if status.Started {
+					s = fmt.Sprintf(
+						"progress: %d%%",
+						int(math.Round(float64(status.BytesTransferred)/float64(status.BytesTotal))),
+					)
+				} else {
+					s = "queued"
+				}
+			} else if status.StatusMessage == "" {
+				s = "failed - unknown error"
+			}
+			transferItems = append(transferItems, IngestorUiGetTransferItem{
+				Status:     &s,
+				TransferId: &idString,
+			})
+		}
+
+		result.Total = &resultNo
+		result.Transfers = &transferItems
 		c.JSON(http.StatusOK, result)
+		return
 	}
 
 	c.JSON(http.StatusBadRequest, gin.H{"error": "Not enough parameters"})
