@@ -109,8 +109,10 @@ func (w *TaskQueue) RemoveTask(id uuid.UUID) error {
 	if f.Cancel != nil {
 		f.Cancel()
 	}
+	if !w.datasetUploadTasks.Delete(id) {
+		return errors.New("could not delete key")
+	}
 
-	w.datasetUploadTasks.Delete(id)
 	unlockOnce.Do(w.taskListLock.Unlock)
 	w.Notifier.OnTaskRemoved(id)
 	return nil

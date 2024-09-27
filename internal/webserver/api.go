@@ -132,16 +132,19 @@ func (i *IngestorWebServerImplemenation) TransferControllerDeleteTransfer(c *gin
 	id := *request.IngestId
 	uuid, err := uuid.Parse(id)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Ingest ID is not a valid uuid: %v", err)})
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Ingest ID '%s' could not be parsed as uuid: %v", id, err)})
 		return
 	}
 
 	err = i.taskQueue.RemoveTask(uuid)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Task not found"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
+	result.IngestId = &id
+	status := "gone"
+	result.Status = &status
 	c.JSON(http.StatusOK, result)
 }
 
