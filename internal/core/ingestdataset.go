@@ -128,6 +128,11 @@ func IngestDataset(
 	user := map[string]string{
 		"accessToken": config.Scicat.AccessToken,
 	}
+	_, accessGroups, err := scicat.ExtractUserInfo(http_client, SCICAT_API_URL, user["accessToken"])
+	if err != nil {
+		return "", err
+	}
+
 
 	var metaDataMap map[string]interface{}
 	var datasetFolder string
@@ -170,18 +175,8 @@ func IngestDataset(
 
 	// HACK: use ownerGroup as the accessGroup
 	// TODO: replace with SciCat backend userInfo check from scicat-cli!
-	if _, ok := metaDataMap["ownerGroup"]; !ok {
-		return "", errors.New("metadata doesn't contain 'ownerGroup'")
-	}
-	var accessGroups []string
-	switch v := metaDataMap["ownerGroup"].(type) {
-	case string:
-		accessGroups = []string{v}
-	default:
-		return "", errors.New("'ownerGroup' isn't a string")
-	}
 
-	_, _, err := scicat.CheckMetadata(http_client, SCICAT_API_URL, metaDataMap, user, accessGroups)
+	_, _, err = scicat.CheckMetadata(http_client, SCICAT_API_URL, metaDataMap, user, accessGroups)
 	if err != nil {
 		return "", err
 	}
