@@ -2,8 +2,11 @@ package main
 
 import (
 	"context"
+	"log"
 
 	core "github.com/SwissOpenEM/Ingestor/internal/core"
+	"github.com/SwissOpenEM/Ingestor/internal/task"
+	webserver "github.com/SwissOpenEM/Ingestor/internal/webserver"
 
 	"github.com/google/uuid"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
@@ -18,6 +21,9 @@ func (w *WailsNotifier) OnTaskScheduled(id uuid.UUID) {
 }
 func (w *WailsNotifier) OnTaskCanceled(id uuid.UUID) {
 	runtime.EventsEmit(w.AppContext, "upload-canceled", id)
+}
+func (w *WailsNotifier) OnTaskAdded(id uuid.UUID, folder string) {
+	runtime.EventsEmit(w.AppContext, "folder-added", id, folder)
 }
 func (w *WailsNotifier) OnTaskRemoved(id uuid.UUID) {
 	runtime.EventsEmit(w.AppContext, "folder-removed", id)
@@ -37,11 +43,12 @@ type App struct {
 	ctx       context.Context
 	taskqueue core.TaskQueue
 	config    core.Config
+	version   string
 }
 
 // NewApp creates a new App application struct
-func NewApp(config core.Config) *App {
-	return &App{config: config}
+func NewApp(config core.Config, version string) *App {
+	return &App{config: config, version: version}
 }
 
 // Show prompt before closing the app
@@ -67,15 +74,21 @@ func (a *App) startup(ctx context.Context) {
 		Notifier:   &WailsNotifier{AppContext: a.ctx},
 	}
 	a.taskqueue.Startup()
+
+	go func(port int) {
+		ingestor := webserver.NewIngestorWebServer(a.version, &a.taskqueue)
+		s := webserver.NewIngesterServer(ingestor, port)
+		log.Fatal(s.ListenAndServe())
+	}(a.config.Misc.Port)
 }
 
 func (a *App) SelectFolder() {
-	folder, err := core.SelectFolder(a.ctx)
+	folder, err := task.SelectFolder(a.ctx)
 	if err != nil {
 		return
 	}
 
-	err = a.taskqueue.CreateTask(folder)
+	err = a.taskqueue.CreateTaskFromDatasetFolder(folder)
 	if err != nil {
 		return
 	}
@@ -85,7 +98,8 @@ func (a *App) CancelTask(id uuid.UUID) {
 	a.taskqueue.CancelTask(id)
 }
 func (a *App) RemoveTask(id uuid.UUID) {
-	a.taskqueue.RemoveTask(id)
+	err := a.taskqueue.RemoveTask(id)
+	log.Println(err)
 }
 
 func (a *App) ScheduleTask(id uuid.UUID) {

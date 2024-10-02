@@ -1,4 +1,4 @@
-package core
+package task
 
 import (
 	"context"
@@ -24,8 +24,6 @@ func SelectFolder(context context.Context) (DatasetFolder, error) {
 	}
 
 	id := uuid.New()
-
-	runtime.EventsEmit(context, "folder-added", id, folder)
 
 	selected_folder := DatasetFolder{FolderPath: folder, Id: id}
 	return selected_folder, nil

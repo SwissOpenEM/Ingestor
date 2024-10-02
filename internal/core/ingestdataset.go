@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/tls"
 	"errors"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -13,8 +14,9 @@ import (
 	"time"
 
 	"github.com/SwissOpenEM/Ingestor/internal/scicat"
+	"github.com/SwissOpenEM/Ingestor/internal/task"
 	"github.com/fatih/color"
-	"github.com/paulscherrerinstitute/scicat-cli/datasetIngestor"
+	"github.com/paulscherrerinstitute/scicat-cli/v3/datasetIngestor"
 )
 
 func createLocalSymlinkCallbackForFileLister(skipSymlinks *string, skippedLinks *uint) func(symlinkPath string, sourceFolder string) (bool, error) {
@@ -109,11 +111,10 @@ func createLocalFilenameFilterCallback(illegalFileNamesCounter *uint) func(filep
 
 func IngestDataset(
 	task_context context.Context,
-	task IngestionTask,
+	ingestionTask task.IngestionTask,
 	config Config,
 	notifier ProgressNotifier,
 ) (string, error) {
-
 	var http_client = &http.Client{
 		Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}},
 		Timeout:   120 * time.Second}
@@ -128,31 +129,67 @@ func IngestDataset(
 	user := map[string]string{
 		"accessToken": config.Scicat.AccessToken,
 	}
-	// check if dataset already exists (identified by source folder)
-	metadatafile := filepath.Join(task.DatasetFolder.FolderPath, "metadata.json")
-	if _, err := os.Stat(metadatafile); errors.Is(err, os.ErrNotExist) {
-		return "", err
-	}
-
-	metaDataMap, err := datasetIngestor.ReadMetadataFromFile(metadatafile)
+	_, accessGroups, err := scicat.ExtractUserInfo(http_client, SCICAT_API_URL, user["accessToken"])
 	if err != nil {
 		return "", err
 	}
-	accessGroups := []string{metaDataMap["ownerGroup"].(string)}
 
-	newMetaDataMap, metadataSourceFolder, _, err := scicat.ReadMetadata(http_client, SCICAT_API_URL, metadatafile, user, accessGroups)
+	fmt.Printf("HELLO FUCKER: %v\n", accessGroups)
 
-	_ = metadataSourceFolder
+	var metaDataMap map[string]interface{}
+	var datasetFolder string
+	if len(ingestionTask.DatasetMetadata) > 0 {
+		metaDataMap = ingestionTask.DatasetMetadata
+
+		var ok bool
+		_, ok = metaDataMap["sourceFolder"]
+		if !ok {
+			return "", errors.New("no sourceFolder specified in metadata")
+		}
+		switch v := metaDataMap["sourceFolder"].(type) {
+		case string:
+			datasetFolder = v
+		default:
+			return "", errors.New("sourceFolder in metadata isn't a string")
+		}
+
+		fileInfo, err := os.Stat(datasetFolder)
+		if err != nil {
+			return "", err
+		}
+		if !fileInfo.IsDir() {
+			return "", errors.New("'sourceFolder' is not a directory")
+		}
+	} else {
+		// check if dataset already exists (identified by source folder)
+		var err error
+		datasetFolder = ingestionTask.DatasetFolder.FolderPath
+		metadatafile := filepath.Join(datasetFolder, "metadata.json")
+		if _, err = os.Stat(metadatafile); errors.Is(err, os.ErrNotExist) {
+			return "", err
+		}
+
+		metaDataMap, err = datasetIngestor.ReadMetadataFromFile(metadatafile)
+		if err != nil {
+			return "", err
+		}
+	}
+
+	// HACK: use ownerGroup as the accessGroup
+	// TODO: replace with SciCat backend userInfo check from scicat-cli!
+
+	_, _, err = scicat.CheckMetadata(http_client, SCICAT_API_URL, metaDataMap, user, accessGroups)
 	if err != nil {
 		return "", err
 	}
+
 	var skippedLinks uint = 0
 	var illegalFileNames uint = 0
 	localSymlinkCallback := createLocalSymlinkCallbackForFileLister(&skipSymlinks, &skippedLinks)
 	localFilepathFilterCallback := createLocalFilenameFilterCallback(&illegalFileNames)
 
 	// collect (local) files
-	fullFileArray, startTime, endTime, owner, numFiles, totalSize, err := datasetIngestor.GetLocalFileList(task.DatasetFolder.FolderPath, DATASETFILELISTTXT, localSymlinkCallback, localFilepathFilterCallback)
+	fullFileArray, startTime, endTime, owner, numFiles, totalSize, err := datasetIngestor.GetLocalFileList(datasetFolder, DATASETFILELISTTXT, localSymlinkCallback, localFilepathFilterCallback)
 	_ = numFiles
 	_ = totalSize
 	_ = startTime
@@ -164,15 +201,20 @@ func IngestDataset(
 		return "", err
 	}
 	originalMetaDataMap := map[string]string{}
-	datasetIngestor.UpdateMetaData(http_client, SCICAT_API_URL, user, originalMetaDataMap, newMetaDataMap, startTime, endTime, owner, TAPECOPIES)
+	datasetIngestor.UpdateMetaData(http_client, SCICAT_API_URL, user, originalMetaDataMap, metaDataMap, startTime, endTime, owner, TAPECOPIES)
 
-	newMetaDataMap["datasetlifecycle"] = map[string]interface{}{}
-	newMetaDataMap["datasetlifecycle"].(map[string]interface{})["isOnCentralDisk"] = false
-	newMetaDataMap["datasetlifecycle"].(map[string]interface{})["archiveStatusMessage"] = "filesNotYetAvailable"
-	newMetaDataMap["datasetlifecycle"].(map[string]interface{})["archivable"] = false
+	intTotalSize := int(totalSize)
+	totalFiles := len(fullFileArray)
+	trueVal := true
+	ingestionTask.SetStatus(nil, &intTotalSize, nil, &totalFiles, nil, &trueVal, nil, nil)
+
+	metaDataMap["datasetlifecycle"] = map[string]interface{}{}
+	metaDataMap["datasetlifecycle"].(map[string]interface{})["isOnCentralDisk"] = false
+	metaDataMap["datasetlifecycle"].(map[string]interface{})["archiveStatusMessage"] = "filesNotYetAvailable"
+	metaDataMap["datasetlifecycle"].(map[string]interface{})["archivable"] = false
 
 	//datasetId, err := datasetIngestor.IngestDataset(http_client, SCICAT_API_URL, newMetaDataMap, fullFileArray, user)
-	datasetId, err := scicat.CreateDataset(http_client, SCICAT_API_URL, newMetaDataMap, user)
+	datasetId, err := scicat.CreateDataset(http_client, SCICAT_API_URL, metaDataMap, user)
 	if err != nil {
 		return "", err
 	}
@@ -181,11 +223,11 @@ func IngestDataset(
 		return "", err
 	}
 
-	switch task.TransferMethod {
-	case TransferS3:
-		_, err = UploadS3(task_context, datasetId, task.DatasetFolder.FolderPath, task.DatasetFolder.Id, config.Transfer.S3, notifier)
-	case TransferGlobus:
-		err = GlobusTransfer(config.Transfer.Globus, task_context, task.DatasetFolder.Id, task.DatasetFolder.FolderPath, notifier)
+	switch ingestionTask.TransferMethod {
+	case task.TransferS3:
+		_, err = UploadS3(task_context, datasetId, datasetFolder, ingestionTask.DatasetFolder.Id, config.Transfer.S3, notifier)
+	case task.TransferGlobus:
+		err = GlobusTransfer(config.Transfer.Globus, ingestionTask, task_context, ingestionTask.DatasetFolder.Id, datasetFolder, fullFileArray, notifier)
 	_:
 	}
 

@@ -1,0 +1,91 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "contact": {
+            "name": "SwissOpenEM",
+            "url": "https://swissopenem.github.io",
+            "email": "spencer.bliven@psi.ch"
+        },
+        "license": {
+            "name": "Apache 2.0",
+            "url": "http://www.apache.org/licenses/LICENSE-2.0.html"
+        }
+    },
+    "paths": {
+        "/datasets": {
+            "post": {
+                "description": "Ingest a new dataset",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "datasets"
+                ],
+                "responses": {}
+            }
+        },
+        "/transfer": {
+            "get": {
+                "description": "Get list of transfers. Optional use the transferId parameter to only get one item.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "transfer"
+                ],
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "name": "page",
+                        "in": "path"
+                    },
+                    {
+                        "type": "integer",
+                        "name": "pageSize",
+                        "in": "path"
+                    },
+                    {
+                        "type": "string",
+                        "name": "transferId",
+                        "in": "path"
+                    }
+                ],
+                "responses": {}
+            },
+            "delete": {
+                "description": "Cancel a data transfer",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "transfer"
+                ],
+                "responses": {}
+            }
+        },
+        "/version": {
+            "get": {
+                "description": "Get the used ingestor version",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "other"
+                ],
+                "responses": {}
+            }
+        }
+    }
+}
