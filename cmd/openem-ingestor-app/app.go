@@ -13,28 +13,36 @@ import (
 )
 
 type WailsNotifier struct {
-	AppContext context.Context
+	AppContext      context.Context
+	loggingNotifier core.LoggingNotifier
 }
 
 func (w *WailsNotifier) OnTaskScheduled(id uuid.UUID) {
+	w.loggingNotifier.OnTaskScheduled(id)
 	runtime.EventsEmit(w.AppContext, "upload-scheduled", id)
 }
 func (w *WailsNotifier) OnTaskCanceled(id uuid.UUID) {
+	w.loggingNotifier.OnTaskCanceled(id)
 	runtime.EventsEmit(w.AppContext, "upload-canceled", id)
 }
 func (w *WailsNotifier) OnTaskAdded(id uuid.UUID, folder string) {
+	w.loggingNotifier.OnTaskAdded(id, folder)
 	runtime.EventsEmit(w.AppContext, "folder-added", id, folder)
 }
 func (w *WailsNotifier) OnTaskRemoved(id uuid.UUID) {
+	w.loggingNotifier.OnTaskRemoved(id)
 	runtime.EventsEmit(w.AppContext, "folder-removed", id)
 }
 func (w *WailsNotifier) OnTaskFailed(id uuid.UUID, err error) {
+	w.loggingNotifier.OnTaskFailed(id, err)
 	runtime.EventsEmit(w.AppContext, "upload-failed", id, err.Error())
 }
 func (w *WailsNotifier) OnTaskCompleted(id uuid.UUID, seconds_elapsed int) {
+	w.loggingNotifier.OnTaskCompleted(id, seconds_elapsed)
 	runtime.EventsEmit(w.AppContext, "upload-completed", id, seconds_elapsed)
 }
 func (w *WailsNotifier) OnTaskProgress(id uuid.UUID, current_file int, total_files int, elapsed_seconds int) {
+	w.loggingNotifier.OnTaskProgress(id, current_file, total_files, elapsed_seconds)
 	runtime.EventsEmit(w.AppContext, "progress-update", id, current_file, total_files, elapsed_seconds)
 }
 
