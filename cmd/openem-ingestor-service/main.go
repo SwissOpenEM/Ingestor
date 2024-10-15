@@ -18,7 +18,7 @@ var version string = "DEVELOPMENT_VERSION"
 func main() {
 	slog.Info("", "Version", version)
 
-	if err := core.ReadConfig(); err != nil {
+	if err := core.ReadConfig(core.DefaultConfigFileName()); err != nil {
 		panic(fmt.Errorf("failed to read config file: %w", err))
 	}
 	slog.Info("Config file read", "file", viper.ConfigFileUsed())

@@ -38,8 +38,12 @@ func GetConfig() (Config, error) {
 	return config, nil
 }
 
-func ReadConfig() error {
-	viperConf.SetConfigName("openem-ingestor-config") // name of config file (without extension)
+func DefaultConfigFileName() string {
+	return "openem-ingestor-config"
+}
+
+func ReadConfig(configFileName string) error {
+	viperConf.SetConfigName(configFileName) // name of config file (without extension)
 	viperConf.SetConfigType("yaml")
 
 	viper.SetDefault("Misc.Port", 8888)
