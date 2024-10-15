@@ -1,14 +1,20 @@
 package metadataextractor
 
-type Extractor struct {
-	Name         string `string:"Name"`
-	DownloadPath string `string:"DownloadPath"`
-	Checksum     string `string:"Checksum"`
-	Parameters   string `string:"Parameters"`
+type ExtractorConfig struct {
+	Name                 string   `string:"Name"`
+	GithubOrg            string   `string:"GithubOrg"`
+	GithubProject        string   `string:"GithubProject"`
+	Version              string   `string:"Version"`
+	Executable           string   `string:"Executable"`
+	Checksum             string   `string:"Checksum"`
+	ChecksumAlg          string   `string:"ChecksumAlg"`
+	CommandLineTemplate  string   `string:"CommandLineTemplate"`
+	AdditionalParameters []string `[]string:"AdditionalParameters"`
 }
 
 type ExtractorsConfig struct {
-	Extractors                 []Extractor `yaml:"Extractor"`
-	Default                    string      `string:"Default"`
-	MetadataExtractorsLocation string      `string:"MetadataExtractorsLocation"`
+	Extractors                []ExtractorConfig `mapstructure:"Extractors" validate:"required"`
+	Default                   string            `string:"Default"`
+	InstallationPath          string            `string:"InstallationPath" validate:"required"`
+	DownloadMissingExtractors bool              `bool:"DownloadMissingExtractors"`
 }

@@ -5,6 +5,7 @@ import (
 	"os"
 	"path"
 
+	"github.com/SwissOpenEM/Ingestor/internal/metadataextractor"
 	"github.com/SwissOpenEM/Ingestor/internal/task"
 	"github.com/spf13/viper"
 	"golang.org/x/oauth2"
@@ -21,15 +22,16 @@ type MiscConfig struct {
 }
 
 type Config struct {
-	Oauth    oauth2.Config       `mapstructure:"Oauth"`
-	Scicat   ScicatConfig        `mapstructure:"Scicat"`
-	Transfer task.TransferConfig `mapstructure:"Transfer"`
-	Misc     MiscConfig          `mapstructure:"Misc"`
+	Oauth              oauth2.Config                      `mapstructure:"Oauth"`
+	Scicat             ScicatConfig                       `mapstructure:"Scicat"`
+	Transfer           task.TransferConfig                `mapstructure:"Transfer"`
+	Misc               MiscConfig                         `mapstructure:"Misc"`
+	MetadataExtractors metadataextractor.ExtractorsConfig `mapstructure:"MetadataExtractors"`
 }
 
 var viperConf *viper.Viper = viper.New()
 
-func GetConfig() (Config, error) {
+func getConfig() (Config, error) {
 	var config Config
 	if err := viperConf.Unmarshal(&config); err != nil {
 		fmt.Println(err)
@@ -42,7 +44,7 @@ func DefaultConfigFileName() string {
 	return "openem-ingestor-config"
 }
 
-func ReadConfig(configFileName string) error {
+func ReadConfig(configFileName string) (Config, error) {
 	viperConf.SetConfigName(configFileName) // name of config file (without extension)
 	viperConf.SetConfigType("yaml")
 
@@ -56,7 +58,11 @@ func ReadConfig(configFileName string) error {
 	viperConf.AddConfigPath(path.Join(userConfigDir, "openem-ingestor"))
 
 	err := viperConf.ReadInConfig()
-	return err
+	if err == nil {
+		config, err := getConfig()
+		return config, err
+	}
+	return Config{}, nil
 }
 
 func GetCurrentConfigFilePath() string {
