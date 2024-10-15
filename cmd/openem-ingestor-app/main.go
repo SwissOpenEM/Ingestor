@@ -22,16 +22,16 @@ func main() {
 
 	log.Printf("Version %s", version)
 
-	if err := core.ReadConfig(); err != nil {
+	if err := core.ReadConfig(core.DefaultConfigFileName()); err != nil {
 		log.Print(fmt.Errorf("failed to read config file: %w", err))
 	}
-	log.Printf("Config file used: %s", core.GetCurrentConfigFilePath())
-	log.Println(core.GetFullConfig())
 
 	config, err := core.GetConfig()
 	if err != nil {
 		log.Fatal(err)
 	}
+	log.Println(core.GetFullConfig())
+	log.Printf("Config file used: %s", core.GetCurrentConfigFilePath())
 
 	// setup globus if we have a refresh token
 	if config.Transfer.Globus.RefreshToken != "" {

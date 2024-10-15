@@ -1,0 +1,15 @@
+Scicat:
+  Host: http://scicat:8080/api/v3
+  AccessToken: "token"
+Transfer:
+  Method: S3
+  S3:
+    Endpoint: s3:9000
+    Bucket: landingzone
+    Checksum: true
+    Location: "eu-west-1"
+    User: "minio_user"
+    Password: "minio_pass"
+Misc:
+  ConcurrencyLimit: 2
+  Port: 8888
