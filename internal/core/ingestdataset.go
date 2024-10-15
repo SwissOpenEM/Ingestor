@@ -133,7 +133,6 @@ func IngestDataset(
 		return "", err
 	}
 
-
 	var metaDataMap map[string]interface{}
 	var datasetFolder string
 	if len(ingestionTask.DatasetMetadata) > 0 {

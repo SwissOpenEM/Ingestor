@@ -56,7 +56,7 @@ func (w *TaskQueue) CreateTaskFromDatasetFolder(folder task.DatasetFolder) error
 
 func (w *TaskQueue) CreateTaskFromMetadata(id uuid.UUID, metadata map[string]interface{}) {
 	transferMethod := w.getTransferMethod()
-	task := task.CreateIngestionTask(task.DatasetFolder{}, metadata, transferMethod, nil)
+	task := task.CreateIngestionTask(task.DatasetFolder{Id: id}, metadata, transferMethod, nil)
 	w.taskListLock.Lock()
 	defer w.taskListLock.Unlock()
 	w.datasetUploadTasks.Set(id, task)
