@@ -10,6 +10,7 @@ import (
 	"io"
 	"math"
 	"net/http"
+	"os"
 
 	"github.com/SwissOpenEM/Ingestor/internal/core"
 	"github.com/gin-gonic/gin"
@@ -49,12 +50,12 @@ func (i *IngestorWebServerImplemenation) DatasetControllerIngestDataset(c *gin.C
 	// convert body to struct
 	reqBody, err := io.ReadAll(c.Request.Body)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Failed to read request body: %v", err)})
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Failed to read request body: %s", err.Error())})
 		return
 	}
 	err = json.Unmarshal(reqBody, &request)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Invalid JSON data: %v", err)})
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Invalid JSON data: %s", err.Error())})
 		return
 	}
 	if request.MetaData == nil {
@@ -67,13 +68,20 @@ func (i *IngestorWebServerImplemenation) DatasetControllerIngestDataset(c *gin.C
 	var metadata map[string]interface{}
 	err = json.Unmarshal([]byte(metadataString), &metadata)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Metadata is not a valid JSON document: %v", err)})
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Metadata is not a valid JSON document: %s", err.Error())})
 		return
 	}
 
 	// create and start task
 	id := uuid.New()
-	i.taskQueue.CreateTaskFromMetadata(id, metadata)
+	err = i.taskQueue.CreateTaskFromMetadata(id, metadata)
+	if err != nil {
+		if _, ok := err.(*os.PathError); ok {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Could not create the task due to a path error: %s", err.Error())})
+		} else {
+			c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Invalid metadata: %s", err.Error())})
+		}
+	}
 	i.taskQueue.ScheduleTask(id)
 
 	// NOTE: because of the way the tasks are created, right now it'll search for a metadata.json
@@ -116,12 +124,12 @@ func (i *IngestorWebServerImplemenation) TransferControllerDeleteTransfer(c *gin
 
 	reqBody, err := io.ReadAll(c.Request.Body)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Failed to read request body: %v", err)})
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Failed to read request body: %s", err.Error())})
 		return
 	}
 	err = json.Unmarshal(reqBody, &request)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Invalid JSON data: %v", err)})
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Invalid JSON data: %s", err.Error())})
 		return
 	}
 	if request.IngestId == nil {
@@ -132,7 +140,7 @@ func (i *IngestorWebServerImplemenation) TransferControllerDeleteTransfer(c *gin
 	id := *request.IngestId
 	uuid, err := uuid.Parse(id)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Ingest ID '%s' could not be parsed as uuid: %v", id, err)})
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Ingest ID '%s' could not be parsed as uuid: %s", id, err.Error())})
 		return
 	}
 
@@ -164,7 +172,7 @@ func (i *IngestorWebServerImplemenation) TransferControllerGetTransfer(c *gin.Co
 		id := *params.TransferId
 		uid, err := uuid.Parse(id)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Can't parse UUID: %v", err)})
+			c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Can't parse UUID: %s", err.Error())})
 			return
 		}
 

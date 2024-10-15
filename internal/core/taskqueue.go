@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -54,12 +55,38 @@ func (w *TaskQueue) CreateTaskFromDatasetFolder(folder task.DatasetFolder) error
 	return nil
 }
 
-func (w *TaskQueue) CreateTaskFromMetadata(id uuid.UUID, metadata map[string]interface{}) {
+func (w *TaskQueue) CreateTaskFromMetadata(id uuid.UUID, metadataMap map[string]interface{}) error {
 	transferMethod := w.getTransferMethod()
-	task := task.CreateIngestionTask(task.DatasetFolder{Id: id}, metadata, transferMethod, nil)
+	task := task.CreateIngestionTask(task.DatasetFolder{Id: id}, metadataMap, transferMethod, nil)
+
+	// extract dataset folder path (sourceFolder)
+	var ok bool
+	_, ok = metadataMap["sourceFolder"]
+	if !ok {
+		return errors.New("no sourceFolder specified in metadata")
+	}
+	switch v := metadataMap["sourceFolder"].(type) {
+	case string:
+		task.DatasetFolder.FolderPath = v
+	default:
+		return errors.New("sourceFolder in metadata isn't a string")
+	}
+
+	// check if the folder exists
+	fileInfo, err := os.Stat(task.DatasetFolder.FolderPath)
+	if err != nil {
+		return err
+	}
+	if !fileInfo.IsDir() {
+		return errors.New("'sourceFolder' is not a directory")
+	}
+
+	// add to task list
 	w.taskListLock.Lock()
 	defer w.taskListLock.Unlock()
 	w.datasetUploadTasks.Set(id, task)
+
+	return nil
 }
 
 // Go routine that listens on the channel continously for upload requests and executes uploads.

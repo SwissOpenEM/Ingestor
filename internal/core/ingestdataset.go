@@ -133,34 +133,13 @@ func IngestDataset(
 		return "", err
 	}
 
+	// extract dataset folder path and metadata map
+	datasetFolder := ingestionTask.DatasetFolder.FolderPath
 	var metaDataMap map[string]interface{}
-	var datasetFolder string
 	if len(ingestionTask.DatasetMetadata) > 0 {
 		metaDataMap = ingestionTask.DatasetMetadata
-
-		var ok bool
-		_, ok = metaDataMap["sourceFolder"]
-		if !ok {
-			return "", errors.New("no sourceFolder specified in metadata")
-		}
-		switch v := metaDataMap["sourceFolder"].(type) {
-		case string:
-			datasetFolder = v
-		default:
-			return "", errors.New("sourceFolder in metadata isn't a string")
-		}
-
-		fileInfo, err := os.Stat(datasetFolder)
-		if err != nil {
-			return "", err
-		}
-		if !fileInfo.IsDir() {
-			return "", errors.New("'sourceFolder' is not a directory")
-		}
 	} else {
-		// check if dataset already exists (identified by source folder)
 		var err error
-		datasetFolder = ingestionTask.DatasetFolder.FolderPath
 		metadatafile := filepath.Join(datasetFolder, "metadata.json")
 		if _, err = os.Stat(metadatafile); errors.Is(err, os.ErrNotExist) {
 			return "", err
@@ -172,9 +151,7 @@ func IngestDataset(
 		}
 	}
 
-	// HACK: use ownerGroup as the accessGroup
-	// TODO: replace with SciCat backend userInfo check from scicat-cli!
-
+	// check if dataset already exists (identified by source folder)
 	_, _, err = scicat.CheckMetadata(http_client, SCICAT_API_URL, metaDataMap, user, accessGroups)
 	if err != nil {
 		return "", err
