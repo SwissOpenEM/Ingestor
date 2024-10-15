@@ -22,14 +22,12 @@ func main() {
 
 	log.Printf("Version %s", version)
 
-	if err := core.ReadConfig(core.DefaultConfigFileName()); err != nil {
+	var config core.Config
+	var err error
+	if config, err = core.ReadConfig(core.DefaultConfigFileName()); err != nil {
 		log.Print(fmt.Errorf("failed to read config file: %w", err))
 	}
 
-	config, err := core.GetConfig()
-	if err != nil {
-		log.Fatal(err)
-	}
 	log.Println(core.GetFullConfig())
 	log.Printf("Config file used: %s", core.GetCurrentConfigFilePath())
 

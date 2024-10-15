@@ -1,0 +1,272 @@
+package metadataextractor
+
+import (
+	"bytes"
+	"context"
+	"crypto/md5"
+	"crypto/sha256"
+	"encoding/hex"
+	"errors"
+	"fmt"
+	"html/template"
+	"io"
+	"log"
+	"log/slog"
+	"net/http"
+	"os"
+	"os/exec"
+	"path"
+	"regexp"
+	"runtime"
+	"strings"
+
+	"github.com/google/go-github/github"
+	"golang.org/x/exp/maps"
+	"golift.io/xtractr"
+)
+
+type Extractor struct {
+	ExecutablePath string
+	templ          *template.Template
+	AdditionalArgs string
+	Version        string
+}
+
+type ExtractorInvokationParameters struct {
+	Executable           string
+	SourceFolder         string
+	OutputFile           string
+	AdditionalParameters string
+}
+
+type ExtractorHandler struct {
+	extractors   map[string]Extractor
+	outputFolder string
+}
+
+func NewExtractorHandler(config ExtractorsConfig) *ExtractorHandler {
+	h := ExtractorHandler{
+		outputFolder: path.Join(os.TempDir(), "openem-ingestor", "metadata-extractor"),
+		extractors:   map[string]Extractor{},
+	}
+
+	for _, extractorConfig := range config.Extractors {
+		slog.Info("Installing Extractor", "name", extractorConfig.Name)
+
+		full_install_path := path.Join(config.InstallationPath, extractorConfig.GithubOrg, extractorConfig.GithubProject, extractorConfig.Version, extractorConfig.Executable)
+
+		if config.DownloadMissingExtractors {
+			err := downloadExtractor(full_install_path, extractorConfig)
+			if err != nil {
+				slog.Error("Failed to download extractor", "name", extractorConfig.Name)
+				continue
+			}
+		}
+		if err := verifyInstallation(full_install_path, extractorConfig); err != nil {
+			slog.Error("Installation verification failed", "error", err.Error(), "name", extractorConfig.Name, "path", full_install_path)
+			continue
+		}
+
+		tmpl, err := template.New(extractorConfig.Name).Parse(extractorConfig.CommandLineTemplate)
+		if err != nil {
+			slog.Error("Failed to parse extractor commandline template", "name", extractorConfig.Name, "template", extractorConfig.CommandLineTemplate)
+			continue
+		}
+
+		h.extractors[extractorConfig.Name] = Extractor{
+			ExecutablePath: full_install_path,
+			AdditionalArgs: strings.Join(extractorConfig.AdditionalParameters, " "),
+			Version:        extractorConfig.Version,
+			templ:          tmpl,
+		}
+	}
+	return &h
+}
+
+func verifyInstallation(full_install_path string, extractorConfig ExtractorConfig) error {
+	if _, err := os.Stat(full_install_path); errors.Is(err, os.ErrNotExist) {
+		return errors.New("expected extractor executable does not exist")
+	}
+	if _, lookError := exec.LookPath(extractorConfig.Executable); lookError == nil {
+		return errors.New("executable file found in PATH of the system")
+	}
+	return nil
+}
+
+func MetadataFilePath(folder string) string {
+	hasher := md5.New()
+	hasher.Write([]byte(folder))
+	hashed_folder := hex.EncodeToString(hasher.Sum(nil))
+	return path.Join(os.TempDir(), "openem", "metadata", fmt.Sprintf("%s.json", hashed_folder))
+}
+
+// install if not exist
+
+func downloadRelease(github_org string, github_proj string, version string, targetFolder string) (string, error) {
+	client := github.NewClient(nil)
+	opt := &github.ListOptions{Page: 1, PerPage: 10}
+
+	var ctx = context.Background()
+	releases, _, err := client.Repositories.ListReleases(ctx, github_org, github_proj, opt)
+
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	arch := runtime.GOARCH
+	if runtime.GOARCH == "amd64" {
+		arch = "x86_64"
+	}
+	OS := runtime.GOOS
+
+	r, _ := regexp.Compile(fmt.Sprintf("(?i)%s_%s_%s", github_proj, OS, arch) + "(\\.tar\\.gz|\\.zip)")
+
+	for _, release := range releases {
+
+		if *release.Name == version {
+			for _, asset := range release.Assets {
+				if r.MatchString(*asset.Name) {
+					url := *asset.BrowserDownloadURL
+					fmt.Printf("\n%+v\n", url)
+					reader, err := http.Get(url)
+					if err != nil {
+						slog.Error("error", "error", err.Error())
+					}
+					defer reader.Body.Close()
+					targetFile := path.Join(targetFolder, *asset.Name)
+					outFile, _ := os.Create(targetFile)
+					defer outFile.Close()
+
+					_, err = io.Copy(outFile, reader.Body)
+					if err != nil {
+						slog.Error("error", "error", err.Error())
+					}
+					return outFile.Name(), nil
+				}
+			}
+		}
+	}
+
+	return "", nil
+}
+
+func verifyFile(file_path string, config ExtractorConfig) (bool, string, error) {
+
+	f, err := os.Open(file_path)
+	if err != nil {
+		return false, "", err
+	}
+	defer f.Close()
+
+	hash := sha256.New()
+	if _, err := io.Copy(hash, f); err != nil {
+		return false, "", err
+	}
+
+	checksum := hex.EncodeToString(hash.Sum(nil))
+	return config.Checksum == checksum, checksum, nil
+
+}
+
+func downloadExtractor(full_install_path string, config ExtractorConfig) error {
+	if _, err := os.Stat(full_install_path); errors.Is(err, os.ErrNotExist) {
+		targetFolder := os.TempDir()
+		file, err := downloadRelease(config.GithubOrg, config.GithubProject, config.Version, targetFolder)
+		if err != nil {
+			slog.Error("error", "error", err.Error())
+			return err
+		}
+
+		if ok, checksum, err := verifyFile(file, config); err == nil {
+			if !ok {
+				slog.Error("Verification failed", "file", file, "checksum", checksum)
+				return errors.New("verification failed")
+			} else {
+				slog.Info("Verification passed", "file", file, "checksum", checksum)
+			}
+		} else {
+			slog.Error("Failed to do verification ", "file", file, "error", err.Error())
+			return err
+		}
+
+		os.MkdirAll(path.Dir(full_install_path), 0777)
+		x := &xtractr.XFile{
+			FilePath:  file,
+			OutputDir: path.Dir(full_install_path),
+		}
+
+		size, files, _, err := x.Extract()
+		if err != nil || files == nil {
+			log.Fatal(size, files, err)
+		}
+	}
+	return nil
+}
+
+func (e *ExtractorHandler) Extractors() [](string) {
+	return maps.Keys(e.extractors)
+}
+
+func buildCommandline(templ *template.Template, template_params ExtractorInvokationParameters) (string, []string, error) {
+	b := new(strings.Builder)
+	err := templ.Execute(b, template_params)
+	if err != nil {
+		panic(err)
+	}
+	cmdline := strings.TrimSpace(b.String())
+
+	binary_path := template_params.Executable
+	args := strings.Split(cmdline, " ")
+	return binary_path, args, nil
+}
+
+func runExtractor(executable string, args []string) error {
+	slog.Info("Executing command", "command", executable, "args", args)
+
+	cmd := exec.Command(executable, args...)
+
+	var outb, errb bytes.Buffer
+	cmd.Stdout = &outb
+	cmd.Stderr = &errb
+	if err := cmd.Run(); err != nil {
+		slog.Error("Metadata extraction failed:", err)
+		slog.Info("Std out", "msg", outb.String())
+		slog.Info("Std err", "msg", errb.String())
+		return err
+	}
+	slog.Info("Std out", "msg", outb.String())
+	slog.Info("Std err", "msg", errb.String())
+	return nil
+}
+
+func (e *ExtractorHandler) ExtractMetadata(extractor_name string, folder string, output_file string) (string, error) {
+	if extractor, ok := e.extractors[extractor_name]; ok {
+
+		params := ExtractorInvokationParameters{
+			Executable:           extractor.ExecutablePath,
+			SourceFolder:         folder,
+			OutputFile:           output_file,
+			AdditionalParameters: extractor.AdditionalArgs,
+		}
+
+		binary_path, args, err := buildCommandline(extractor.templ, params)
+		if err != nil {
+			return "", err
+		}
+
+		if err := runExtractor(binary_path, args); err == nil {
+			b, err := os.ReadFile(output_file)
+			if err != nil {
+				slog.Error("Failed to read file", "file", output_file)
+				return "", err
+			}
+			str := string(b)
+			fmt.Println(str)
+			return str, nil
+		}
+		return "", nil
+	} else {
+		slog.Error("Unknown extractor", "name", extractor_name)
+		return "", nil
+	}
+}

@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/SwissOpenEM/Ingestor/internal/metadataextractor"
 	"github.com/SwissOpenEM/Ingestor/internal/scicat"
 	"github.com/SwissOpenEM/Ingestor/internal/task"
 	"github.com/fatih/color"
@@ -133,14 +134,14 @@ func IngestDataset(
 		return "", err
 	}
 
-	// extract dataset folder path and metadata map
 	datasetFolder := ingestionTask.DatasetFolder.FolderPath
+
 	var metaDataMap map[string]interface{}
 	if len(ingestionTask.DatasetMetadata) > 0 {
 		metaDataMap = ingestionTask.DatasetMetadata
 	} else {
 		var err error
-		metadatafile := filepath.Join(datasetFolder, "metadata.json")
+		metadatafile := metadataextractor.MetadataFilePath(datasetFolder)
 		if _, err = os.Stat(metadatafile); errors.Is(err, os.ErrNotExist) {
 			return "", err
 		}
