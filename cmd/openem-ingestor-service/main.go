@@ -37,7 +37,7 @@ func main() {
 	}
 	taskqueue.Startup()
 
-	ingestor := webserver.NewIngestorWebServer(version, &taskqueue)
+	ingestor := webserver.NewIngestorWebServer(version, &taskqueue, nil)
 	s := webserver.NewIngesterServer(ingestor, config.Misc.Port)
 	log.Fatal(s.ListenAndServe())
 }

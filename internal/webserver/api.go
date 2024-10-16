@@ -5,6 +5,7 @@
 package webserver
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -15,6 +16,7 @@ import (
 	"github.com/SwissOpenEM/Ingestor/internal/core"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"golang.org/x/oauth2"
 )
 
 var _ ServerInterface = (*IngestorWebServerImplemenation)(nil)
@@ -22,6 +24,7 @@ var _ ServerInterface = (*IngestorWebServerImplemenation)(nil)
 type IngestorWebServerImplemenation struct {
 	version   string
 	taskQueue *core.TaskQueue
+	conf      *oauth2.Config
 }
 
 //	@contact.name	SwissOpenEM
@@ -31,8 +34,27 @@ type IngestorWebServerImplemenation struct {
 // @license.name	Apache 2.0
 // @license.url	http://www.apache.org/licenses/LICENSE-2.0.html
 
-func NewIngestorWebServer(version string, taskQueue *core.TaskQueue) *IngestorWebServerImplemenation {
-	return &IngestorWebServerImplemenation{version: version, taskQueue: taskQueue}
+func NewIngestorWebServer(version string, taskQueue *core.TaskQueue, conf *oauth2.Config) *IngestorWebServerImplemenation {
+	return &IngestorWebServerImplemenation{version: version, taskQueue: taskQueue, conf: conf}
+}
+
+// GetCallback implements ServerInterface.
+//
+//	@Description	the OIDC callback endpoint
+//	@Tags			auth
+//
+//	@Router			/callback [get]
+func (i *IngestorWebServerImplemenation) GetCallback(c *gin.Context, params GetCallbackParams) {
+	code := c.Query("code")
+	token, err := i.conf.Exchange(context.Background(), code)
+	if err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+	_ = token // TODO remove when used
+
+	// Fetch user information and process
+	// ...
 }
 
 // DatasetControllerIngestDataset implements ServerInterface.
@@ -93,6 +115,17 @@ func (i *IngestorWebServerImplemenation) DatasetControllerIngestDataset(c *gin.C
 	result.IngestId = &idString
 	result.Status = &status
 	c.JSON(http.StatusOK, result)
+}
+
+// GetLogin implements ServerInterface.
+//
+//	@Description	the OIDC login endpoint
+//	@Tags			auth
+//
+//	@Router			/login [get]
+func (i *IngestorWebServerImplemenation) GetLogin(c *gin.Context) {
+	url := i.conf.AuthCodeURL("state", oauth2.AccessTypeOffline)
+	c.Redirect(302, url)
 }
 
 // OtherControllerGetVersion implements ServerInterface.

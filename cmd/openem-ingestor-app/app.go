@@ -84,7 +84,7 @@ func (a *App) startup(ctx context.Context) {
 	a.taskqueue.Startup()
 
 	go func(port int) {
-		ingestor := webserver.NewIngestorWebServer(a.version, &a.taskqueue)
+		ingestor := webserver.NewIngestorWebServer(a.version, &a.taskqueue, nil)
 		s := webserver.NewIngesterServer(ingestor, port)
 		log.Fatal(s.ListenAndServe())
 	}(a.config.Misc.Port)

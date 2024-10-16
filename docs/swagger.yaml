@@ -7,6 +7,12 @@ info:
     name: Apache 2.0
     url: http://www.apache.org/licenses/LICENSE-2.0.html
 paths:
+  /callback:
+    get:
+      description: the OIDC callback endpoint
+      responses: {}
+      tags:
+      - auth
   /datasets:
     post:
       consumes:
@@ -17,6 +23,12 @@ paths:
       responses: {}
       tags:
       - datasets
+  /login:
+    get:
+      description: the OIDC login endpoint
+      responses: {}
+      tags:
+      - auth
   /transfer:
     delete:
       consumes:

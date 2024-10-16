@@ -23,6 +23,15 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/callback": {
+            "get": {
+                "description": "the OIDC callback endpoint",
+                "tags": [
+                    "auth"
+                ],
+                "responses": {}
+            }
+        },
         "/datasets": {
             "post": {
                 "description": "Ingest a new dataset",
@@ -34,6 +43,15 @@ const docTemplate = `{
                 ],
                 "tags": [
                     "datasets"
+                ],
+                "responses": {}
+            }
+        },
+        "/login": {
+            "get": {
+                "description": "the OIDC login endpoint",
+                "tags": [
+                    "auth"
                 ],
                 "responses": {}
             }
