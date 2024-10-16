@@ -187,7 +187,6 @@ func IngestDataset(
 	metaDataMap["datasetlifecycle"].(map[string]interface{})["archiveStatusMessage"] = "filesNotYetAvailable"
 	metaDataMap["datasetlifecycle"].(map[string]interface{})["archivable"] = false
 
-	//datasetId, err := datasetIngestor.IngestDataset(http_client, SCICAT_API_URL, newMetaDataMap, fullFileArray, user)
 	datasetId, err := scicat.CreateDataset(http_client, SCICAT_API_URL, metaDataMap, user)
 	if err != nil {
 		return "", err
