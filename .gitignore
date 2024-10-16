@@ -27,3 +27,6 @@ go.work.sum
 **/build/**
 
 dist/**
+
+# backup files
+*.go.bak
