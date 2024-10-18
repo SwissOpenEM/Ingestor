@@ -22,3 +22,15 @@ Transfer:
 Misc:
   ConcurrencyLimit: 2
   Port: 8888
+MetadataExtractors:
+  Extractors:
+  - Name: LS
+    DownloadPath: https://github.com/SwissOpenEM/LS_Metadata_reader/releases/tag/v0.2.3
+    Checksum: d7052dec32d99f35bcbe95d780afb949585c33b5e538a4754611f7f1ead1c0ba
+    Parameters: -z
+  - Name: MS
+    DownloadPath: 
+    Checksum: d7052dec32d99f35bcbe95d780afb949585c33b5e538a4754611f7f1ead1c0ba
+    Parameters: -x
+  MetadataExtractorsLocation: ./parentPathToAllExtractors/
+  Default: LS

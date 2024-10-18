@@ -18,17 +18,16 @@ var version string = "DEVELOPMENT_VERSION"
 func main() {
 	slog.Info("", "Version", version)
 
-	if err := core.ReadConfig(); err != nil {
+	var config core.Config
+	var err error
+	if config, err = core.ReadConfig(core.DefaultConfigFileName()); err != nil {
 		panic(fmt.Errorf("failed to read config file: %w", err))
 	}
+
 	slog.Info("Config file read", "file", viper.ConfigFileUsed())
 	log.Println(viper.AllSettings())
 
 	ctx := context.Background()
-	config, err := core.GetConfig()
-	if err != nil {
-		log.Fatalf("could not retrieve config: %s\n", err.Error())
-	}
 
 	taskqueue := core.TaskQueue{
 		Config:     config,
