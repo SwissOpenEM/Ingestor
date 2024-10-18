@@ -3,9 +3,12 @@
   export let value;
   export let status;
   export let progress;
+  export let extractMetadata;
   export let cancelTask;
   export let scheduleTask;
   export let removeTask;
+
+  let metadata = "no metadata yet";
 </script>
 
 <div class="listitem">
@@ -19,6 +22,12 @@
     {progress} %
   </div>
   <div class="buttongrid">
+    <button
+      class="btn"
+      on:click={() => {
+        extractMetadata(id).then((a) => (metadata = a));
+      }}>Extract Metadata</button
+    >
     <button
       class="btn"
       on:click={() => {
@@ -38,20 +47,33 @@
       }}>Remove</button
     >
   </div>
+  <div class="path"></div>
+  <div>
+    <textarea class="textarea" bind:value={status} />
+  </div>
+  <div>
+    <textarea class="textarea" bind:value={metadata} />
+  </div>
 </div>
 
 <style>
   .listitem {
     display: grid;
     grid-template-columns: 5fr 2fr 2fr 2fr;
-    grid-template-rows: auto;
+    grid-template-rows: 2;
     padding-right: 30px;
   }
   .buttongrid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(4, 1fr);
   }
   .path {
     text-align: left;
+  }
+  .textarea {
+    flex: 1;
+    width: 400px;
+    height: 200px;
+    align-self: left;
   }
 </style>

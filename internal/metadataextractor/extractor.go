@@ -204,7 +204,8 @@ func downloadExtractor(full_install_path string, config ExtractorConfig) error {
 }
 
 func (e *ExtractorHandler) Extractors() [](string) {
-	return maps.Keys(e.extractors)
+	keys := maps.Keys(e.extractors)
+	return keys
 }
 
 func buildCommandline(templ *template.Template, template_params ExtractorInvokationParameters) (string, []string, error) {
@@ -241,6 +242,8 @@ func runExtractor(executable string, args []string) error {
 
 func (e *ExtractorHandler) ExtractMetadata(extractor_name string, folder string, output_file string) (string, error) {
 	if extractor, ok := e.extractors[extractor_name]; ok {
+
+		os.MkdirAll(path.Dir(output_file), 0777)
 
 		params := ExtractorInvokationParameters{
 			Executable:           extractor.ExecutablePath,

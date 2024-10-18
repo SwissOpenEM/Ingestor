@@ -10,10 +10,14 @@ import (
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
+	"github.com/wailsapp/wails/v2/pkg/options/linux"
 )
 
 //go:embed all:frontend/dist
 var assets embed.FS
+
+//go:embed frontend/src/assets/images/android-chrome-512x512.png
+var icon []byte
 
 // String can be overwritten by using linker flags: -ldflags "-X main.version=VERSION"
 var version string = "DEVELOPMENT_VERSION"
@@ -40,9 +44,11 @@ func main() {
 	app := NewApp(config, version)
 	// Create application with options
 	err = wails.Run(&options.App{
-		Title:  "openem-ingestor",
-		Width:  1024,
-		Height: 768,
+		Title:            "openem-ingestor",
+		Width:            1024,
+		Height:           768,
+		Fullscreen:       true,
+		WindowStartState: options.Maximised,
 		AssetServer: &assetserver.Options{
 			Assets: assets,
 		},
@@ -51,6 +57,12 @@ func main() {
 		OnBeforeClose:    app.beforeClose,
 		Bind: []interface{}{
 			app,
+		},
+		Linux: &linux.Options{
+			Icon:                icon,
+			WindowIsTranslucent: false,
+			WebviewGpuPolicy:    linux.WebviewGpuPolicyAlways,
+			ProgramName:         "openem-ingestor",
 		},
 	})
 
