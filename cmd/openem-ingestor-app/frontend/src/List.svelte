@@ -3,7 +3,7 @@
 </script>
 
 <h3>Selected Folders:</h3>
-<div style="overflow-y: scroll; height:400px;">
+<div style="overflow-y: scroll; flex 1 1 auto;">
   <ul>
     {#each Object.entries(items) as [id, item]}
       <li>

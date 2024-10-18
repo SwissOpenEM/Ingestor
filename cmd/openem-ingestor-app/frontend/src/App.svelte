@@ -1,15 +1,22 @@
 <script lang="ts">
   import logo from "./assets/images/logo-wide-1024x317.png";
   import {
+    ExtractMetadata,
     SelectFolder,
     CancelTask,
     RemoveTask,
     ScheduleTask,
+    AvailableExtractors,
   } from "../wailsjs/go/main/App.js";
   import { EventsOn } from "../wailsjs/runtime/runtime";
   import List from "./List.svelte";
   import ListElement from "./ListElement.svelte";
 
+  let selected_extractor;
+
+  async function extractMetadata(id: string): Promise<string> {
+    return await ExtractMetadata(selected_extractor, id);
+  }
   function selectFolder(): void {
     SelectFolder();
   }
@@ -38,12 +45,25 @@
       status: "Selected",
       progress: 0,
       component: ListElement,
+      extractMetadata: extractMetadata,
       cancelTask: cancelTask,
       scheduleTask: scheduleTask,
       removeTask: removeTask,
     };
     return id;
   }
+
+  let extractors = ["No extractors found"];
+
+  async function refreshExtractors() {
+    AvailableExtractors().then((a) => {
+      extractors = a;
+      if (extractors.length > 0) selected_extractor = extractors[0];
+      else selected_extractor = ["No extractors found"];
+    });
+  }
+
+  window.onload = refreshExtractors;
 
   EventsOn("folder-added", (id, folder) => {
     newItem(id, folder);
@@ -85,7 +105,21 @@
 </script>
 
 <main>
-  <img alt="OpenEM logo" id="logo" src={logo} />
+  <img alt="OpenEM logo" id="logo" src={logo} height="200px" />
+
+  <div>
+    <h3>Metadata Extractors</h3>
+    <select bind:value={selected_extractor}>
+      {#each extractors as extractor}
+        <option value={extractor}>
+          {extractor}
+        </option>
+      {/each}
+    </select>
+    <button class="btn" on:click={refreshExtractors}> Refresh </button>
+  </div>
+
+  <h3>Datasets</h3>
   <button class="btn" on:click={selectFolder}>Select Folder</button>
   <div>
     <div id="upload-list">

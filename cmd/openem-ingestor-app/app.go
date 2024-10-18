@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"log/slog"
 
@@ -110,19 +109,23 @@ func (a *App) SelectFolder() {
 	}
 }
 
-func (a *App) ExtractMetadata(extractor_name string, id uuid.UUID) (string, error) {
+func (a *App) ExtractMetadata(extractor_name string, id uuid.UUID) string {
 
 	folder := a.taskqueue.GetTaskFolder(id)
 	if folder == "" {
-		return "", fmt.Errorf("no task found for %s", id.String())
+		return ""
 	}
 
 	outputfile := metadataextractor.MetadataFilePath(folder)
 	metadata, err := a.extractorHandler.ExtractMetadata(extractor_name, folder, outputfile)
 	if err != nil {
-		slog.Info("Metadata extracted", "data", metadata)
+		slog.Error("Metadata extraction failed", "error", err.Error())
 	}
-	return metadata, err
+	return metadata
+}
+
+func (a *App) AvailableExtractors() []string {
+	return a.extractorHandler.Extractors()
 }
 
 func (a *App) CancelTask(id uuid.UUID) {
