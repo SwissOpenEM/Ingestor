@@ -189,7 +189,11 @@ func downloadExtractor(full_install_path string, config ExtractorConfig) error {
 			return err
 		}
 
-		os.MkdirAll(path.Dir(full_install_path), 0777)
+		err = os.MkdirAll(path.Dir(full_install_path), 0777)
+		if err != nil {
+			slog.Error("Failed to create folder", "folder", path.Dir(full_install_path))
+			return err
+		}
 		x := &xtractr.XFile{
 			FilePath:  file,
 			OutputDir: path.Dir(full_install_path),
@@ -243,7 +247,11 @@ func runExtractor(executable string, args []string) error {
 func (e *ExtractorHandler) ExtractMetadata(extractor_name string, folder string, output_file string) (string, error) {
 	if extractor, ok := e.extractors[extractor_name]; ok {
 
-		os.MkdirAll(path.Dir(output_file), 0777)
+		err := os.MkdirAll(path.Dir(output_file), 0777)
+		if err != nil {
+			slog.Error("Failed to create folder", "folder", path.Dir(output_file))
+			return "", err
+		}
 
 		params := ExtractorInvokationParameters{
 			Executable:           extractor.ExecutablePath,
