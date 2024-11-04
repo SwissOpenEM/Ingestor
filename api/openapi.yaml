@@ -43,10 +43,8 @@ paths:
                                 $ref: "#/components/schemas/IngestorUiPostDatasetResponse"
                 "400":
                     description: Invalid request
-                    content:
-                        application/json:
-                            schema:
-                                $ref: "#/components/schemas/IngestorUiInvalidRequestResponse"
+                "500":
+                    description: "Internal Server Error"
 
     /transfer:
         get:
@@ -79,11 +77,7 @@ paths:
                     content:
                         application/json:
                             schema:
-                                oneOf:
-                                    - type: array
-                                      items:
-                                          $ref: "#/components/schemas/IngestorUiGetTransferResponse"
-                                    - $ref: "#/components/schemas/IngestorUiGetTransferResponse"
+                                $ref: "#/components/schemas/IngestorUiGetTransferResponse"
                 "400":
                     description: Invalid request
                     content:
