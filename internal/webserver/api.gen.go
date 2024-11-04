@@ -6,7 +6,9 @@ package webserver
 import (
 	"bytes"
 	"compress/gzip"
+	"context"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -16,6 +18,7 @@ import (
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/gin-gonic/gin"
 	"github.com/oapi-codegen/runtime"
+	strictgin "github.com/oapi-codegen/runtime/strictmiddleware/gin"
 )
 
 // IngestorUiDeleteTransferRequest defines model for IngestorUiDeleteTransferRequest.
@@ -225,28 +228,285 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 	router.GET(options.BaseURL+"/version", wrapper.OtherControllerGetVersion)
 }
 
+type DatasetControllerIngestDatasetRequestObject struct {
+	Body *DatasetControllerIngestDatasetJSONRequestBody
+}
+
+type DatasetControllerIngestDatasetResponseObject interface {
+	VisitDatasetControllerIngestDatasetResponse(w http.ResponseWriter) error
+}
+
+type DatasetControllerIngestDataset200JSONResponse IngestorUiPostDatasetResponse
+
+func (response DatasetControllerIngestDataset200JSONResponse) VisitDatasetControllerIngestDatasetResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type DatasetControllerIngestDataset400Response struct {
+}
+
+func (response DatasetControllerIngestDataset400Response) VisitDatasetControllerIngestDatasetResponse(w http.ResponseWriter) error {
+	w.WriteHeader(400)
+	return nil
+}
+
+type DatasetControllerIngestDataset500Response struct {
+}
+
+func (response DatasetControllerIngestDataset500Response) VisitDatasetControllerIngestDatasetResponse(w http.ResponseWriter) error {
+	w.WriteHeader(500)
+	return nil
+}
+
+type TransferControllerDeleteTransferRequestObject struct {
+	Body *TransferControllerDeleteTransferJSONRequestBody
+}
+
+type TransferControllerDeleteTransferResponseObject interface {
+	VisitTransferControllerDeleteTransferResponse(w http.ResponseWriter) error
+}
+
+type TransferControllerDeleteTransfer200JSONResponse IngestorUiDeleteTransferResponse
+
+func (response TransferControllerDeleteTransfer200JSONResponse) VisitTransferControllerDeleteTransferResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type TransferControllerDeleteTransfer400JSONResponse IngestorUiInvalidRequestResponse
+
+func (response TransferControllerDeleteTransfer400JSONResponse) VisitTransferControllerDeleteTransferResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type TransferControllerGetTransferRequestObject struct {
+	Params TransferControllerGetTransferParams
+}
+
+type TransferControllerGetTransferResponseObject interface {
+	VisitTransferControllerGetTransferResponse(w http.ResponseWriter) error
+}
+
+type TransferControllerGetTransfer200JSONResponse IngestorUiGetTransferResponse
+
+func (response TransferControllerGetTransfer200JSONResponse) VisitTransferControllerGetTransferResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type TransferControllerGetTransfer400JSONResponse IngestorUiInvalidRequestResponse
+
+func (response TransferControllerGetTransfer400JSONResponse) VisitTransferControllerGetTransferResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type OtherControllerGetVersionRequestObject struct {
+}
+
+type OtherControllerGetVersionResponseObject interface {
+	VisitOtherControllerGetVersionResponse(w http.ResponseWriter) error
+}
+
+type OtherControllerGetVersion200JSONResponse IngestorUiOtherVersionResponse
+
+func (response OtherControllerGetVersion200JSONResponse) VisitOtherControllerGetVersionResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type OtherControllerGetVersion400JSONResponse IngestorUiInvalidRequestResponse
+
+func (response OtherControllerGetVersion400JSONResponse) VisitOtherControllerGetVersionResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+// StrictServerInterface represents all server handlers.
+type StrictServerInterface interface {
+	// Ingest a new dataset
+	// (POST /dataset)
+	DatasetControllerIngestDataset(ctx context.Context, request DatasetControllerIngestDatasetRequestObject) (DatasetControllerIngestDatasetResponseObject, error)
+	// Cancel a data transfer
+	// (DELETE /transfer)
+	TransferControllerDeleteTransfer(ctx context.Context, request TransferControllerDeleteTransferRequestObject) (TransferControllerDeleteTransferResponseObject, error)
+	// Get list of transfers. Optional use the transferId parameter to only get one item.
+	// (GET /transfer)
+	TransferControllerGetTransfer(ctx context.Context, request TransferControllerGetTransferRequestObject) (TransferControllerGetTransferResponseObject, error)
+	// Get the used ingestor version
+	// (GET /version)
+	OtherControllerGetVersion(ctx context.Context, request OtherControllerGetVersionRequestObject) (OtherControllerGetVersionResponseObject, error)
+}
+
+type StrictHandlerFunc = strictgin.StrictGinHandlerFunc
+type StrictMiddlewareFunc = strictgin.StrictGinMiddlewareFunc
+
+func NewStrictHandler(ssi StrictServerInterface, middlewares []StrictMiddlewareFunc) ServerInterface {
+	return &strictHandler{ssi: ssi, middlewares: middlewares}
+}
+
+type strictHandler struct {
+	ssi         StrictServerInterface
+	middlewares []StrictMiddlewareFunc
+}
+
+// DatasetControllerIngestDataset operation middleware
+func (sh *strictHandler) DatasetControllerIngestDataset(ctx *gin.Context) {
+	var request DatasetControllerIngestDatasetRequestObject
+
+	var body DatasetControllerIngestDatasetJSONRequestBody
+	if err := ctx.ShouldBindJSON(&body); err != nil {
+		ctx.Status(http.StatusBadRequest)
+		ctx.Error(err)
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.DatasetControllerIngestDataset(ctx, request.(DatasetControllerIngestDatasetRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "DatasetControllerIngestDataset")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		ctx.Error(err)
+		ctx.Status(http.StatusInternalServerError)
+	} else if validResponse, ok := response.(DatasetControllerIngestDatasetResponseObject); ok {
+		if err := validResponse.VisitDatasetControllerIngestDatasetResponse(ctx.Writer); err != nil {
+			ctx.Error(err)
+		}
+	} else if response != nil {
+		ctx.Error(fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// TransferControllerDeleteTransfer operation middleware
+func (sh *strictHandler) TransferControllerDeleteTransfer(ctx *gin.Context) {
+	var request TransferControllerDeleteTransferRequestObject
+
+	var body TransferControllerDeleteTransferJSONRequestBody
+	if err := ctx.ShouldBindJSON(&body); err != nil {
+		ctx.Status(http.StatusBadRequest)
+		ctx.Error(err)
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.TransferControllerDeleteTransfer(ctx, request.(TransferControllerDeleteTransferRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "TransferControllerDeleteTransfer")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		ctx.Error(err)
+		ctx.Status(http.StatusInternalServerError)
+	} else if validResponse, ok := response.(TransferControllerDeleteTransferResponseObject); ok {
+		if err := validResponse.VisitTransferControllerDeleteTransferResponse(ctx.Writer); err != nil {
+			ctx.Error(err)
+		}
+	} else if response != nil {
+		ctx.Error(fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// TransferControllerGetTransfer operation middleware
+func (sh *strictHandler) TransferControllerGetTransfer(ctx *gin.Context, params TransferControllerGetTransferParams) {
+	var request TransferControllerGetTransferRequestObject
+
+	request.Params = params
+
+	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.TransferControllerGetTransfer(ctx, request.(TransferControllerGetTransferRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "TransferControllerGetTransfer")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		ctx.Error(err)
+		ctx.Status(http.StatusInternalServerError)
+	} else if validResponse, ok := response.(TransferControllerGetTransferResponseObject); ok {
+		if err := validResponse.VisitTransferControllerGetTransferResponse(ctx.Writer); err != nil {
+			ctx.Error(err)
+		}
+	} else if response != nil {
+		ctx.Error(fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// OtherControllerGetVersion operation middleware
+func (sh *strictHandler) OtherControllerGetVersion(ctx *gin.Context) {
+	var request OtherControllerGetVersionRequestObject
+
+	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.OtherControllerGetVersion(ctx, request.(OtherControllerGetVersionRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "OtherControllerGetVersion")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		ctx.Error(err)
+		ctx.Status(http.StatusInternalServerError)
+	} else if validResponse, ok := response.(OtherControllerGetVersionResponseObject); ok {
+		if err := validResponse.VisitOtherControllerGetVersionResponse(ctx.Writer); err != nil {
+			ctx.Error(err)
+		}
+	} else if response != nil {
+		ctx.Error(fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
+	"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",
+	"CxIAAA==",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

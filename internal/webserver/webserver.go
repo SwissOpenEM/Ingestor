@@ -14,7 +14,7 @@ import (
 	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
-func NewIngesterServer(ingestor *IngestorWebServerImplemenation, port int) *http.Server {
+func NewIngesterServer(ingestor *StrictServerInterface, port int) *http.Server {
 	swagger, err := GetSwagger()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error loading swagger spec\n: %s", err)
@@ -42,7 +42,7 @@ func NewIngesterServer(ingestor *IngestorWebServerImplemenation, port int) *http
 	// OpenAPI schema.
 	r.Use(middleware.OapiRequestValidator(swagger))
 
-	RegisterHandlers(r, ingestor)
+	RegisterHandlers(r, NewStrictHandler(*ingestor, []StrictMiddlewareFunc{}))
 
 	s := &http.Server{
 		Handler: r,
