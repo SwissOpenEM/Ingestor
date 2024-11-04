@@ -7,6 +7,7 @@ import (
 
 	"github.com/SwissOpenEM/Ingestor/internal/task"
 	"github.com/spf13/viper"
+	"golang.org/x/oauth2"
 )
 
 type ScicatConfig struct {
@@ -20,6 +21,7 @@ type MiscConfig struct {
 }
 
 type Config struct {
+	Oauth    oauth2.Config       `mapstructure:"Oauth"`
 	Scicat   ScicatConfig        `mapstructure:"Scicat"`
 	Transfer task.TransferConfig `mapstructure:"Transfer"`
 	Misc     MiscConfig          `mapstructure:"Misc"`
