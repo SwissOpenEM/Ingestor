@@ -256,7 +256,6 @@ func Test_runExtractor(t *testing.T) {
 		{
 			name: "EchoTest",
 			args: args{
-				// TODO: make platform independent
 				executable: "echo",
 				args: []string{
 					"hello",
