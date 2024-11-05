@@ -6,6 +6,8 @@ import (
 	"path"
 	"reflect"
 	"testing"
+
+	"github.com/labstack/gommon/log"
 )
 
 func TestNewExtractorHandler(t *testing.T) {
@@ -238,6 +240,9 @@ func Test_buildCommandline(t *testing.T) {
 	}
 }
 
+func stdout_callback(m string) { log.Info(m) }
+func stderr_callback(m string) { log.Error(m) }
+
 func Test_runExtractor(t *testing.T) {
 	type args struct {
 		executable string
@@ -263,7 +268,7 @@ func Test_runExtractor(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := runExtractor(tt.args.executable, tt.args.args); (err != nil) != tt.wantErr {
+			if err := runExtractor(tt.args.executable, tt.args.args, stdout_callback, stderr_callback); (err != nil) != tt.wantErr {
 				t.Errorf("runExtractor() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
@@ -315,7 +320,7 @@ func TestExtractorHandler_ExtractMetadata(t *testing.T) {
 				extractors:   tt.fields.extractors,
 				outputFolder: tt.fields.outputFolder,
 			}
-			got, err := e.ExtractMetadata(tt.args.extractor_name, tt.args.folder, tt.args.output_file)
+			got, err := e.ExtractMetadata(tt.args.extractor_name, tt.args.folder, tt.args.output_file, stdout_callback, stderr_callback)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ExtractorHandler.ExtractMetadata() error = %v, wantErr %v", err, tt.wantErr)
 				return

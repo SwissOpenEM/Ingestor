@@ -116,8 +116,18 @@ func (a *App) ExtractMetadata(extractor_name string, id uuid.UUID) string {
 		return ""
 	}
 
+	log_message := func(id uuid.UUID, msg string) {
+		slog.Info("Extractor output: ", "message", msg)
+		runtime.EventsEmit(a.ctx, "log-update", id, msg)
+	}
+
+	log_error := func(id uuid.UUID, msg string) {
+		slog.Info("Extractor error: ", "message", msg)
+		runtime.EventsEmit(a.ctx, "log-update", id, msg)
+	}
+
 	outputfile := metadataextractor.MetadataFilePath(folder)
-	metadata, err := a.extractorHandler.ExtractMetadata(extractor_name, folder, outputfile)
+	metadata, err := a.extractorHandler.ExtractMetadata(extractor_name, folder, outputfile, func(message string) { log_message(id, message) }, func(message string) { log_error(id, message) })
 	if err != nil {
 		slog.Error("Metadata extraction failed", "error", err.Error())
 	}
