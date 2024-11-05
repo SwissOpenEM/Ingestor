@@ -49,12 +49,6 @@ type IngestorUiGetTransferResponse struct {
 	Transfers *[]IngestorUiGetTransferItem `json:"transfers,omitempty"`
 }
 
-// IngestorUiInvalidRequestResponse defines model for IngestorUiInvalidRequestResponse.
-type IngestorUiInvalidRequestResponse struct {
-	// Message Error message describing the invalid request.
-	Message *string `json:"message,omitempty"`
-}
-
 // IngestorUiOtherVersionResponse defines model for IngestorUiOtherVersionResponse.
 type IngestorUiOtherVersionResponse struct {
 	// Version Version of the ingestor.
@@ -245,20 +239,14 @@ func (response DatasetControllerIngestDataset200JSONResponse) VisitDatasetContro
 	return json.NewEncoder(w).Encode(response)
 }
 
-type DatasetControllerIngestDataset400Response struct {
-}
+type DatasetControllerIngestDataset400TextResponse string
 
-func (response DatasetControllerIngestDataset400Response) VisitDatasetControllerIngestDatasetResponse(w http.ResponseWriter) error {
+func (response DatasetControllerIngestDataset400TextResponse) VisitDatasetControllerIngestDatasetResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(400)
-	return nil
-}
 
-type DatasetControllerIngestDataset500Response struct {
-}
-
-func (response DatasetControllerIngestDataset500Response) VisitDatasetControllerIngestDatasetResponse(w http.ResponseWriter) error {
-	w.WriteHeader(500)
-	return nil
+	_, err := w.Write([]byte(response))
+	return err
 }
 
 type TransferControllerDeleteTransferRequestObject struct {
@@ -278,13 +266,14 @@ func (response TransferControllerDeleteTransfer200JSONResponse) VisitTransferCon
 	return json.NewEncoder(w).Encode(response)
 }
 
-type TransferControllerDeleteTransfer400JSONResponse IngestorUiInvalidRequestResponse
+type TransferControllerDeleteTransfer400TextResponse string
 
-func (response TransferControllerDeleteTransfer400JSONResponse) VisitTransferControllerDeleteTransferResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
+func (response TransferControllerDeleteTransfer400TextResponse) VisitTransferControllerDeleteTransferResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(400)
 
-	return json.NewEncoder(w).Encode(response)
+	_, err := w.Write([]byte(response))
+	return err
 }
 
 type TransferControllerGetTransferRequestObject struct {
@@ -304,13 +293,14 @@ func (response TransferControllerGetTransfer200JSONResponse) VisitTransferContro
 	return json.NewEncoder(w).Encode(response)
 }
 
-type TransferControllerGetTransfer400JSONResponse IngestorUiInvalidRequestResponse
+type TransferControllerGetTransfer400TextResponse string
 
-func (response TransferControllerGetTransfer400JSONResponse) VisitTransferControllerGetTransferResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
+func (response TransferControllerGetTransfer400TextResponse) VisitTransferControllerGetTransferResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(400)
 
-	return json.NewEncoder(w).Encode(response)
+	_, err := w.Write([]byte(response))
+	return err
 }
 
 type OtherControllerGetVersionRequestObject struct {
@@ -325,15 +315,6 @@ type OtherControllerGetVersion200JSONResponse IngestorUiOtherVersionResponse
 func (response OtherControllerGetVersion200JSONResponse) VisitOtherControllerGetVersionResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(200)
-
-	return json.NewEncoder(w).Encode(response)
-}
-
-type OtherControllerGetVersion400JSONResponse IngestorUiInvalidRequestResponse
-
-func (response OtherControllerGetVersion400JSONResponse) VisitOtherControllerGetVersionResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(400)
 
 	return json.NewEncoder(w).Encode(response)
 }
@@ -487,26 +468,25 @@ func (sh *strictHandler) OtherControllerGetVersion(ctx *gin.Context) {
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"H4sIAAAAAAAC/9RYQXfbNgz+K3jcjp6drtvFty7t+nxYm9e0u3Q5wBJss6NIhYTseX3+73ugKEuKpDR5",
-	"W7rXm0IS4AfgA/g5n1XmitJZshzU8rMK2Y4KjJ8ru6XAzn/QL8kQ03uPNmzIv6PbigLLkdK7kjxrigY6",
-	"Gqxy+c4pZF6XrJ1Vy+RKOws6B3aAa+cZeEegmx01U3wsSS1VYK/tVp1O5xW3/kQZq9PsHkyhdDbQk4Oa",
-	"qcDIVRi6e0MHqPfAbfpu5o8N7jVxE9mKqRhG1YIY4OPGMB/ZfvC10wllx2iG4b+XZbBVsSYfE5AchU7w",
-	"2jJtyXdR1jViKuLH9542aqm+W7SkXCRGLqaz0waF3uPxS1Gu7B6NzhONpwMtKATc0jDUV947D2kb6r21",
-	"tttU9OgdfO3+0aV/yzvyv5MP2tlpbPv6wBBbsuxT0PlHw7hygV8iYyCe7PeCGOXMCBl2BLKbI2MDJa+9",
-	"/Tskj+9ygVJZfVt1+lEa/ouopjtdXE51OlyihTVBFSgOlUA2BzyTZY3Zn7IsRpV+UC5kSduNG+J4R4Hh",
-	"xdUKNs5D5oqisjrDGOCa+EBk4z1NKuHDCtDm7d8CRuAF8nud0RwksDuLHb8U4KB5F32++u2H60xfIrfG",
-	"f1gxFzhojDuEeK5pc0mUpHoGWLErkHXWEoT+Yo9ZxC34UmqblN1W5DXVY0SzkdSkq8+BvLhaqVnbE+rZ",
-	"/GJ+IRV0JVkstVqq5/OL+XM1UyXyLpZ0kSofueRqevfTe+kJmQAbjgAZKsgyaAsJQYQr2WqoJLWt9wSv",
-	"MDTWQ4ipEokvnWXvjCFf40/LaqbSyPjF5UdBkznLZCMwLEuTSrv4FOq+r+fiw6fmSEdHbsmt2lOuluwr",
-	"igt1l8U0/Xhx8dRYUk9HMP0KpCOdxg1VllEIm8pIeX+qwd191nsDWM79PH6OyVs0cE1+Tx7iVI8NGKqi",
-	"QH88SwRAsHRoaCA8xG1Qy4+qWbkRq0XD9foqUSfy1edA8261JOjrmCdnwbiU+9+IMKHiRrjQnIEMbUaG",
-	"8g4XzLHDhv8Y4YRaGEE4IF6PSpcRdpom57nYIdN56eY0U1visXnPXtNeRlKJW22RKQejA/f0Vj2kXTRC",
-	"AxttmORtGQ6kIRk7yirOSo8FcRRpH+WNVUsl0/ioZspiIZO4IzZnndQOHrVx61LkVdeuH++VjP+kKOWJ",
-	"S0H3BfVZU953ybX++76L3gxVK5QUL6TRq26+SnOMyfER3r0mhnN3pMfTJ6p8a10isQwYPYe3DZurQD1d",
-	"scrhzFJ5e501R9gSg7ME8rNiPt5hMq87Gvr+dpMLs8p7efv30/q631xRx/c6K0lz9VW4M/ozYrQcSUM1",
-	"gX3LzImqWoS3vhNVhwROEiMMEOv48tfTrfJGLdWOuQzLxQJLPTcuQ7NzgRf7Z0paPrm4y5O3Td2l7Uwc",
-	"yuwatRDaQdSoBRlUD/XQNsFw5o44+rXyEh641qEMzi1Z8mhAfkb4AtN/NpK7OiGnm9M/AQAA//+KHfbF",
-	"CxIAAA==",
+	"H4sIAAAAAAAC/8RXTXPbNhD9Kztoj6zkND3pljptRofGnnz0kvqwIlcSUhCggaUcNaP/3lkQFEmTUuzJ",
+	"2LnJILB4u/ve4vmryl1ZOUuWg1p8VSHfUonx59JuKLDzH/VrMsT0waMNa/Lv6LamwLKl8q4iz5riAR0P",
+	"LAv5XVDIva5YO6sWKZR2FnQB7ABXzjPwlkC3X1SmeF+RWqjAXtuNOhyOK271mXJWh+wMplA5G+jJQWUq",
+	"MHIdxuHe0h0038Cth2Fmj03uDXGb2ZKpHGfVgRjh4/ZgMfH5wdeeLig7RjNO/4Msg63LFflYgBQo9JLX",
+	"lmlDvo+y6RFTGX/87GmtFuqneUfKeWLk/HR1uqTQe9x/K8sr3pL/m3zQzp5Oc9dsGCeaTg6b7Pyje3zt",
+	"Ar9GxkB8UlElMcqeiXJvCeRrgYwtlKKJ9n1IHq8jgVJbfVv3GC+S+iaq01qSkKe0BJdoYUVQB4qyDWQL",
+	"QCgpBNwQrDD/V5blUK0fVAtZ0nbtxjjeUWB4db2EtfOQu7Ksrc4xJrgiviOy8Z62lPBxCWiL7m8BI/AC",
+	"+Z3OaQaS2L3FXlwKcKd5G2P+8dcv73N9idwd/sfKcYGDxri7EPe1QpJCSakzwJpdiazzjiD0hT3mEbfg",
+	"S6VtS3Zbk9fUCFWzkdKkq4+JvLpeqqzThHoxu5hdSAddRRYrrRbq5exi9lJlqkLexpbOU+cjl1xD72F5",
+	"Lz0hE2DLESBDJVkGbSEhiHClWi2VpLfNN8ErDI39EGKqROJLZ9k7Y8g3+NOyypRvhPa7K/aCJneWyUZg",
+	"WFUmtXb+OTS6bybPw+fShKIjt+RW7alQC/Y1xYVGZbFMv15cPDWWpOkIZtiBtKUn3FDnOYWwro2097cR",
+	"OKYvPK8M6nuw7qtsdNXS7tDoAvyxNJkKdVmi3x8fY0CwdNfSQfiIm6AWn1S7ciOn5i3nG0aJD5BfQy60",
+	"L0RHhqFjeHI2TJumH0aIE35polHtHsjR5mSo6HHC7J+VFZcRQRoQx1HX48Vx6eaQqQ3x1Ahnr2knU6bC",
+	"jbbIVIDRgQcmpZm7Lh5CA2ttmATyeMaMedWzI3H8eSyJo7P5JM+mWigZsHuVKYulVKPn0LIztcqmT1e4",
+	"ocG5Yb7XMtGTDZNXKyU9dKFHI3bukvf6v3MXvR1bPagoXkiTV908C8+nPOwE794Qw5Ho6T30iSo/kPAC",
+	"a0TOGVy1xKwDDV79ZQFHwsnL6KzZw4YYnCUQWz2bFotM0Z7DPa8cuTCvvZeXeXfa/Q51El32QCTJOKtn",
+	"ocGkyZ9sR3I4bWKnSDBqUzSY4kH1vRC9ijtBIeWW0+R37VSovVELtWWuwmI+x0rPjMvRbF3g+e6FEqmk",
+	"EPebctUWWehq4jBj1z6YoRNw+2CKwB8aoWPceFZNBPqz9pIeuC6gDJwNWfJoQBy1LzH9G53CNQU53Bz+",
+	"DwAA//+t0kQPeBAAAA==",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file
