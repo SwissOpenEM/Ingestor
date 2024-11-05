@@ -1,7 +1,7 @@
 package metadataextractor
 
 import (
-	"bytes"
+	"bufio"
 	"context"
 	"crypto/md5"
 	"crypto/sha256"
@@ -225,26 +225,41 @@ func buildCommandline(templ *template.Template, template_params ExtractorInvokat
 	return binary_path, args, nil
 }
 
-func runExtractor(executable string, args []string) error {
+type outputCallback func(string)
+
+func runExtractor(executable string, args []string, stdout_callback outputCallback, stderr_callback outputCallback) error {
 	slog.Info("Executing command", "command", executable, "args", args)
 
 	cmd := exec.Command(executable, args...)
 
-	var outb, errb bytes.Buffer
-	cmd.Stdout = &outb
-	cmd.Stderr = &errb
-	if err := cmd.Run(); err != nil {
-		slog.Error("Metadata extraction failed:", err)
-		slog.Info("Std out", "msg", outb.String())
-		slog.Info("Std err", "msg", errb.String())
+	stdout, _ := cmd.StdoutPipe()
+	stderr, _ := cmd.StderrPipe()
+
+	go func(scanner *bufio.Scanner) {
+		for scanner.Scan() {
+			stdout_callback(scanner.Text())
+		}
+	}(bufio.NewScanner(stdout))
+
+	go func(scanner *bufio.Scanner) {
+		for scanner.Scan() {
+			stderr_callback(scanner.Text())
+		}
+	}(bufio.NewScanner(stderr))
+
+	err := cmd.Start()
+
+	if err != nil {
+		slog.Error("Failed to run extractor", "executable", executable, "args", args, "error", err.Error())
 		return err
 	}
-	slog.Info("Std out", "msg", outb.String())
-	slog.Info("Std err", "msg", errb.String())
-	return nil
+
+	defer func() { err = cmd.Wait() }()
+
+	return err
 }
 
-func (e *ExtractorHandler) ExtractMetadata(extractor_name string, folder string, output_file string) (string, error) {
+func (e *ExtractorHandler) ExtractMetadata(extractor_name string, folder string, output_file string, stdout_callback outputCallback, stderr_callback outputCallback) (string, error) {
 	if extractor, ok := e.extractors[extractor_name]; ok {
 
 		err := os.MkdirAll(path.Dir(output_file), 0777)
@@ -265,7 +280,7 @@ func (e *ExtractorHandler) ExtractMetadata(extractor_name string, folder string,
 			return "", err
 		}
 
-		if err := runExtractor(binary_path, args); err == nil {
+		if err := runExtractor(binary_path, args, stdout_callback, stderr_callback); err == nil {
 			b, err := os.ReadFile(output_file)
 			if err != nil {
 				slog.Error("Failed to read file", "file", output_file)

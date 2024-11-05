@@ -16,9 +16,6 @@
     {value}
   </div>
   <div>
-    {status}
-  </div>
-  <div>
     {progress} %
   </div>
   <div class="buttongrid">
@@ -53,13 +50,14 @@
   </div>
   <div>
     <textarea class="textarea" bind:value={metadata} />
+    <textarea class="textarea" bind:value={status} />
   </div>
 </div>
 
 <style>
   .listitem {
     display: grid;
-    grid-template-columns: 5fr 2fr 2fr 2fr;
+    grid-template-columns: 5fr 2fr 2fr;
     grid-template-rows: 2;
     padding-right: 30px;
   }
@@ -72,8 +70,8 @@
   }
   .textarea {
     flex: 1;
-    width: 400px;
-    height: 200px;
+    width: 500px;
+    height: 300px;
     align-self: left;
   }
 </style>
