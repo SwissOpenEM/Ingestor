@@ -43,8 +43,10 @@ paths:
                                 $ref: "#/components/schemas/IngestorUiPostDatasetResponse"
                 "400":
                     description: Invalid request
-                "500":
-                    description: "Internal Server Error"
+                    content:
+                        text/plain:
+                            schema:
+                                type: string
 
     /transfer:
         get:
@@ -81,9 +83,9 @@ paths:
                 "400":
                     description: Invalid request
                     content:
-                        application/json:
+                        text/plain:
                             schema:
-                                $ref: "#/components/schemas/IngestorUiInvalidRequestResponse"
+                                type: string
         delete:
             tags:
                 - transfer
@@ -105,9 +107,9 @@ paths:
                 "400":
                     description: Invalid request
                     content:
-                        application/json:
+                        text/plain:
                             schema:
-                                $ref: "#/components/schemas/IngestorUiInvalidRequestResponse"
+                                type: string
 
     /version:
         get:
@@ -123,13 +125,7 @@ paths:
                         application/json:
                             schema:
                                 $ref: "#/components/schemas/IngestorUiOtherVersionResponse"
-                "400":
-                    description: Invalid request
-                    content:
-                        application/json:
-                            schema:
-                                $ref: "#/components/schemas/IngestorUiInvalidRequestResponse"
-
+                                
 components:
     schemas:
         IngestorUiPostDatasetRequest:
@@ -185,9 +181,3 @@ components:
                 version:
                     type: string
                     description: Version of the ingestor.
-        IngestorUiInvalidRequestResponse:
-            type: object
-            properties:
-                message:
-                    type: string
-                    description: Error message describing the invalid request.

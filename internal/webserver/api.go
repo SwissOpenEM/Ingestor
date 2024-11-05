@@ -7,7 +7,6 @@ package webserver
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"math"
 	"os"
@@ -48,7 +47,7 @@ func (i *IngestorWebServerImplemenation) DatasetControllerIngestDataset(ctx cont
 	var metadata map[string]interface{}
 	err := json.Unmarshal([]byte(metadataString), &metadata)
 	if err != nil {
-		return DatasetControllerIngestDataset400Response{}, err
+		return DatasetControllerIngestDataset400TextResponse(err.Error()), nil
 	}
 
 	// create and start task
@@ -56,9 +55,9 @@ func (i *IngestorWebServerImplemenation) DatasetControllerIngestDataset(ctx cont
 	err = i.taskQueue.CreateTaskFromMetadata(id, metadata)
 	if err != nil {
 		if _, ok := err.(*os.PathError); ok {
-			return DatasetControllerIngestDataset500Response{}, fmt.Errorf("Could not create the task due to a path error: %s", err.Error())
+			return nil, fmt.Errorf("could not create the task due to a path error: %s", err.Error())
 		} else {
-			return DatasetControllerIngestDataset400Response{}, fmt.Errorf("Invalid metadata: %s", err.Error())
+			return DatasetControllerIngestDataset400TextResponse("You don't have the right to create the task"), nil
 		}
 	}
 	i.taskQueue.ScheduleTask(id)
@@ -99,21 +98,18 @@ func (i *IngestorWebServerImplemenation) OtherControllerGetVersion(ctx context.C
 //	@Router			/transfer [delete]
 func (i *IngestorWebServerImplemenation) TransferControllerDeleteTransfer(ctx context.Context, request TransferControllerDeleteTransferRequestObject) (TransferControllerDeleteTransferResponseObject, error) {
 	if request.Body.IngestId == nil {
-		msg := "Ingest ID was not specified in the request"
-		return TransferControllerDeleteTransfer400JSONResponse{Message: &msg}, errors.New(msg)
+		return TransferControllerDeleteTransfer400TextResponse("Ingest ID was not specified in the request"), nil
 	}
 
 	id := *request.Body.IngestId
 	uuid, err := uuid.Parse(id)
 	if err != nil {
-		msg := fmt.Sprintf("Ingest ID '%s' could not be parsed as uuid: %s", id, err.Error())
-		return TransferControllerDeleteTransfer400JSONResponse{Message: &msg}, errors.New(msg)
+		return TransferControllerDeleteTransfer400TextResponse(fmt.Sprintf("Ingest ID '%s' could not be parsed as uuid: %s", id, err.Error())), nil
 	}
 
 	err = i.taskQueue.RemoveTask(uuid)
 	if err != nil {
-		msg := err.Error()
-		return TransferControllerDeleteTransfer400JSONResponse{Message: &msg}, err
+		return TransferControllerDeleteTransfer400TextResponse(err.Error()), nil
 	}
 
 	status := "gone"
@@ -133,20 +129,16 @@ func (i *IngestorWebServerImplemenation) TransferControllerDeleteTransfer(ctx co
 //
 //	@Router			/transfer [get]
 func (i *IngestorWebServerImplemenation) TransferControllerGetTransfer(ctx context.Context, request TransferControllerGetTransferRequestObject) (TransferControllerGetTransferResponseObject, error) {
-	var result IngestorUiGetTransferResponse
-
 	if request.Params.TransferId != nil {
 		id := *request.Params.TransferId
 		uid, err := uuid.Parse(id)
 		if err != nil {
-			msg := fmt.Sprintf("Can't parse UUID: %s", err.Error())
-			return TransferControllerGetTransfer400JSONResponse{Message: &msg}, errors.New(msg)
+			return TransferControllerGetTransfer400TextResponse(fmt.Sprintf("Can't parse UUID: %s", err.Error())), nil
 		}
 
 		status, err := i.taskQueue.GetTaskStatus(uid)
 		if err != nil {
-			msg := fmt.Sprintf("No such task with id '%s'", uid.String())
-			return TransferControllerGetTransfer400JSONResponse{Message: &msg}, errors.New(msg)
+			return TransferControllerGetTransfer400TextResponse(fmt.Sprintf("No such task with id '%s'", uid.String())), nil
 		}
 		transferItems := []IngestorUiGetTransferItem{
 			{
@@ -182,8 +174,7 @@ func (i *IngestorWebServerImplemenation) TransferControllerGetTransfer(ctx conte
 		resultNo := i.taskQueue.GetTaskCount()
 		ids, statuses, err := i.taskQueue.GetTaskStatusList(start, end)
 		if err != nil {
-			msg := err.Error()
-			return TransferControllerGetTransfer400JSONResponse{Message: &msg}, err
+			return TransferControllerGetTransfer400TextResponse(err.Error()), nil
 		}
 
 		transferItems := []IngestorUiGetTransferItem{}
@@ -210,14 +201,11 @@ func (i *IngestorWebServerImplemenation) TransferControllerGetTransfer(ctx conte
 			})
 		}
 
-		result.Total = &resultNo
-		result.Transfers = &transferItems
 		return TransferControllerGetTransfer200JSONResponse{
 			Total:     &resultNo,
 			Transfers: &transferItems,
 		}, nil
 	}
 
-	msg := "Not enough parameters"
-	return TransferControllerGetTransfer400JSONResponse{Message: &msg}, errors.New(msg)
+	return TransferControllerGetTransfer400TextResponse("Not enough parameters"), nil
 }
