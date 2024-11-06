@@ -7,6 +7,7 @@ import (
 	"os"
 
 	docs "github.com/SwissOpenEM/Ingestor/docs"
+	"github.com/getkin/kin-openapi/openapi3filter"
 	cors "github.com/gin-contrib/cors"
 	gin "github.com/gin-gonic/gin"
 	middleware "github.com/oapi-codegen/gin-middleware"
@@ -40,8 +41,13 @@ func NewIngesterServer(ingestor StrictServerInterface, port int) *http.Server {
 
 	// Use our validation middleware to check all requests against the
 	// OpenAPI schema.
-	r.Use(middleware.OapiRequestValidator(swagger))
-
+	r.Use(
+		middleware.OapiRequestValidatorWithOptions(swagger, &middleware.Options{
+			Options: openapi3filter.Options{
+				AuthenticationFunc: oidcAuthFunc,
+			},
+		}),
+	)
 	RegisterHandlers(r, NewStrictHandler(ingestor, []StrictMiddlewareFunc{}))
 
 	s := &http.Server{

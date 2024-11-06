@@ -129,6 +129,9 @@ func (i *IngestorWebServerImplemenation) TransferControllerDeleteTransfer(ctx co
 //
 //	@Router			/transfer [get]
 func (i *IngestorWebServerImplemenation) TransferControllerGetTransfer(ctx context.Context, request TransferControllerGetTransferRequestObject) (TransferControllerGetTransferResponseObject, error) {
+	scopes := ctx.Value(OpenIDScopes)
+	fmt.Println("scopes: ", scopes)
+
 	if request.Params.TransferId != nil {
 		id := *request.Params.TransferId
 		uid, err := uuid.Parse(id)

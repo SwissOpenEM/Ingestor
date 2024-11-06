@@ -25,6 +25,9 @@ paths:
       tags:
         - dataset
       summary: Ingest a new dataset
+      security:
+        - OpenID:
+          - ingestor_write
       description: Create a dataset element in SciCat and send the data to SciCat.
       operationId: DatasetController_ingestDataset
       requestBody:
@@ -52,6 +55,9 @@ paths:
       tags:
         - transfer
       summary: Get list of transfers. Optional use the transferId parameter to only get one item.
+      security:
+        - OpenID:
+          - ingestor_read
       description: Retrieve a paginated list of transfers with optional filtering.
       operationId: TransferController_getTransfer
       parameters:
@@ -89,6 +95,9 @@ paths:
       tags:
         - transfer
       summary: Cancel a data transfer
+      security:
+        - OpenID:
+          - ingestor_write
       operationId: TransferController_deleteTransfer
       requestBody:
         required: true
@@ -115,6 +124,7 @@ paths:
       tags:
         - other
       summary: Get the used ingestor version
+      security: []
       description: Retrieve the current version of the ingestor.
       operationId: OtherController_getVersion
       responses:
@@ -180,3 +190,12 @@ components:
         version:
           type: string
           description: Version of the ingestor.
+  securitySchemes:
+    OpenID:
+      type: openIdConnect
+      openIdConnectUrl: http://keycloak.localhost/realms/master/.well-known/openid-configuration
+security:
+  - OpenID:
+    - ingestor_read
+    - ingestor_write
+    - admin
