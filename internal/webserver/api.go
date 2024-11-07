@@ -13,13 +13,15 @@ import (
 
 	"github.com/SwissOpenEM/Ingestor/internal/core"
 	"github.com/google/uuid"
+	"golang.org/x/oauth2"
 )
 
 var _ StrictServerInterface = (*IngestorWebServerImplemenation)(nil)
 
 type IngestorWebServerImplemenation struct {
-	version   string
-	taskQueue *core.TaskQueue
+	version      string
+	taskQueue    *core.TaskQueue
+	oauth2Config *oauth2.Config
 }
 
 //	@contact.name	SwissOpenEM
@@ -211,4 +213,38 @@ func (i *IngestorWebServerImplemenation) TransferControllerGetTransfer(ctx conte
 	}
 
 	return TransferControllerGetTransfer400TextResponse("Not enough parameters"), nil
+}
+
+func (i *IngestorWebServerImplemenation) GetLogin(ctx context.Context, request GetLoginRequestObject) (GetLoginResponseObject, error) {
+	return GetLogin302Response{
+		Headers: GetLogin302ResponseHeaders{Location: i.oauth2Config.RedirectURL},
+	}, nil
+}
+
+func (i *IngestorWebServerImplemenation) GetCallback(ctx context.Context, request GetCallbackRequestObject) (GetCallbackResponseObject, error) {
+	token, err := i.oauth2Config.Exchange(context.Background(), request.Params.Code)
+	if err != nil {
+		return GetCallback400TextResponse(fmt.Sprintf("code exchange failed: %s", err.Error())), nil
+	}
+
+	idToken, err := oidcVerifier.Verify(context.Background(), token.AccessToken)
+	if err != nil {
+		return GetCallback400TextResponse(fmt.Sprintf("idToken verification failed: %s", err.Error())), nil
+	}
+
+	claims := struct {
+		Email string `json:"email"`
+		Name  string `json:"name"`
+	}{}
+	if err := idToken.Claims(&claims); err != nil {
+		return GetCallback400TextResponse("could not parse token claims"), nil
+	}
+
+	a := ""
+	return GetCallback200JSONResponse{
+		AccessToken: &token.AccessToken,
+		IdToken:     &a,
+		Email:       &claims.Email,
+		Name:        &claims.Name,
+	}, nil
 }
