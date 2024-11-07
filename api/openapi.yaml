@@ -135,6 +135,62 @@ paths:
               schema:
                 $ref: "#/components/schemas/IngestorUiOtherVersionResponse"
 
+  /login:
+    get:
+      tags:
+        - authentication
+      summary: "OIDC login"
+      description: "Initiates the OIDC authorization flow."
+      responses:
+        '302':
+          description: "Redirect to OIDC provider for atuhentication"
+          headers:
+            location:
+              description: "redirect"
+              schema:
+                type: string
+  
+  /callback:
+    get:
+      tags:
+        - authentication
+      summary: "OIDC callback"
+      parameters:
+        - name: code
+          in: query
+          required: true
+          schema:
+            type: string
+          description: "For handling the authorization code received from the OIDC provider"
+      responses:
+        "200":
+          description: "OIDC callback successful"
+          content:
+            application/json:
+              schema:
+                properties:
+                  access_token:
+                    type: string
+                    description: access token of session
+                  id_token:
+                    type: string
+                    description: id token of session
+                  email:
+                    type: string
+                    description: email of logged-in user
+                  name:
+                    type: string
+                    description: name of logged-in user
+        "400":
+          description: "OIDC callback failed due to invalid code or state"
+          content:
+            text/plain:
+              schema: 
+                type: string
+        "500":
+          description: "Internal Server Error"
+
+
 components:
   schemas:
     IngestorUiPostDatasetRequest:

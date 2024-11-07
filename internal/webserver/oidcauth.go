@@ -2,19 +2,43 @@ package webserver
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"strings"
 
+	"github.com/coreos/go-oidc/v3/oidc"
 	"github.com/getkin/kin-openapi/openapi3filter"
 )
 
+type tokenClaims struct {
+	Scope string `json:"scope"`
+}
+
+var oidcVerifier *oidc.IDTokenVerifier
+
 func oidcAuthFunc(ctx context.Context, input *openapi3filter.AuthenticationInput) error {
+	// find user scopes
+	token := input.RequestValidationInput.Request.Header.Get("Authorization")
+	if token == "" {
+		return errors.New("authorization header required")
+	}
+
+	idToken, err := oidcVerifier.Verify(context.Background(), token)
+	if err != nil {
+		return errors.New("invalid token")
+	}
+
+	var claims tokenClaims
+	if err := idToken.Claims(&claims); err != nil {
+		return err
+	}
+
+	scopes := strings.Split(claims.Scope, " ")
+
+	// check scopes
+	missingScopes := findMissingScopes(input.Scopes, scopes)
 	reqPath := input.RequestValidationInput.Request.URL.Path
 	reqMethod := input.RequestValidationInput.Request.Method
-
-	// find user scopes
-	userScopes := []string{}
-
-	missingScopes := findMissingScopes(input.Scopes, userScopes)
 	return missingScopesCheck(missingScopes, fmt.Sprintf("%s %s", reqMethod, reqPath))
 }
 

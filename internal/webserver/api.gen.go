@@ -74,6 +74,12 @@ type IngestorUiPostDatasetResponse struct {
 	Status *string `json:"status,omitempty"`
 }
 
+// GetCallbackParams defines parameters for GetCallback.
+type GetCallbackParams struct {
+	// Code For handling the authorization code received from the OIDC provider
+	Code string `form:"code" json:"code"`
+}
+
 // TransferControllerGetTransferParams defines parameters for TransferControllerGetTransfer.
 type TransferControllerGetTransferParams struct {
 	TransferId *string `form:"transferId,omitempty" json:"transferId,omitempty"`
@@ -89,9 +95,15 @@ type TransferControllerDeleteTransferJSONRequestBody = IngestorUiDeleteTransferR
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
+	// OIDC callback
+	// (GET /callback)
+	GetCallback(c *gin.Context, params GetCallbackParams)
 	// Ingest a new dataset
 	// (POST /dataset)
 	DatasetControllerIngestDataset(c *gin.Context)
+	// OIDC login
+	// (GET /login)
+	GetLogin(c *gin.Context)
 	// Cancel a data transfer
 	// (DELETE /transfer)
 	TransferControllerDeleteTransfer(c *gin.Context)
@@ -112,6 +124,41 @@ type ServerInterfaceWrapper struct {
 
 type MiddlewareFunc func(c *gin.Context)
 
+// GetCallback operation middleware
+func (siw *ServerInterfaceWrapper) GetCallback(c *gin.Context) {
+
+	var err error
+
+	c.Set(OpenIDScopes, []string{"ingestor_read", "ingestor_write", "admin"})
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetCallbackParams
+
+	// ------------- Required query parameter "code" -------------
+
+	if paramValue := c.Query("code"); paramValue != "" {
+
+	} else {
+		siw.ErrorHandler(c, fmt.Errorf("Query argument code is required, but not found"), http.StatusBadRequest)
+		return
+	}
+
+	err = runtime.BindQueryParameter("form", true, true, "code", c.Request.URL.Query(), &params.Code)
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter code: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.GetCallback(c, params)
+}
+
 // DatasetControllerIngestDataset operation middleware
 func (siw *ServerInterfaceWrapper) DatasetControllerIngestDataset(c *gin.Context) {
 
@@ -125,6 +172,21 @@ func (siw *ServerInterfaceWrapper) DatasetControllerIngestDataset(c *gin.Context
 	}
 
 	siw.Handler.DatasetControllerIngestDataset(c)
+}
+
+// GetLogin operation middleware
+func (siw *ServerInterfaceWrapper) GetLogin(c *gin.Context) {
+
+	c.Set(OpenIDScopes, []string{"ingestor_read", "ingestor_write", "admin"})
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.GetLogin(c)
 }
 
 // TransferControllerDeleteTransfer operation middleware
@@ -226,10 +288,59 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 		ErrorHandler:       errorHandler,
 	}
 
+	router.GET(options.BaseURL+"/callback", wrapper.GetCallback)
 	router.POST(options.BaseURL+"/dataset", wrapper.DatasetControllerIngestDataset)
+	router.GET(options.BaseURL+"/login", wrapper.GetLogin)
 	router.DELETE(options.BaseURL+"/transfer", wrapper.TransferControllerDeleteTransfer)
 	router.GET(options.BaseURL+"/transfer", wrapper.TransferControllerGetTransfer)
 	router.GET(options.BaseURL+"/version", wrapper.OtherControllerGetVersion)
+}
+
+type GetCallbackRequestObject struct {
+	Params GetCallbackParams
+}
+
+type GetCallbackResponseObject interface {
+	VisitGetCallbackResponse(w http.ResponseWriter) error
+}
+
+type GetCallback200JSONResponse struct {
+	// AccessToken access token of session
+	AccessToken *string `json:"access_token,omitempty"`
+
+	// Email email of logged-in user
+	Email *string `json:"email,omitempty"`
+
+	// IdToken id token of session
+	IdToken *string `json:"id_token,omitempty"`
+
+	// Name name of logged-in user
+	Name *string `json:"name,omitempty"`
+}
+
+func (response GetCallback200JSONResponse) VisitGetCallbackResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetCallback400TextResponse string
+
+func (response GetCallback400TextResponse) VisitGetCallbackResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "text/plain")
+	w.WriteHeader(400)
+
+	_, err := w.Write([]byte(response))
+	return err
+}
+
+type GetCallback500Response struct {
+}
+
+func (response GetCallback500Response) VisitGetCallbackResponse(w http.ResponseWriter) error {
+	w.WriteHeader(500)
+	return nil
 }
 
 type DatasetControllerIngestDatasetRequestObject struct {
@@ -257,6 +368,27 @@ func (response DatasetControllerIngestDataset400TextResponse) VisitDatasetContro
 
 	_, err := w.Write([]byte(response))
 	return err
+}
+
+type GetLoginRequestObject struct {
+}
+
+type GetLoginResponseObject interface {
+	VisitGetLoginResponse(w http.ResponseWriter) error
+}
+
+type GetLogin302ResponseHeaders struct {
+	Location string
+}
+
+type GetLogin302Response struct {
+	Headers GetLogin302ResponseHeaders
+}
+
+func (response GetLogin302Response) VisitGetLoginResponse(w http.ResponseWriter) error {
+	w.Header().Set("location", fmt.Sprint(response.Headers.Location))
+	w.WriteHeader(302)
+	return nil
 }
 
 type TransferControllerDeleteTransferRequestObject struct {
@@ -331,9 +463,15 @@ func (response OtherControllerGetVersion200JSONResponse) VisitOtherControllerGet
 
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
+	// OIDC callback
+	// (GET /callback)
+	GetCallback(ctx context.Context, request GetCallbackRequestObject) (GetCallbackResponseObject, error)
 	// Ingest a new dataset
 	// (POST /dataset)
 	DatasetControllerIngestDataset(ctx context.Context, request DatasetControllerIngestDatasetRequestObject) (DatasetControllerIngestDatasetResponseObject, error)
+	// OIDC login
+	// (GET /login)
+	GetLogin(ctx context.Context, request GetLoginRequestObject) (GetLoginResponseObject, error)
 	// Cancel a data transfer
 	// (DELETE /transfer)
 	TransferControllerDeleteTransfer(ctx context.Context, request TransferControllerDeleteTransferRequestObject) (TransferControllerDeleteTransferResponseObject, error)
@@ -355,6 +493,33 @@ func NewStrictHandler(ssi StrictServerInterface, middlewares []StrictMiddlewareF
 type strictHandler struct {
 	ssi         StrictServerInterface
 	middlewares []StrictMiddlewareFunc
+}
+
+// GetCallback operation middleware
+func (sh *strictHandler) GetCallback(ctx *gin.Context, params GetCallbackParams) {
+	var request GetCallbackRequestObject
+
+	request.Params = params
+
+	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.GetCallback(ctx, request.(GetCallbackRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetCallback")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		ctx.Error(err)
+		ctx.Status(http.StatusInternalServerError)
+	} else if validResponse, ok := response.(GetCallbackResponseObject); ok {
+		if err := validResponse.VisitGetCallbackResponse(ctx.Writer); err != nil {
+			ctx.Error(err)
+		}
+	} else if response != nil {
+		ctx.Error(fmt.Errorf("unexpected response type: %T", response))
+	}
 }
 
 // DatasetControllerIngestDataset operation middleware
@@ -383,6 +548,31 @@ func (sh *strictHandler) DatasetControllerIngestDataset(ctx *gin.Context) {
 		ctx.Status(http.StatusInternalServerError)
 	} else if validResponse, ok := response.(DatasetControllerIngestDatasetResponseObject); ok {
 		if err := validResponse.VisitDatasetControllerIngestDatasetResponse(ctx.Writer); err != nil {
+			ctx.Error(err)
+		}
+	} else if response != nil {
+		ctx.Error(fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetLogin operation middleware
+func (sh *strictHandler) GetLogin(ctx *gin.Context) {
+	var request GetLoginRequestObject
+
+	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.GetLogin(ctx, request.(GetLoginRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetLogin")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		ctx.Error(err)
+		ctx.Status(http.StatusInternalServerError)
+	} else if validResponse, ok := response.(GetLoginResponseObject); ok {
+		if err := validResponse.VisitGetLoginResponse(ctx.Writer); err != nil {
 			ctx.Error(err)
 		}
 	} else if response != nil {
@@ -478,27 +668,31 @@ func (sh *strictHandler) OtherControllerGetVersion(ctx *gin.Context) {
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"H4sIAAAAAAAC/8xXQXPbNhP9Kxh835EWnaYn3VK5zejQ2BPHvbiazopcSYhBgAaWUtSM/ntnQVAkRcqx",
-	"p+M0NwkkFm9333tYfpWZLUpr0JCX06/SZxssIPycmzV6su5OXaFGwk8OjF+h+4iPFXriV0pnS3SkMGxQ",
-	"YcM85985+sypkpQ1chpDKWuEygVZAUvrSNAGhWqeyETSvkQ5lZ6cMmt5OBxX7PIzZiQPyROYfGmNx1cH",
-	"lUhPQJUfhvuAO1E/E3bVDzN5aXLvkZrM5oTFMKsWxAAfNRvzkcfPPvZ8QckS6GH6n3hZmKpYogsFiIF8",
-	"J3llCNfouijrHhEW4cf/Ha7kVP4vbUmZRkam56vTJgXOwf5bWV7TBt0f6Lyy5nya2/qFYaJxZ7/J1r24",
-	"xzfW0xUQeKSziiqQgN8ZKfcGBT/NgaCBktfR/h2Sl+uIoVRGPVYdxrOkvonqvJY45DktiRkYsURReQyy",
-	"9WhyAaJA72GNYgnZAy/zpko9qxYMBLPKKdrfMtnqhK9LNPMr/mX5Vz6zxmBGd07LqdwQldM0fcB9pi08",
-	"TLTNQG+sp9Qh6MKnBXhCl052qPXFg7E7k3IYlV9k1qzUunLQN5jeIfLAoJRZ2WFtPqIn8e5mLlbWicwW",
-	"RWVUFoKJJdIO0YTcm/aKu7kAk7f/uUBcMo9uqzKcCC72yWInLnqxU7QJMX/9/eI2UzOgdvOfhrczHNDa",
-	"7nx4rxE3N4/bnwioyBZAKmtJi1/IQRZwM77Y7qaNjxU6hbV5KNJcoXj0MZF3N3OZtDqVbyaXk0tmFZcS",
-	"SiWn8u3kcvJWJrIE2oSmppGNgd+2lly/vDOHQCig4a1AjQUaEsqIiCDA5Wo19Ga+1c8YL6sm9IPFIqOw",
-	"ZtaQs1qjq/HHZZlIV4v/F5vvGU1mDaEJwKAsdWxt+tnXXlS74fO9csRlArf4VOUwl1NyFYaFWvmhTD9d",
-	"Xr42lugzAUy/A/GVjpn4KsvQ+1Wlub0/D8ARfqG01KBOYJ0qf3DU3GxBq1y4Y2laK5DT+9YE7mXj83/t",
-	"nCKUi8Mikb4qCnD74ywhQBjcNcxh6sLa8+ZmZcEHpI08avLxGBNdpkOb5oJredMfeF6dOOMz33/GnTPj",
-	"3khPm3dEBiZDjXmHPnr/oxJoFsBG2zkaaIdCx6XFIZFrpLGLgZzCLXtXCWtlgDAXWnnqjWO1m9uwCbRY",
-	"KU3I2Q2da0jBzuAVTNVBgRRmuHseEORUsm3vZSINFFy4ziyaPFHWZHx3CWvs7evne8P3RBw4+S6MSffn",
-	"7ePI+dQht+rvpw76MBxqRYnhQBw9avFdJDE2rY9Q9D2SOGoi3rIuUuWH04ZDyE+lwQkMaDwR1w2FK4+9",
-	"qWOeiyM1+Wa2Ru/FGklYg4I/NSbjsmJr7kz9T2uMD8wq53gy2J7/IugrKnx59OQUPybkdyHM6IfPaOPi",
-	"hNUkdo4u/YYOmhZGcJ7S1UnATv0tY+LiP5ccyamRJhLyQpnIGnTbxpCq46Tup2kKpepM6ds3kl+PKE67",
-	"fN10jZWig4+Sba5133pHc62ztzw3QkvhoU2OBPqtclwhYduA7HVrNOhAC/5EcEXzKRHD1TU9LA7/BAAA",
-	"//8CXtgf3REAAA==",
+	"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",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file
