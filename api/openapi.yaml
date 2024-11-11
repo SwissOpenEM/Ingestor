@@ -149,6 +149,10 @@ paths:
               description: "redirect"
               schema:
                 type: string
+            Set-Cookie:
+              schema:
+                type: string
+                example: saved-state=abcde; HttpOnly; 
   
   /callback:
     get:
@@ -162,6 +166,18 @@ paths:
           schema:
             type: string
           description: "For handling the authorization code received from the OIDC provider"
+        - name: state
+          in: query
+          required: true
+          schema:
+            type: string
+          description: "State parameter for CSRF protection"
+        - name: saved-state
+          in: cookie
+          required: true
+          schema:
+            type: string
+          description: "The state saved at login"
       responses:
         "200":
           description: "OIDC callback successful"
