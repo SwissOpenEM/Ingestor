@@ -6,9 +6,11 @@ package webserver
 
 import (
 	"context"
+	"crypto/cipher"
 	"encoding/json"
 	"fmt"
 	"math"
+	"net/url"
 	"os"
 
 	"github.com/SwissOpenEM/Ingestor/internal/core"
@@ -22,6 +24,7 @@ type IngestorWebServerImplemenation struct {
 	version      string
 	taskQueue    *core.TaskQueue
 	oauth2Config *oauth2.Config
+	cookieCipher cipher.Block
 }
 
 //	@contact.name	SwissOpenEM
@@ -31,8 +34,8 @@ type IngestorWebServerImplemenation struct {
 // @license.name	Apache 2.0
 // @license.url	http://www.apache.org/licenses/LICENSE-2.0.html
 
-func NewIngestorWebServer(version string, taskQueue *core.TaskQueue) *IngestorWebServerImplemenation {
-	return &IngestorWebServerImplemenation{version: version, taskQueue: taskQueue}
+func NewIngestorWebServer(version string, taskQueue *core.TaskQueue, oauthConf *oauth2.Config, cookieCipher cipher.Block) *IngestorWebServerImplemenation {
+	return &IngestorWebServerImplemenation{version: version, taskQueue: taskQueue, oauth2Config: oauthConf, cookieCipher: cookieCipher}
 }
 
 // DatasetControllerIngestDataset implements ServerInterface.
@@ -216,22 +219,42 @@ func (i *IngestorWebServerImplemenation) TransferControllerGetTransfer(ctx conte
 }
 
 func (i *IngestorWebServerImplemenation) GetLogin(ctx context.Context, request GetLoginRequestObject) (GetLoginResponseObject, error) {
+	state, err := generateState()
+	if err != nil {
+		return GetLogin302Response{}, err
+	}
+
 	return GetLogin302Response{
-		Headers: GetLogin302ResponseHeaders{Location: i.oauth2Config.RedirectURL},
+		Headers: GetLogin302ResponseHeaders{
+			Location:  i.oauth2Config.RedirectURL,
+			SetCookie: fmt.Sprintf("saved-state=%s; HttpOnly; Max-Age=600", url.QueryEscape(i.encrypt(state))),
+		},
 	}, nil
 }
 
 func (i *IngestorWebServerImplemenation) GetCallback(ctx context.Context, request GetCallbackRequestObject) (GetCallbackResponseObject, error) {
+	// CSRF attack protection
+	if request.Params.State != i.decrypt(request.Params.SavedState) {
+		return GetCallback400TextResponse("invalid state"), nil
+	}
+
+	// exchange authorization code for accessToken
 	token, err := i.oauth2Config.Exchange(context.Background(), request.Params.Code)
 	if err != nil {
 		return GetCallback400TextResponse(fmt.Sprintf("code exchange failed: %s", err.Error())), nil
 	}
 
-	idToken, err := oidcVerifier.Verify(context.Background(), token.AccessToken)
+	// get id token
+	rawIdToken, ok := token.Extra("id_token").(string)
+	if !ok {
+		return GetCallback400TextResponse("id_token was not found in token"), nil
+	}
+	idToken, err := oidcVerifier.Verify(context.Background(), rawIdToken)
 	if err != nil {
 		return GetCallback400TextResponse(fmt.Sprintf("idToken verification failed: %s", err.Error())), nil
 	}
 
+	// extract claims
 	claims := struct {
 		Email string `json:"email"`
 		Name  string `json:"name"`
@@ -240,11 +263,24 @@ func (i *IngestorWebServerImplemenation) GetCallback(ctx context.Context, reques
 		return GetCallback400TextResponse("could not parse token claims"), nil
 	}
 
-	a := ""
+	// return response
+	dummyIdTokenToReplace := ""
 	return GetCallback200JSONResponse{
 		AccessToken: &token.AccessToken,
-		IdToken:     &a,
+		IdToken:     &dummyIdTokenToReplace,
 		Email:       &claims.Email,
 		Name:        &claims.Name,
 	}, nil
+}
+
+func (i *IngestorWebServerImplemenation) encrypt(plaintext string) string {
+	ciphertext := make([]byte, len(plaintext))
+	i.cookieCipher.Encrypt(ciphertext, []byte(plaintext))
+	return string(ciphertext)
+}
+
+func (i *IngestorWebServerImplemenation) decrypt(ciphertext string) string {
+	plaintext := make([]byte, len(ciphertext))
+	i.cookieCipher.Decrypt(plaintext, []byte(ciphertext))
+	return string(plaintext)
 }

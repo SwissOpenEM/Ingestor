@@ -2,6 +2,8 @@ package webserver
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"strings"
@@ -64,4 +66,13 @@ func missingScopesCheck(missingScopes []string, methodName string) error {
 		return nil
 	}
 	return fmt.Errorf("missing scopes for \"%s\": %v", methodName, missingScopes)
+}
+
+func generateState() (string, error) {
+	b := make([]byte, 16)
+	_, err := rand.Read(b)
+	if err != nil {
+		return "", err
+	}
+	return base64.URLEncoding.EncodeToString(b), nil
 }

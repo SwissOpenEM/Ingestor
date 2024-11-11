@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"crypto/aes"
+	"crypto/rand"
 	"fmt"
 	"log"
 	"log/slog"
@@ -36,7 +38,20 @@ func main() {
 	}
 	taskqueue.Startup()
 
-	ingestor := webserver.NewIngestorWebServer(version, &taskqueue)
+	// generate key for AES
+	key := make([]byte, 32)
+	_, err = rand.Read(key)
+	if err != nil {
+		panic("can't generate AES key")
+	}
+
+	// create AES encryption for state cookie encryption
+	aes, err := aes.NewCipher(key)
+	if err != nil {
+		panic("can't create aes cipher")
+	}
+
+	ingestor := webserver.NewIngestorWebServer(version, &taskqueue, &config.Oauth, aes)
 	s := webserver.NewIngesterServer(ingestor, config.Misc.Port)
 	log.Fatal(s.ListenAndServe())
 }
