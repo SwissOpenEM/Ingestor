@@ -23,27 +23,52 @@ jobs:
         with:
           version: v1.60.3
 
-  build:
+  build_linux:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
 
     - name: Set up Go
-      uses: actions/setup-go@v4
+      uses: actions/setup-go@v5
       with:
         go-version: '1.21'
+    - name: Set up gotestfmt
+      uses: gotesttools/gotestfmt-action@v2
+      with:
+        # Optional: pass GITHUB_TOKEN to avoid rate limiting.
+        token: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Test internal packages
-      run: go test ./internal/... -v
-    
+    - name: Test Internal Package
+      run: |
+        set -euo pipefail
+        go test -json -v  ./internal/... 2>&1 | tee gotestinternal.log | gotestfmt
+
+    - name: Upload Test Log
+      uses: actions/upload-artifact@v4
+      if: success()
+      with:
+        name: linux-interal-test-log
+        path: gotestinternal.log
+        if-no-files-found: error
+
     - name: Generate REST API and Docs
       run: go generate ./internal/webserver
 
     - name: Build Service
       run: go build -C ./cmd/openem-ingestor-service/ -v
 
-    - name: Test Service
-      run: go test ./cmd/openem-ingestor-service/ -v
+    - name: Test Internal Packages
+      run: |
+        set -euo pipefail
+        go test -json -v  ./cmd/openem-ingestor-service/ 2>&1 | tee gotestservice.log | gotestfmt
+
+    - name: Upload Test Log
+      uses: actions/upload-artifact@v4
+      if: success()
+      with:
+        name: linux-service-test-log
+        path: gotestservice.log
+        if-no-files-found: error
 
     - name: Install Wails dependencies
       run: sudo apt-get update && sudo apt-get install -qq -y libwebkit2gtk-4.0-dev libgtk-3-dev npm pkg-config
@@ -55,5 +80,113 @@ jobs:
       working-directory: ./cmd/openem-ingestor-app/
       run: wails build
 
-    - name: Test Desktop App
-      run: go test ./cmd/openem-ingestor-app/ -v
+    - name: Test App
+      run: |
+        set -euo pipefail
+        go test -json -v  ./cmd/openem-ingestor-app/ 2>&1 | tee gotestapp.log | gotestfmt
+
+    - name: Upload test log
+      uses: actions/upload-artifact@v4
+      if: success()
+      with:
+        name: linux-app-test-log
+        path: gotestapp.log
+        if-no-files-found: error
+
+  build_windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+  
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+      - name: Set up gotestfmt
+        uses: gotesttools/gotestfmt-action@v2
+        with:
+          # Optional: pass GITHUB_TOKEN to avoid rate limiting.
+          token: ${{ secrets.GITHUB_TOKEN }}
+  
+      - name: Test Internal Package
+        run: |
+          go test -json -v  ./internal/... 2>&1 | tee gotestinternal.log 
+  
+      - name: Upload Test Log
+        uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: windows-internal-test-log
+          path: gotestinternal.log
+          if-no-files-found: error
+  
+      - name: Generate REST API and Docs
+        run: go generate ./internal/webserver
+   
+      - name: Set up Wails
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
+  
+      - name: Build Desktop App
+        working-directory: ./cmd/openem-ingestor-app/
+        run: wails build
+  
+      - name: Test App
+        run: |
+          go test -json -v  ./cmd/openem-ingestor-app/ 2>&1 | tee gotestapp.log
+      - name: Upload Test Log
+        uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: windows-app-test-log
+          path: gotestapp.log
+          if-no-files-found: error
+
+  build_macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+  
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+      - name: Set up gotestfmt
+        uses: gotesttools/gotestfmt-action@v2
+        with:
+          # Optional: pass GITHUB_TOKEN to avoid rate limiting.
+          token: ${{ secrets.GITHUB_TOKEN }}
+  
+      - name: Test Internal Package
+        run: |
+          set -euo pipefail
+          go test -json -v  ./internal/... 2>&1 | tee gotestinternal.log | gotestfmt
+  
+      - name: Upload test log
+        uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: macos-internal-test-log
+          path: gotestinternal.log
+          if-no-files-found: error
+  
+      - name: Generate REST API and Docs
+        run: go generate ./internal/webserver
+  
+      - name: Set up Wails
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
+  
+      - name: Build Desktop App
+        working-directory: ./cmd/openem-ingestor-app/
+        run: wails build
+  
+      - name: Test App
+        run: |
+          set -euo pipefail
+          go test -json -v  ./cmd/openem-ingestor-app/ 2>&1 | tee gotestapp.log | gotestfmt
+      - name: Upload App Test Log
+        uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: macos-app-test-log
+          path: gotestapp.log
+          if-no-files-found: error
