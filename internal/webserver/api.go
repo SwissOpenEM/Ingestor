@@ -6,7 +6,6 @@ package webserver
 
 import (
 	"context"
-	"crypto/cipher"
 	"encoding/json"
 	"fmt"
 	"math"
@@ -24,7 +23,6 @@ type IngestorWebServerImplemenation struct {
 	version      string
 	taskQueue    *core.TaskQueue
 	oauth2Config *oauth2.Config
-	cookieCipher cipher.Block
 }
 
 //	@contact.name	SwissOpenEM
@@ -34,8 +32,8 @@ type IngestorWebServerImplemenation struct {
 // @license.name	Apache 2.0
 // @license.url	http://www.apache.org/licenses/LICENSE-2.0.html
 
-func NewIngestorWebServer(version string, taskQueue *core.TaskQueue, oauthConf *oauth2.Config, cookieCipher cipher.Block) *IngestorWebServerImplemenation {
-	return &IngestorWebServerImplemenation{version: version, taskQueue: taskQueue, oauth2Config: oauthConf, cookieCipher: cookieCipher}
+func NewIngestorWebServer(version string, taskQueue *core.TaskQueue, oauthConf *oauth2.Config) *IngestorWebServerImplemenation {
+	return &IngestorWebServerImplemenation{version: version, taskQueue: taskQueue, oauth2Config: oauthConf}
 }
 
 // DatasetControllerIngestDataset implements ServerInterface.
@@ -227,14 +225,14 @@ func (i *IngestorWebServerImplemenation) GetLogin(ctx context.Context, request G
 	return GetLogin302Response{
 		Headers: GetLogin302ResponseHeaders{
 			Location:  i.oauth2Config.RedirectURL,
-			SetCookie: fmt.Sprintf("saved-state=%s; HttpOnly; Max-Age=600", url.QueryEscape(i.encrypt(state))),
+			SetCookie: fmt.Sprintf("saved-state=%s; HttpOnly; Max-Age=600", url.QueryEscape(state)),
 		},
 	}, nil
 }
 
 func (i *IngestorWebServerImplemenation) GetCallback(ctx context.Context, request GetCallbackRequestObject) (GetCallbackResponseObject, error) {
 	// CSRF attack protection
-	if request.Params.State != i.decrypt(request.Params.SavedState) {
+	if request.Params.State != request.Params.SavedState {
 		return GetCallback400TextResponse("invalid state"), nil
 	}
 
@@ -271,16 +269,4 @@ func (i *IngestorWebServerImplemenation) GetCallback(ctx context.Context, reques
 		Email:       &claims.Email,
 		Name:        &claims.Name,
 	}, nil
-}
-
-func (i *IngestorWebServerImplemenation) encrypt(plaintext string) string {
-	ciphertext := make([]byte, len(plaintext))
-	i.cookieCipher.Encrypt(ciphertext, []byte(plaintext))
-	return string(ciphertext)
-}
-
-func (i *IngestorWebServerImplemenation) decrypt(ciphertext string) string {
-	plaintext := make([]byte, len(ciphertext))
-	i.cookieCipher.Decrypt(plaintext, []byte(ciphertext))
-	return string(plaintext)
 }
