@@ -184,19 +184,7 @@ paths:
           content:
             application/json:
               schema:
-                properties:
-                  access_token:
-                    type: string
-                    description: access token of session
-                  id_token:
-                    type: string
-                    description: id token of session
-                  email:
-                    type: string
-                    description: email of logged-in user
-                  name:
-                    type: string
-                    description: name of logged-in user
+                $ref: "#/components/schemas/OidcCallbackOk"
         "400":
           description: "OIDC callback failed due to invalid code or state"
           content:
@@ -262,6 +250,48 @@ components:
         version:
           type: string
           description: Version of the ingestor.
+    OidcCallbackOk:
+      type: object
+      properties:
+        OAuth2Token:
+          type: object
+          description: Oauth2 Token object
+          properties:
+            access_token:
+              type: string
+            token_type:
+              type: string
+            refresh_token:
+              type: string
+            expiry:
+              type: string
+              format: date-time
+            expires_in:
+              type: integer
+              format: int64
+          required:
+            - access_token
+        UserInfo:
+          type: object
+          description: OIDC UserInfo object
+          properties:
+            sub:
+              type: string
+              description: subject of user
+            profile:
+              type: string
+            email:
+              type: string
+            email_verified:
+              type: boolean
+          required:
+            - sub
+            - profile
+            - email
+            - email_verified
+      required:
+        - OAuth2Token
+        - UserInfo
   securitySchemes:
     OpenID:
       type: openIdConnect
