@@ -11,8 +11,11 @@ import (
 	"math"
 	"net/url"
 	"os"
+	"reflect"
+	"time"
 
 	"github.com/SwissOpenEM/Ingestor/internal/core"
+	"github.com/coreos/go-oidc/v3/oidc"
 	"github.com/google/uuid"
 	"golang.org/x/oauth2"
 )
@@ -23,6 +26,7 @@ type IngestorWebServerImplemenation struct {
 	version      string
 	taskQueue    *core.TaskQueue
 	oauth2Config *oauth2.Config
+	oidcProvider *oidc.Provider
 }
 
 //	@contact.name	SwissOpenEM
@@ -32,8 +36,19 @@ type IngestorWebServerImplemenation struct {
 // @license.name	Apache 2.0
 // @license.url	http://www.apache.org/licenses/LICENSE-2.0.html
 
-func NewIngestorWebServer(version string, taskQueue *core.TaskQueue, oauthConf *oauth2.Config) *IngestorWebServerImplemenation {
-	return &IngestorWebServerImplemenation{version: version, taskQueue: taskQueue, oauth2Config: oauthConf}
+func NewIngestorWebServer(version string, taskQueue *core.TaskQueue) *IngestorWebServerImplemenation {
+	oidcProvider, err := oidc.NewProvider(context.Background(), "")
+	if err != nil {
+		panic(err)
+	}
+	oauthConf := oauth2.Config{
+		ClientID:     "a",
+		ClientSecret: "b",
+		Endpoint:     oidcProvider.Endpoint(),
+		RedirectURL:  "c",
+		Scopes:       []string{"d", "e"},
+	}
+	return &IngestorWebServerImplemenation{version: version, taskQueue: taskQueue, oauth2Config: &oauthConf, oidcProvider: oidcProvider}
 }
 
 // DatasetControllerIngestDataset implements ServerInterface.
@@ -237,13 +252,19 @@ func (i *IngestorWebServerImplemenation) GetCallback(ctx context.Context, reques
 	}
 
 	// exchange authorization code for accessToken
-	token, err := i.oauth2Config.Exchange(context.Background(), request.Params.Code)
+	oauthToken, err := i.oauth2Config.Exchange(context.Background(), request.Params.Code)
 	if err != nil {
 		return GetCallback400TextResponse(fmt.Sprintf("code exchange failed: %s", err.Error())), nil
 	}
 
-	// get id token
-	rawIdToken, ok := token.Extra("id_token").(string)
+	// userInfo
+	userInfo, err := i.oidcProvider.UserInfo(ctx, oauth2.StaticTokenSource(oauthToken))
+	if err != nil {
+		return GetCallback500Response{}, err
+	}
+
+	// get id token (not needed here?)
+	/*rawIdToken, ok := oauthToken.Extra("id_token").(string)
 	if !ok {
 		return GetCallback400TextResponse("id_token was not found in token"), nil
 	}
@@ -259,14 +280,47 @@ func (i *IngestorWebServerImplemenation) GetCallback(ctx context.Context, reques
 	}{}
 	if err := idToken.Claims(&claims); err != nil {
 		return GetCallback400TextResponse("could not parse token claims"), nil
-	}
+	}*/
 
 	// return response
-	dummyIdTokenToReplace := ""
+	// create oauth token "DTO"
+	retOauthToken := struct {
+		AccessToken  string     `json:"access_token"`
+		ExpiresIn    *int64     `json:"expires_in,omitempty"`
+		Expiry       *time.Time `json:"expiry,omitempty"`
+		RefreshToken *string    `json:"refresh_token,omitempty"`
+		TokenType    *string    `json:"token_type,omitempty"`
+	}{
+		AccessToken:  oauthToken.AccessToken,
+		RefreshToken: ptrIfNotZero(oauthToken.RefreshToken),
+		TokenType:    ptrIfNotZero(oauthToken.TokenType),
+		ExpiresIn:    ptrIfNotZero(oauthToken.ExpiresIn),
+		Expiry:       ptrIfNotZero(oauthToken.Expiry),
+	}
+
+	// create userInfo "DTO"
+	retUserInfo := struct {
+		Email         string `json:"email"`
+		EmailVerified bool   `json:"email_verified"`
+		Profile       string `json:"profile"`
+		Sub           string `json:"sub"` // subject
+	}{
+		Email:         userInfo.Email,
+		EmailVerified: userInfo.EmailVerified,
+		Profile:       userInfo.Profile,
+		Sub:           userInfo.Subject,
+	}
+
+	// reply
 	return GetCallback200JSONResponse{
-		AccessToken: &token.AccessToken,
-		IdToken:     &dummyIdTokenToReplace,
-		Email:       &claims.Email,
-		Name:        &claims.Name,
+		OAuth2Token: retOauthToken,
+		UserInfo:    retUserInfo,
 	}, nil
+}
+
+func ptrIfNotZero[T any](v T) *T {
+	if reflect.ValueOf(v).IsZero() {
+		return nil
+	}
+	return &v
 }
