@@ -31,6 +31,25 @@ func createExpectedValidConfig() Config {
 		},
 	}
 
+	expected_LS_methods := []metadataextractor.MethodConfig{
+		{
+			Name:   "Single Particle",
+			Schema: "singleParticleSchema.json",
+		},
+		{
+			Name:   "Cellular Tomography",
+			Schema: "cellularTomographySchema.json",
+		},
+		{
+			Name:   "Tomography",
+			Schema: "tomographySchema.json",
+		},
+		{
+			Name:   "Environmental Tomography",
+			Schema: "environmentalTomographySchema.json",
+		},
+	}
+
 	expected_meta := metadataextractor.ExtractorsConfig{
 		Extractors: []metadataextractor.ExtractorConfig{
 			{
@@ -41,8 +60,9 @@ func createExpectedValidConfig() Config {
 				Executable:           "LS_Metadata_reader",
 				Checksum:             "8c5249c41a5b3464d183d063be7d96d9557dcb11c76598690f2c20bb06937fbe",
 				ChecksumAlg:          "sha256",
-				CommandLineTemplate:  "-i {{.SourceFolder}} -o {{.OutputFile}} {{.AdditionalParameters}}",
+				CommandLineTemplate:  "-i '{{.SourceFolder}}' -o '{{.OutputFile}}' {{.AdditionalParameters}}",
 				AdditionalParameters: []string{"--param1=value1", "--param2=value2"},
+				Methods:              expected_LS_methods,
 			},
 			{
 				Name:                "MS",
@@ -52,11 +72,18 @@ func createExpectedValidConfig() Config {
 				Executable:          "MS_Metadata_reader",
 				Checksum:            "d7052dec32d99f35bcbe95d780afb949585c33b5e538a4754611f7f1ead1c0ba",
 				ChecksumAlg:         "sha256",
-				CommandLineTemplate: "-i {{.SourceFolder}} -o {{.OutputFile}} {{.AdditionalParameters}}",
+				CommandLineTemplate: "-i '{{.SourceFolder}}' -o '{{.OutputFile}}' {{.AdditionalParameters}}",
+				Methods: []metadataextractor.MethodConfig{
+					{
+						Name:   "Material Science",
+						Schema: "some.json",
+					},
+				},
 			},
 		},
 		InstallationPath:          "./parentPathToAllExtractors/",
 		DownloadMissingExtractors: false,
+		SchemasLocation:           "./ExtractorSchemas",
 	}
 
 	expected_config := Config{

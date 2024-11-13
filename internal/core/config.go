@@ -2,23 +2,25 @@ package core
 
 import (
 	"fmt"
+	"log/slog"
 	"os"
 	"path"
 
 	"github.com/SwissOpenEM/Ingestor/internal/metadataextractor"
 	"github.com/SwissOpenEM/Ingestor/internal/task"
+	"github.com/go-playground/validator/v10"
 	"github.com/spf13/viper"
 	"golang.org/x/oauth2"
 )
 
 type ScicatConfig struct {
-	Host        string `string:"Host"`
+	Host        string `string:"Host" validate:"required,url"`
 	AccessToken string `string:"AccessToken"`
 }
 
 type MiscConfig struct {
-	ConcurrencyLimit int `int:"ConcurrencyLimit"`
-	Port             int `int:"Port"`
+	ConcurrencyLimit int `int:"ConcurrencyLimit" validate:"gte=0"`
+	Port             int `int:"Port" validate:"required,gte=0"`
 }
 
 type Config struct {
@@ -33,10 +35,18 @@ var viperConf *viper.Viper = viper.New()
 
 func getConfig() (Config, error) {
 	var config Config
-	if err := viperConf.Unmarshal(&config); err != nil {
+	if err := viperConf.UnmarshalExact(&config); err != nil {
 		fmt.Println(err)
 		return config, err
 	}
+
+	validate := validator.New(validator.WithRequiredStructEnabled())
+	err := validate.Struct(&config)
+	if err != nil {
+		slog.Error("Configuration validation failed:", "error", err.Error())
+		return config, err
+	}
+
 	return config, nil
 }
 

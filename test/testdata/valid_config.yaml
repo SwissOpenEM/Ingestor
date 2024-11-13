@@ -16,6 +16,7 @@ Misc:
 MetadataExtractors:
   InstallationPath: ./parentPathToAllExtractors/
   DownloadMissingExtractors: false
+  SchemasLocation: ./ExtractorSchemas
   Extractors:
   - Name: LS
     GithubOrg: SwissOpenEM
@@ -28,6 +29,17 @@ MetadataExtractors:
     AdditionalParameters:
       - --param1=value1
       - --param2=value2
+
+    Methods:
+      - Name: Single Particle
+        Schema: singleParticleSchema.json
+      - Name: Cellular Tomography
+        Schema: cellularTomographySchema.json
+      - Name: Tomography
+        Schema: tomographySchema.json
+      - Name: Environmental Tomography
+        Schema: environmentalTomographySchema.json
+      
   - Name: MS
     GithubOrg: SwissOpenEM
     GithubProject: MS_Metadata_reader
@@ -36,3 +48,6 @@ MetadataExtractors:
     Checksum: d7052dec32d99f35bcbe95d780afb949585c33b5e538a4754611f7f1ead1c0ba 
     ChecksumAlg: sha256
     CommandLineTemplate: "-i '{{.SourceFolder}}' -o '{{.OutputFile}}' {{.AdditionalParameters}}"
+    Methods:
+      - Name: Material Science
+        Schema: some.json
