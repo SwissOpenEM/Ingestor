@@ -24,7 +24,7 @@ MetadataExtractors:
     Executable: LS_Metadata_reader
     Checksum: 8c5249c41a5b3464d183d063be7d96d9557dcb11c76598690f2c20bb06937fbe 
     ChecksumAlg: sha256
-    CommandLineTemplate: "-i {{.SourceFolder}} -o {{.OutputFile}} {{.AdditionalParameters}}"
+    CommandLineTemplate: "-i '{{.SourceFolder}}' -o '{{.OutputFile}}' {{.AdditionalParameters}}"
     AdditionalParameters:
       - --param1=value1
       - --param2=value2
@@ -35,4 +35,4 @@ MetadataExtractors:
     Executable: MS_Metadata_reader
     Checksum: d7052dec32d99f35bcbe95d780afb949585c33b5e538a4754611f7f1ead1c0ba 
     ChecksumAlg: sha256
-    CommandLineTemplate: "-i {{.SourceFolder}} -o {{.OutputFile}} {{.AdditionalParameters}}"
+    CommandLineTemplate: "-i '{{.SourceFolder}}' -o '{{.OutputFile}}' {{.AdditionalParameters}}"
