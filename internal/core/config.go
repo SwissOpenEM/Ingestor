@@ -10,12 +10,18 @@ import (
 	"github.com/SwissOpenEM/Ingestor/internal/task"
 	"github.com/go-playground/validator/v10"
 	"github.com/spf13/viper"
-	"golang.org/x/oauth2"
 )
 
 type ScicatConfig struct {
 	Host        string `string:"Host" validate:"required,url"`
 	AccessToken string `string:"AccessToken"`
+}
+
+type OAuth2Conf struct {
+	ClientID     string   // OAuth client id (this app)
+	ClientSecret string   // OAuth2 secret (associated with ClientID)
+	RedirectURL  string   // where should the OAuth2 provider return the user to
+	Scopes       []string // list of scopes to ask for from the OAuth2 provider
 }
 
 type MiscConfig struct {
@@ -24,7 +30,7 @@ type MiscConfig struct {
 }
 
 type Config struct {
-	Oauth              oauth2.Config                      `mapstructure:"Oauth"`
+	Oauth              OAuth2Conf                         `mapstructure:"Oauth"`
 	Scicat             ScicatConfig                       `mapstructure:"Scicat"`
 	Transfer           task.TransferConfig                `mapstructure:"Transfer"`
 	Misc               MiscConfig                         `mapstructure:"Misc"`

@@ -68,8 +68,8 @@ func missingScopesCheck(missingScopes []string, methodName string) error {
 	return fmt.Errorf("missing scopes for \"%s\": %v", methodName, missingScopes)
 }
 
-func generateState() (string, error) {
-	b := make([]byte, 16)
+func generateRandomString(len uint) (string, error) {
+	b := make([]byte, len)
 	_, err := rand.Read(b)
 	if err != nil {
 		return "", err
