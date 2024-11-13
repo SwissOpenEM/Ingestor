@@ -27,6 +27,7 @@ type IngestorWebServerImplemenation struct {
 	taskQueue    *core.TaskQueue
 	oauth2Config *oauth2.Config
 	oidcProvider *oidc.Provider
+	oidcVerifier *oidc.IDTokenVerifier
 }
 
 //	@contact.name	SwissOpenEM
@@ -36,19 +37,26 @@ type IngestorWebServerImplemenation struct {
 // @license.name	Apache 2.0
 // @license.url	http://www.apache.org/licenses/LICENSE-2.0.html
 
-func NewIngestorWebServer(version string, taskQueue *core.TaskQueue) *IngestorWebServerImplemenation {
+func NewIngestorWebServer(version string, taskQueue *core.TaskQueue, oauth core.OAuth2Conf) *IngestorWebServerImplemenation {
 	oidcProvider, err := oidc.NewProvider(context.Background(), "")
 	if err != nil {
 		panic(err)
 	}
+	oidcVerifier := oidcProvider.Verifier(&oidc.Config{ClientID: oauth.ClientID})
 	oauthConf := oauth2.Config{
-		ClientID:     "a",
-		ClientSecret: "b",
+		ClientID:     oauth.ClientID,
+		ClientSecret: oauth.ClientSecret,
 		Endpoint:     oidcProvider.Endpoint(),
-		RedirectURL:  "c",
-		Scopes:       []string{"d", "e"},
+		RedirectURL:  oauth.RedirectURL,
+		Scopes:       append([]string{oidc.ScopeOpenID, "profile", "email"}, oauth.Scopes...),
 	}
-	return &IngestorWebServerImplemenation{version: version, taskQueue: taskQueue, oauth2Config: &oauthConf, oidcProvider: oidcProvider}
+	return &IngestorWebServerImplemenation{
+		version:      version,
+		taskQueue:    taskQueue,
+		oauth2Config: &oauthConf,
+		oidcProvider: oidcProvider,
+		oidcVerifier: oidcVerifier,
+	}
 }
 
 // DatasetControllerIngestDataset implements ServerInterface.
@@ -232,14 +240,26 @@ func (i *IngestorWebServerImplemenation) TransferControllerGetTransfer(ctx conte
 }
 
 func (i *IngestorWebServerImplemenation) GetLogin(ctx context.Context, request GetLoginRequestObject) (GetLoginResponseObject, error) {
-	state, err := generateState()
+	// auth code flow
+
+	// generate state and verifier
+	state, err := generateRandomString(16)
+	if err != nil {
+		return GetLogin302Response{}, err
+	}
+	verifier, err := generateRandomString(128)
 	if err != nil {
 		return GetLogin302Response{}, err
 	}
 
+	// redirect to login page
 	return GetLogin302Response{
 		Headers: GetLogin302ResponseHeaders{
-			Location:  i.oauth2Config.RedirectURL,
+			Location: i.oauth2Config.AuthCodeURL(
+				state,
+				oauth2.AccessTypeOffline,
+				oauth2.S256ChallengeOption(verifier),
+			),
 			SetCookie: fmt.Sprintf("saved-state=%s; HttpOnly; Max-Age=600", url.QueryEscape(state)),
 		},
 	}, nil
@@ -263,14 +283,17 @@ func (i *IngestorWebServerImplemenation) GetCallback(ctx context.Context, reques
 		return GetCallback500Response{}, err
 	}
 
-	// get id token (not needed here?)
-	/*rawIdToken, ok := oauthToken.Extra("id_token").(string)
+	// get id token (not sure if needed here?)
+	rawIdToken, ok := oauthToken.Extra("id_token").(string)
 	if !ok {
-		return GetCallback400TextResponse("id_token was not found in token"), nil
+		return GetCallback400TextResponse("'id_token' was not found in token"), nil
 	}
 	idToken, err := oidcVerifier.Verify(context.Background(), rawIdToken)
 	if err != nil {
 		return GetCallback400TextResponse(fmt.Sprintf("idToken verification failed: %s", err.Error())), nil
+	}
+	if idToken.Nonce != request.Params.Nonce {
+		return GetCallback400TextResponse("nonce did not match"), nil
 	}
 
 	// extract claims
@@ -280,7 +303,7 @@ func (i *IngestorWebServerImplemenation) GetCallback(ctx context.Context, reques
 	}{}
 	if err := idToken.Claims(&claims); err != nil {
 		return GetCallback400TextResponse("could not parse token claims"), nil
-	}*/
+	}
 
 	// return response
 	// create oauth token "DTO"

@@ -178,6 +178,12 @@ paths:
           schema:
             type: string
           description: "The state saved at login"
+        - name: nonce
+          in: cookie
+          required: true
+          schema:
+            type: string
+          description: "String value used to associate a Client session with an ID Token, and to mitigate replay attacks"
       responses:
         "200":
           description: "OIDC callback successful"
