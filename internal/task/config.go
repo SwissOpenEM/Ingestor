@@ -1,7 +1,7 @@
 package task
 
 type S3TransferConfig struct {
-	Endpoint string `string:"Endpoint"`
+	Endpoint string `string:"Endpoint" validate:"hostname_port"`
 	Bucket   string `string:"Bucket"`
 	Location string `string:"Location"`
 	User     string `string:"User"`
@@ -22,7 +22,7 @@ type GlobusTransferConfig struct {
 }
 
 type TransferConfig struct {
-	Method string               `string:"method"`
-	S3     S3TransferConfig     `mapstructure:"s3"`
-	Globus GlobusTransferConfig `mapstructure:"globus"`
+	Method string               `string:"Method" validate:"oneof=S3 Globus"`
+	S3     S3TransferConfig     `mapstructure:"S3"`
+	Globus GlobusTransferConfig `mapstructure:"Globus"`
 }
