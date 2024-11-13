@@ -207,21 +207,38 @@ func downloadExtractor(full_install_path string, config ExtractorConfig) error {
 	return nil
 }
 
-func (e *ExtractorHandler) Extractors() [](string) {
-	keys := maps.Keys(e.extractors)
-	return keys
+// SplitString split string with a rune comma ignore quoted
+func SplitString(str string, r rune) []string {
+	quoted := false
+	return strings.FieldsFunc(str, func(r1 rune) bool {
+		if r1 == '\'' {
+			quoted = !quoted
+		}
+		return !quoted && r1 == r
+	})
 }
 
 func buildCommandline(templ *template.Template, template_params ExtractorInvokationParameters) (string, []string, error) {
-	b := new(strings.Builder)
-	err := templ.Execute(b, template_params)
+	string_builder := new(strings.Builder)
+	err := templ.Execute(string_builder, template_params)
 	if err != nil {
 		panic(err)
 	}
-	cmdline := strings.TrimSpace(b.String())
+	cmdline := strings.TrimSpace(string_builder.String())
+
+	// in order to split cmdline template correctly, quotes are necessary
+	args := SplitString(cmdline, ' ')
+
+	// but when passing them to the process, quotes need to trimmed
+	for i, arg := range args {
+		args[i] = strings.TrimFunc(arg, func(r rune) bool {
+			return r == '\''
+		})
+	}
+
+	// args should be something like ["-i", "/path/to/file1", "-o", "/path/to/file2"]
 
 	binary_path := template_params.Executable
-	args := strings.Split(cmdline, " ")
 	return binary_path, args, nil
 }
 
@@ -290,9 +307,6 @@ func (e *ExtractorHandler) ExtractMetadata(extractor_name string, folder string,
 			fmt.Println(str)
 			return str, nil
 		}
-		return "", nil
-	} else {
-		slog.Error("Unknown extractor", "name", extractor_name)
-		return "", nil
-	}
+	slog.Error("Failed to run extractor", "errro", err)
+	return "", err
 }
