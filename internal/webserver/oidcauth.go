@@ -16,6 +16,11 @@ type tokenClaims struct {
 	Scope string `json:"scope"`
 }
 
+type loginFlowCookie struct {
+	State    []byte `json:"state"`
+	Verifier []byte `json:"verifier"`
+}
+
 var oidcVerifier *oidc.IDTokenVerifier
 
 func oidcAuthFunc(ctx context.Context, input *openapi3filter.AuthenticationInput) error {
@@ -68,11 +73,16 @@ func missingScopesCheck(missingScopes []string, methodName string) error {
 	return fmt.Errorf("missing scopes for \"%s\": %v", methodName, missingScopes)
 }
 
-func generateRandomString(len uint) (string, error) {
+func generateRandomByteSlice(len uint) ([]byte, error) {
 	b := make([]byte, len)
 	_, err := rand.Read(b)
 	if err != nil {
-		return "", err
+		return []byte{}, err
 	}
-	return base64.URLEncoding.EncodeToString(b), nil
+	return b, nil
+}
+
+func generateRandomString(len uint) (string, error) {
+	b, err := generateRandomByteSlice(len)
+	return base64.URLEncoding.EncodeToString(b), err
 }

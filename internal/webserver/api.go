@@ -6,10 +6,12 @@ package webserver
 
 import (
 	"context"
+	"crypto/aes"
+	"crypto/cipher"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"math"
-	"net/url"
 	"os"
 	"reflect"
 	"time"
@@ -28,6 +30,7 @@ type IngestorWebServerImplemenation struct {
 	oauth2Config *oauth2.Config
 	oidcProvider *oidc.Provider
 	oidcVerifier *oidc.IDTokenVerifier
+	aesgcm       cipher.AEAD
 }
 
 //	@contact.name	SwissOpenEM
@@ -50,12 +53,26 @@ func NewIngestorWebServer(version string, taskQueue *core.TaskQueue, oauth core.
 		RedirectURL:  oauth.RedirectURL,
 		Scopes:       append([]string{oidc.ScopeOpenID, "profile", "email"}, oauth.Scopes...),
 	}
+	key, err := generateRandomByteSlice(32)
+	if err != nil {
+		panic(err)
+	}
+	aes, err := aes.NewCipher(key)
+	if err != nil {
+		panic(err)
+	}
+	aesGcm, err := cipher.NewGCM(aes)
+	if err != nil {
+		panic(err)
+	}
+
 	return &IngestorWebServerImplemenation{
 		version:      version,
 		taskQueue:    taskQueue,
 		oauth2Config: &oauthConf,
 		oidcProvider: oidcProvider,
 		oidcVerifier: oidcVerifier,
+		aesgcm:       aesGcm,
 	}
 }
 
@@ -252,6 +269,28 @@ func (i *IngestorWebServerImplemenation) GetLogin(ctx context.Context, request G
 		return GetLogin302Response{}, err
 	}
 
+	// encrypt verifier
+	nonce1, err := generateRandomByteSlice(uint(i.aesgcm.NonceSize()))
+	if err != nil {
+		return GetLogin302Response{}, err
+	}
+	nonce2, err := generateRandomByteSlice(uint(i.aesgcm.NonceSize()))
+	if err != nil {
+		return GetLogin302Response{}, err
+	}
+	encState := i.aesgcm.Seal(nil, nonce1, []byte(state), nil)
+	encVerifier := i.aesgcm.Seal(nil, nonce2, []byte(verifier), nil)
+
+	// create cookie struct
+	cookie := loginFlowCookie{
+		State:    encState,
+		Verifier: encVerifier,
+	}
+	cookieJson, err := json.Marshal(cookie)
+	if err != nil {
+		return GetLogin302Response{}, err
+	}
+
 	// redirect to login page
 	return GetLogin302Response{
 		Headers: GetLogin302ResponseHeaders{
@@ -260,19 +299,45 @@ func (i *IngestorWebServerImplemenation) GetLogin(ctx context.Context, request G
 				oauth2.AccessTypeOffline,
 				oauth2.S256ChallengeOption(verifier),
 			),
-			SetCookie: fmt.Sprintf("saved-state=%s; HttpOnly; Max-Age=600", url.QueryEscape(state)),
+			SetCookie: fmt.Sprintf("security-cookie=%s; HttpOnly; Max-Age=600", base64.StdEncoding.EncodeToString(cookieJson)),
 		},
 	}, nil
 }
 
 func (i *IngestorWebServerImplemenation) GetCallback(ctx context.Context, request GetCallbackRequestObject) (GetCallbackResponseObject, error) {
 	// CSRF attack protection
-	if request.Params.State != request.Params.SavedState {
+	var cookie loginFlowCookie
+	cookieJson, err := base64.StdEncoding.DecodeString(request.Params.LoginFlowCookie)
+	if err != nil {
+		return GetCallback500Response{}, err
+	}
+	if err := json.Unmarshal(cookieJson, &cookie); err != nil {
+		return GetCallback400TextResponse(err.Error()), nil
+	}
+
+	// decrypt state & verifier
+	nonce, encState := cookie.Verifier[:i.aesgcm.NonceSize()], cookie.Verifier[i.aesgcm.NonceSize():]
+	state, err := i.aesgcm.Open(nil, nonce, encState, nil)
+	if err != nil {
+		return GetCallback500Response{}, err
+	}
+	nonce, encVerifier := cookie.Verifier[:i.aesgcm.NonceSize()], cookie.Verifier[i.aesgcm.NonceSize():]
+	verifier, err := i.aesgcm.Open(nil, nonce, encVerifier, nil)
+	if err != nil {
+		return GetCallback500Response{}, err
+	}
+
+	// verify state
+	if request.Params.State != string(state) {
 		return GetCallback400TextResponse("invalid state"), nil
 	}
 
 	// exchange authorization code for accessToken
-	oauthToken, err := i.oauth2Config.Exchange(context.Background(), request.Params.Code)
+	oauthToken, err := i.oauth2Config.Exchange(
+		context.Background(),
+		request.Params.Code,
+		oauth2.VerifierOption(string(verifier)),
+	)
 	if err != nil {
 		return GetCallback400TextResponse(fmt.Sprintf("code exchange failed: %s", err.Error())), nil
 	}

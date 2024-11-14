@@ -152,8 +152,8 @@ paths:
             Set-Cookie:
               schema:
                 type: string
-                example: saved-state=abcde; HttpOnly; 
-  
+                example: 'login-flow-cookie="{"state": "abc", "verifier": "abc"}"; HttpOnly;' 
+                description: the cookie value is percent encoded
   /callback:
     get:
       tags:
@@ -171,8 +171,8 @@ paths:
           required: true
           schema:
             type: string
-          description: "State parameter for CSRF protection"
-        - name: saved-state
+          description: "parameter for CSRF protection"
+        - name: login-flow-cookie
           in: cookie
           required: true
           schema:
