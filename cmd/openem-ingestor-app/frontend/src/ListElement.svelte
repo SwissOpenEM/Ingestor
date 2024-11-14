@@ -45,12 +45,11 @@
     >
   </div>
   <div class="path"></div>
-  <div>
+  <div class="textarea">
     <textarea class="textarea" bind:value={status} />
   </div>
   <div>
     <textarea class="textarea" bind:value={metadata} />
-    <textarea class="textarea" bind:value={status} />
   </div>
 </div>
 
@@ -60,6 +59,11 @@
     grid-template-columns: 5fr 2fr 2fr;
     grid-template-rows: 2;
     padding-right: 30px;
+    border-style: solid;
+    border-color: teal;
+    border-radius: 10pt;
+    padding: 10pt;
+    margin-bottom: 2pt;
   }
   .buttongrid {
     display: grid;
@@ -67,11 +71,13 @@
   }
   .path {
     text-align: left;
+    font-size: larger;
   }
   .textarea {
-    flex: 1;
-    width: 500px;
-    height: 300px;
+    color: teal;
+    flex-direction: column;
+    width: 100%;
+    height: 200px;
     align-self: left;
   }
 </style>
