@@ -21,19 +21,28 @@ import (
 	"runtime"
 	"strings"
 
+	b64 "encoding/base64"
+
 	"github.com/google/go-github/github"
 	"golift.io/xtractr"
 )
 
 type Method struct {
-	Name      string
-	Schema    string
+	// Id and display name of the method
+	Name string
+	// Base64 encoded schema
+	Schema string
+	// Id and name of the corresponding extractor
 	Extractor string
 }
 
 type Extractor struct {
+	// Path or command to executable
 	ExecutablePath string
-	templ          *template.Template
+	// Template of the command line passed to the executable. Will be split into a list of args.
+	// It is expected to contain '{{.SourceFolder}}', '{{.OutputFile}}' and if applicable '{{.AdditionalParameters}}'
+	templ *template.Template
+	// Additional args as string
 	AdditionalArgs string
 	Version        string
 }
@@ -45,6 +54,7 @@ type ExtractorInvokationParameters struct {
 	AdditionalParameters string
 }
 
+// Struct to store methods and extractors
 type ExtractorHandler struct {
 	methods      map[string]Method
 	extractors   map[string]Extractor
@@ -56,6 +66,12 @@ func IsValidJSON(str string) bool {
 	return json.Unmarshal([]byte(str), &js) == nil
 }
 
+// Creates a new extractor handler by reading the config files and
+// - download missing extractors (optional)
+// - verify extractors
+// - verify the template command line to invoke the extractor
+// - register methods of the extractor in a global map
+// - read and validate the schemas associated with the methods
 func NewExtractorHandler(config ExtractorsConfig) *ExtractorHandler {
 	h := ExtractorHandler{
 		outputFolder: path.Join(os.TempDir(), "openem-ingestor", "metadata-extractor"),
@@ -113,7 +129,7 @@ func NewExtractorHandler(config ExtractorsConfig) *ExtractorHandler {
 
 			h.methods[m.Name] = Method{
 				Name:      m.Name,
-				Schema:    string(schema),
+				Schema:    b64.StdEncoding.EncodeToString(schema),
 				Extractor: extractorConfig.Name,
 			}
 		}
@@ -357,6 +373,10 @@ func (e *ExtractorHandler) ExtractMetadata(method_name string, folder string, ou
 	if err != nil {
 		slog.Error("Failed to create folder", "folder", path.Dir(output_file))
 		return "", err
+	}
+
+	if _, err := os.Stat(output_file); err == nil {
+		os.Remove(output_file)
 	}
 
 	params := ExtractorInvokationParameters{

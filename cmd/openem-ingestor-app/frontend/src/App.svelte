@@ -54,12 +54,14 @@
   }
 
   let extractors = ["No extractors found"];
+  let schemas = {};
 
   async function refreshExtractors() {
     AvailableMethods().then((a) => {
       extractors = [];
       a.forEach((element) => {
         extractors.push(element.Name);
+        schemas[element.Name] = atob(element.Schema);
       });
       if (extractors.length > 0) selected_extractor = extractors[0];
       else selected_extractor = ["No extractors found"];
@@ -129,6 +131,12 @@
     </select>
     <button class="btn" on:click={refreshExtractors}> Refresh </button>
   </div>
+  <div>
+    <textarea
+      style="height:200px; width:400px"
+      bind:value={schemas[selected_extractor]}
+    />
+  </div>
 
   <h3>Datasets</h3>
   <button class="btn" on:click={selectFolder}>Select Folder</button>
@@ -150,48 +158,5 @@
     background-repeat: no-repeat;
     background-size: 100% 100%;
     background-origin: content-box;
-  }
-
-  .result {
-    height: 20px;
-    line-height: 20px;
-    margin: 1.5rem auto;
-  }
-
-  .input-box .btn {
-    width: 60px;
-    height: 30px;
-    line-height: 30px;
-    border-radius: 3px;
-    border: none;
-    margin: 0 0 0 20px;
-    padding: 0 8px;
-    cursor: pointer;
-  }
-
-  .input-box .btn:hover {
-    background-image: linear-gradient(to top, #cfd9df 0%, #e2ebf0 100%);
-    color: #333333;
-  }
-
-  .input-box .input {
-    border: none;
-    border-radius: 3px;
-    outline: none;
-    height: 30px;
-    line-height: 30px;
-    padding: 0 10px;
-    background-color: rgba(240, 240, 240, 1);
-    -webkit-font-smoothing: antialiased;
-  }
-
-  .input-box .input:hover {
-    border: none;
-    background-color: rgba(255, 255, 255, 1);
-  }
-
-  .input-box .input:focus {
-    border: none;
-    background-color: rgba(255, 255, 255, 1);
   }
 </style>
