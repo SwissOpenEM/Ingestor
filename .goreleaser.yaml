@@ -104,6 +104,7 @@ archives:
       dst: ./
     - src: configs/schemas/*.json
       dst: schemas
+      
 changelog:
   sort: asc
   filters:
