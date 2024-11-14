@@ -37,6 +37,7 @@ builds:
     goos:
       - linux
       - windows
+      - darwin
     goarch:
       - amd64
     main: .
@@ -44,27 +45,29 @@ builds:
     gobinary: echo 
 
 
-  # TODO: add service build
-  # - id: "openem-ingestor-service"
-  #   flags:
-  #     - -trimpath
-  #   ldflags:
-  #     - "-s -w  -X 'main.version={{.Version}}'"
-  #   env:
-  #     - CGO_ENABLED=0
-  #   dir: ./cmd/openem-ingestor-service
-  #   goos:
-  #     - linux
-  #   goarch:
-  #     - amd64
-  #   main: .
-  #   binary: openem-ingestor-service
+  - id: "openem-ingestor-service"
+    flags:
+      - -trimpath
+    ldflags:
+      - "-s -w  -X 'main.version={{.Version}}'"
+    env:
+      - CGO_ENABLED=0
+    dir: ./cmd/openem-ingestor-service
+    goos:
+      - linux
+    goarch:
+      - amd64
+    binary: openem-ingestor-service
 
 archives:
-  - format: tar.gz
+  - id: "openem-ingestor-app"
+    builds: 
+      - openem-ingestor-app
+    format: tar.gz
+
     wrap_in_directory: true
     name_template: >-
-      {{ .ProjectName }}_
+      {{ .ProjectName }}_app_
       {{- .Version }}_
       {{- title .Os }}_
       {{- if eq .Arch "amd64" }}x86_64
@@ -76,7 +79,30 @@ archives:
       - goos: windows
         format: zip
     files:
-    - configs/*.yaml
+    - src: configs/*.yaml
+      dst: ./
+    - src: configs/schemas/*.json
+      dst: schemas
+
+  - id: "openem-ingestor-service"
+    builds: 
+      - openem-ingestor-service
+    format: tar.gz
+
+    wrap_in_directory: true
+    name_template: >-
+      {{ .ProjectName }}_service_
+      {{- .Version }}_
+      {{- title .Os }}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else if eq .Arch "386" }}i386
+      {{- else }}{{ .Arch }}{{ end }}
+      {{- if .Arm }}v{{ .Arm }}{{ end }}
+    files:
+    - src: configs/*.yaml
+      dst: ./
+    - src: configs/schemas/*.json
+      dst: schemas
 changelog:
   sort: asc
   filters:
