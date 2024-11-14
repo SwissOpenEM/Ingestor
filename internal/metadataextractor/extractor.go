@@ -6,6 +6,7 @@ import (
 	"crypto/md5"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"html/template"
@@ -21,9 +22,14 @@ import (
 	"strings"
 
 	"github.com/google/go-github/github"
-	"golang.org/x/exp/maps"
 	"golift.io/xtractr"
 )
+
+type Method struct {
+	Name      string
+	Schema    string
+	Extractor string
+}
 
 type Extractor struct {
 	ExecutablePath string
@@ -40,14 +46,21 @@ type ExtractorInvokationParameters struct {
 }
 
 type ExtractorHandler struct {
+	methods      map[string]Method
 	extractors   map[string]Extractor
 	outputFolder string
+}
+
+func IsValidJSON(str string) bool {
+	var js json.RawMessage
+	return json.Unmarshal([]byte(str), &js) == nil
 }
 
 func NewExtractorHandler(config ExtractorsConfig) *ExtractorHandler {
 	h := ExtractorHandler{
 		outputFolder: path.Join(os.TempDir(), "openem-ingestor", "metadata-extractor"),
 		extractors:   map[string]Extractor{},
+		methods:      map[string]Method{},
 	}
 
 	for _, extractorConfig := range config.Extractors {
@@ -62,6 +75,7 @@ func NewExtractorHandler(config ExtractorsConfig) *ExtractorHandler {
 				continue
 			}
 		}
+
 		if err := verifyInstallation(full_install_path, extractorConfig); err != nil {
 			slog.Error("Installation verification failed", "error", err.Error(), "name", extractorConfig.Name, "path", full_install_path)
 			continue
@@ -71,6 +85,37 @@ func NewExtractorHandler(config ExtractorsConfig) *ExtractorHandler {
 		if err != nil {
 			slog.Error("Failed to parse extractor commandline template", "name", extractorConfig.Name, "template", extractorConfig.CommandLineTemplate)
 			continue
+		}
+
+		for _, m := range extractorConfig.Methods {
+			if _, exists := h.methods[m.Name]; exists {
+				slog.Error("Duplicate method name found. Skipping.", "method", m.Name)
+				continue
+			}
+
+			schemaPath := path.Join(config.SchemasLocation, m.Schema)
+
+			if _, err := os.Stat(schemaPath); errors.Is(err, os.ErrNotExist) {
+				slog.Error("Schema file not found. Skipping.", "method", m.Name, "file", schemaPath)
+				continue
+			}
+
+			schema, err := os.ReadFile(schemaPath)
+			if err != nil {
+				slog.Error("Failed to read schema file. Skipping.", "method", m.Name, "file", schemaPath, "error", err.Error())
+				continue
+			}
+
+			if !IsValidJSON(string(schema)) {
+				slog.Error("Schema file does not contain valid json. Skipping.", "method", m.Name, "schema", m.Schema)
+				continue
+			}
+
+			h.methods[m.Name] = Method{
+				Name:      m.Name,
+				Schema:    string(schema),
+				Extractor: extractorConfig.Name,
+			}
 		}
 
 		h.extractors[extractorConfig.Name] = Extractor{
@@ -99,8 +144,6 @@ func MetadataFilePath(folder string) string {
 	hashed_folder := hex.EncodeToString(hasher.Sum(nil))
 	return path.Join(os.TempDir(), "openem", "metadata", fmt.Sprintf("%s.json", hashed_folder))
 }
-
-// install if not exist
 
 func downloadRelease(github_org string, github_proj string, version string, targetFolder string) (string, error) {
 	client := github.NewClient(nil)
@@ -207,6 +250,26 @@ func downloadExtractor(full_install_path string, config ExtractorConfig) error {
 	return nil
 }
 
+type MethodAndSchema struct {
+	Name   string
+	Schema string
+}
+
+func (e *ExtractorHandler) AvailableMethods() []MethodAndSchema {
+	methods := []MethodAndSchema{}
+	if e == nil {
+		return methods
+	}
+
+	for k, v := range e.methods {
+		methods = append(methods, MethodAndSchema{
+			k,
+			v.Schema,
+		})
+	}
+	return methods
+}
+
 // SplitString split string with a rune comma ignore quoted
 func SplitString(str string, r rune) []string {
 	quoted := false
@@ -276,37 +339,52 @@ func runExtractor(executable string, args []string, stdout_callback outputCallba
 	return err
 }
 
-func (e *ExtractorHandler) ExtractMetadata(extractor_name string, folder string, output_file string, stdout_callback outputCallback, stderr_callback outputCallback) (string, error) {
-	if extractor, ok := e.extractors[extractor_name]; ok {
+func (e *ExtractorHandler) ExtractMetadata(method_name string, folder string, output_file string, stdout_callback outputCallback, stderr_callback outputCallback) (string, error) {
+	method, ok := e.methods[method_name]
 
-		err := os.MkdirAll(path.Dir(output_file), 0777)
+	if !ok {
+		slog.Error("Method not found.", "method", method_name)
+		return "", nil
+	}
+
+	extractor, ok := e.extractors[method.Extractor]
+	if !ok {
+		slog.Error("Extractor not found.", "method", method_name)
+		return "", nil
+	}
+
+	err := os.MkdirAll(path.Dir(output_file), 0777)
+	if err != nil {
+		slog.Error("Failed to create folder", "folder", path.Dir(output_file))
+		return "", err
+	}
+
+	params := ExtractorInvokationParameters{
+		Executable:           extractor.ExecutablePath,
+		SourceFolder:         folder,
+		OutputFile:           output_file,
+		AdditionalParameters: extractor.AdditionalArgs,
+	}
+
+	binary_path, args, err := buildCommandline(extractor.templ, params)
+	if err != nil {
+		return "", err
+	}
+
+	if err := runExtractor(binary_path, args, stdout_callback, stderr_callback); err == nil {
+		b, err := os.ReadFile(output_file)
 		if err != nil {
-			slog.Error("Failed to create folder", "folder", path.Dir(output_file))
+			slog.Error("Failed to read file", "file", output_file)
 			return "", err
 		}
+		str := string(b)
 
-		params := ExtractorInvokationParameters{
-			Executable:           extractor.ExecutablePath,
-			SourceFolder:         folder,
-			OutputFile:           output_file,
-			AdditionalParameters: extractor.AdditionalArgs,
-		}
-
-		binary_path, args, err := buildCommandline(extractor.templ, params)
-		if err != nil {
+		if !IsValidJSON(str) {
+			slog.Error("Extractor did not produce valid json metadata", "file", output_file, "metadata", str)
 			return "", err
 		}
-
-		if err := runExtractor(binary_path, args, stdout_callback, stderr_callback); err == nil {
-			b, err := os.ReadFile(output_file)
-			if err != nil {
-				slog.Error("Failed to read file", "file", output_file)
-				return "", err
-			}
-			str := string(b)
-			fmt.Println(str)
-			return str, nil
-		}
-	slog.Error("Failed to run extractor", "errro", err)
+		return str, nil
+	}
+	slog.Error("Failed to run extractor", "error", err)
 	return "", err
 }

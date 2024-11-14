@@ -130,12 +130,33 @@ func (a *App) ExtractMetadata(extractor_name string, id uuid.UUID) string {
 	metadata, err := a.extractorHandler.ExtractMetadata(extractor_name, folder, outputfile, func(message string) { log_message(id, message) }, func(message string) { log_error(id, message) })
 	if err != nil {
 		slog.Error("Metadata extraction failed", "error", err.Error())
+		return "{\"status\":\"failed\"}"
 	}
 	return metadata
 }
 
-func (a *App) AvailableExtractors() []string {
-	return a.extractorHandler.Extractors()
+type ExtractionMethod struct {
+	Name   string
+	Schema string
+}
+
+func (e *ExtractionMethod) GetName() string {
+	return e.Name
+}
+
+func (e *ExtractionMethod) GetSchema() string {
+	return e.Schema
+}
+
+func (a *App) AvailableMethods() []ExtractionMethod {
+	e := []ExtractionMethod{}
+	for _, ex := range a.extractorHandler.AvailableMethods() {
+		e = append(e, ExtractionMethod{
+			Name:   ex.Name,
+			Schema: ex.Schema,
+		})
+	}
+	return e
 }
 
 func (a *App) CancelTask(id uuid.UUID) {
