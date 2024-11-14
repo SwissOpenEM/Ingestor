@@ -31,34 +31,18 @@ builds:
           cmd: wails build -platform {{ .Os }} -clean -ldflags "-s -w  -X 'main.version={{.Version}}'" -trimpath -o {{base .Path}}
           output: true
         - dir: cmd/openem-ingestor-app
-          cmd: cp build/bin/{{base .Path}} {{dir .Path}}/
+          cmd: cp build/bin/openem-ingestor-app.app/Contents/MacOS/{{base .Path}} {{dir .Path}}/
           output: true
     env:
       - CGO_ENABLED=0
     dir: ./cmd/openem-ingestor-app
     goos:
-      - linux
-      - windows
+      - darwin
     goarch:
       - amd64
     main: .
     binary: openem-ingestor-app
     gobinary: echo 
-
-
-  - id: "openem-ingestor-service"
-    flags:
-      - -trimpath
-    ldflags:
-      - "-s -w  -X 'main.version={{.Version}}'"
-    env:
-      - CGO_ENABLED=0
-    dir: ./cmd/openem-ingestor-service
-    goos:
-      - linux
-    goarch:
-      - amd64
-    binary: openem-ingestor-service
 
 archives:
   - id: "openem-ingestor-app"
@@ -76,34 +60,12 @@ archives:
       {{- else }}{{ .Arch }}{{ end }}
       {{- if .Arm }}v{{ .Arm }}{{ end }}
     # use zip for windows archives
-    format_overrides:
-      - goos: windows
-        format: zip
     files:
     - src: configs/*.yaml
       dst: ./
     - src: configs/schemas/*.json
       dst: schemas
 
-  - id: "openem-ingestor-service"
-    builds: 
-      - openem-ingestor-service
-    format: tar.gz
-
-    wrap_in_directory: true
-    name_template: >-
-      {{ .ProjectName }}_service_
-      {{- .Version }}_
-      {{- title .Os }}_
-      {{- if eq .Arch "amd64" }}x86_64
-      {{- else if eq .Arch "386" }}i386
-      {{- else }}{{ .Arch }}{{ end }}
-      {{- if .Arm }}v{{ .Arm }}{{ end }}
-    files:
-    - src: configs/*.yaml
-      dst: ./
-    - src: configs/schemas/*.json
-      dst: schemas
 changelog:
   sort: asc
   filters:
