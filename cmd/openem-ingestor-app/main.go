@@ -57,6 +57,7 @@ func main() {
 		OnBeforeClose:    app.beforeClose,
 		Bind: []interface{}{
 			app,
+			&ExtractionMethod{},
 		},
 		Linux: &linux.Options{
 			Icon:                icon,

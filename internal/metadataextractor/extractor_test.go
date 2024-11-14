@@ -163,8 +163,8 @@ func TestExtractorHandler_Extractors(t *testing.T) {
 				extractors:   tt.fields.extractors,
 				outputFolder: tt.fields.outputFolder,
 			}
-			if got := e.Extractors(); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("ExtractorHandler.Extractors() = %v, want %v", got, tt.want)
+			if got := e.AvailableMethods(); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("ExtractorHandler.AvailableMethods() = %v, want %v", got, tt.want)
 			}
 		})
 	}
