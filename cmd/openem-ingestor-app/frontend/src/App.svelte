@@ -6,7 +6,7 @@
     CancelTask,
     RemoveTask,
     ScheduleTask,
-    AvailableExtractors,
+    AvailableMethods,
   } from "../wailsjs/go/main/App.js";
   import { EventsOn } from "../wailsjs/runtime/runtime";
   import List from "./List.svelte";
@@ -56,8 +56,11 @@
   let extractors = ["No extractors found"];
 
   async function refreshExtractors() {
-    AvailableExtractors().then((a) => {
-      extractors = a;
+    AvailableMethods().then((a) => {
+      extractors = [];
+      a.forEach((element) => {
+        extractors.push(element.Name);
+      });
       if (extractors.length > 0) selected_extractor = extractors[0];
       else selected_extractor = ["No extractors found"];
     });
