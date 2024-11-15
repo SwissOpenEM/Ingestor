@@ -40,10 +40,14 @@ builds:
       - darwin
     goarch:
       - amd64
+      - arm64
     main: .
     binary: openem-ingestor-app
     gobinary: echo 
 
+universal_binaries:
+  - replace: true
+  
 archives:
   - id: "openem-ingestor-app"
     builds: 
