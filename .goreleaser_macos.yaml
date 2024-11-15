@@ -39,15 +39,21 @@ builds:
     goos:
       - darwin
     goarch:
-      - amd64
+      - universal
     main: .
     binary: openem-ingestor-app
     gobinary: echo 
 
+universal_binaries:
+  - ids:
+    - openem-ingestor-app
+    replace: true
+    id: universal_binary
+  
 archives:
   - id: "openem-ingestor-app"
     builds: 
-      - openem-ingestor-app
+      - universal_binary
     format: tar.gz
 
     wrap_in_directory: true
