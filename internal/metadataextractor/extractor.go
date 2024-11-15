@@ -19,6 +19,7 @@ import (
 	"path"
 	"regexp"
 	"runtime"
+	"sort"
 	"strings"
 
 	b64 "encoding/base64"
@@ -283,6 +284,10 @@ func (e *ExtractorHandler) AvailableMethods() []MethodAndSchema {
 			v.Schema,
 		})
 	}
+
+	sort.SliceStable(methods, func(i, j int) bool {
+		return methods[i].Name < methods[j].Name
+	})
 	return methods
 }
 
