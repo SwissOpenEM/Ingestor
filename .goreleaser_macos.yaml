@@ -20,7 +20,7 @@ before:
     # you may remove this if you don't need go generate
     - go generate ./...
 
-builds:
+universal_binaries:
   # The app build is invoked via wails and binary copied manually to the expected output folder
   - id: "openem-ingestor-app"
     hooks:
@@ -40,9 +40,11 @@ builds:
       - darwin
     goarch:
       - amd64
+      - arm64
     main: .
     binary: openem-ingestor-app
     gobinary: echo 
+    replace: true
 
 archives:
   - id: "openem-ingestor-app"
