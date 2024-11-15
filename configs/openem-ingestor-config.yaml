@@ -30,8 +30,8 @@ MetadataExtractors:
       - Name: Single Particle
         Schema: oscem_schemas.schema.json
       - Name: Cellular Tomography
-        Schema: oscem_schemas.schema.json
+        Schema: oscem_cellular_tomo.json
       - Name: Tomography
-        Schema: oscem_schemas.schema.json
+        Schema: oscem_tomo.json
       - Name: EnvironmentalTomography
-        Schema: oscem_schemas.schema.json
+        Schema: oscem_env_tomo.json
