@@ -1,13 +1,13 @@
 package metadataextractor
 
 import (
+	b64 "encoding/base64"
 	"html/template"
+	"log"
 	"os"
 	"path"
 	"reflect"
 	"testing"
-
-	"github.com/labstack/gommon/log"
 )
 
 func TestNewExtractorHandler(t *testing.T) {
@@ -79,90 +79,121 @@ func Test_downloadRelease(t *testing.T) {
 	}
 }
 
-func Test_verifyFile(t *testing.T) {
-	type args struct {
-		file_path string
-		config    ExtractorConfig
-	}
-	tests := []struct {
-		name    string
-		args    args
-		want    bool
-		want1   string
-		wantErr bool
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, got1, err := verifyFile(tt.args.file_path, tt.args.config)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("verifyFile() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if got != tt.want {
-				t.Errorf("verifyFile() got = %v, want %v", got, tt.want)
-			}
-			if got1 != tt.want1 {
-				t.Errorf("verifyFile() got1 = %v, want %v", got1, tt.want1)
-			}
-		})
-	}
-}
+func TestExtractorHandler_Methods(t *testing.T) {
 
-func Test_downloadExtractor(t *testing.T) {
-	t.SkipNow()
-	type args struct {
-		full_install_path string
-		config            ExtractorConfig
-	}
-	tests := []struct {
-		name    string
-		args    args
-		wantErr bool
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if err := downloadExtractor(tt.args.full_install_path, tt.args.config); (err != nil) != tt.wantErr {
-				t.Errorf("downloadExtractor() error = %v, wantErr %v", err, tt.wantErr)
-			}
-		})
-	}
-}
+	// create mock schemas
+	schemaPath := path.Join(t.TempDir(), "testSchema.json")
+	testSchema := "{\"name\":\"testSchema\"}"
+	//nolint:all
+	os.WriteFile(schemaPath, []byte(testSchema), 0644)
 
-func TestExtractorHandler_Extractors(t *testing.T) {
+	// create mock extractors
+	extractorsPath := t.TempDir()
+
+	ex1 := path.Join(extractorsPath, "ex1")
+	//nolint:all
+	os.WriteFile(ex1, []byte(""), 0644)
+
+	ex2 := path.Join(extractorsPath, "ex2")
+	//nolint:all
+	os.WriteFile(ex2, []byte(""), 0644)
+
 	type fields struct {
-		extractors   map[string]Extractor
-		outputFolder string
+		config ExtractorsConfig
 	}
 	tests := []struct {
 		name   string
 		fields fields
-		want   [](string)
+		want   [](MethodAndSchema)
 	}{
 		{
-			name: "TestExtractorHandler_Extractors",
+			name: "TestExtractorHandler_Methods",
 			fields: fields{
-				extractors: map[string]Extractor{
-					"ext1": {},
-					"ext2": {},
+				config: ExtractorsConfig{
+					DownloadMissingExtractors: false,
+					SchemasLocation:           path.Dir(schemaPath),
+					InstallationPath:          extractorsPath,
+					Extractors: []ExtractorConfig{
+						{
+							Name:                "ex1",
+							Executable:          "ex1",
+							CommandLineTemplate: "",
+							Methods: []MethodConfig{
+								{Name: "ex1_method1", Schema: path.Base(schemaPath)},
+								{Name: "ex1_method2", Schema: path.Base(schemaPath)},
+							},
+						},
+						{
+							Name:                "ex2",
+							Executable:          "ex2",
+							CommandLineTemplate: "",
+							Methods: []MethodConfig{
+								{Name: "ex2_method1", Schema: path.Base(schemaPath)},
+								{Name: "ex2_method2", Schema: path.Base(schemaPath)},
+							},
+						},
+					},
 				},
-				outputFolder: "/some/path",
 			},
-			want: []string{
-				"ext1",
-				"ext2",
+			want: []MethodAndSchema{
+				{
+					Name:   "ex1_method1",
+					Schema: b64.StdEncoding.EncodeToString([]byte(testSchema)),
+				},
+				{
+					Name:   "ex1_method2",
+					Schema: b64.StdEncoding.EncodeToString([]byte(testSchema)),
+				},
+				{
+					Name:   "ex2_method1",
+					Schema: b64.StdEncoding.EncodeToString([]byte(testSchema)),
+				},
+				{
+					Name:   "ex2_method2",
+					Schema: b64.StdEncoding.EncodeToString([]byte(testSchema)),
+				},
+			},
+		},
+		{
+			name: "TestExtractorHandler_Methods_Collision",
+			fields: fields{
+				config: ExtractorsConfig{
+					DownloadMissingExtractors: false,
+					SchemasLocation:           path.Dir(schemaPath),
+					InstallationPath:          extractorsPath,
+					Extractors: []ExtractorConfig{
+						{
+							Name:                "ex1",
+							Executable:          "ex1",
+							CommandLineTemplate: "",
+							Methods: []MethodConfig{
+								{Name: "ex1_method1", Schema: path.Base(schemaPath)},
+							},
+						},
+						{
+							Name:                "ex2",
+							Executable:          "ex2",
+							CommandLineTemplate: "",
+							Methods: []MethodConfig{
+								{Name: "ex1_method1", Schema: path.Base(schemaPath)},
+							},
+						},
+					},
+				},
+			},
+			want: []MethodAndSchema{
+				{
+					Name:   "ex1_method1",
+					Schema: b64.StdEncoding.EncodeToString([]byte(testSchema)),
+				},
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			e := &ExtractorHandler{
-				extractors:   tt.fields.extractors,
-				outputFolder: tt.fields.outputFolder,
-			}
+			e := NewExtractorHandler(
+				tt.fields.config,
+			)
 			if got := e.AvailableMethods(); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("ExtractorHandler.AvailableMethods() = %v, want %v", got, tt.want)
 			}
@@ -240,8 +271,8 @@ func Test_buildCommandline(t *testing.T) {
 	}
 }
 
-func stdout_callback(m string) { log.Info(m) }
-func stderr_callback(m string) { log.Error(m) }
+func stdout_callback(m string) { log.Print(m) }
+func stderr_callback(m string) { log.Print(m) }
 
 func Test_runExtractor(t *testing.T) {
 	type args struct {
@@ -326,6 +357,46 @@ func TestExtractorHandler_ExtractMetadata(t *testing.T) {
 			}
 			if got != tt.want {
 				t.Errorf("ExtractorHandler.ExtractMetadata() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestSplitString(t *testing.T) {
+	type args struct {
+		str string
+		r   rune
+	}
+	tests := []struct {
+		name string
+		args args
+		want []string
+	}{
+		{
+			name: "No whitespace",
+			args: args{
+				str: "-i 'filename_without_whitespace' -o 'filename'",
+				r:   ' ',
+			},
+			want: []string{
+				"-i", "'filename_without_whitespace'", "-o", "'filename'",
+			},
+		},
+		{
+			name: "With whitespace",
+			args: args{
+				str: "-i 'filename with whitespaces' -o 'filename'",
+				r:   ' ',
+			},
+			want: []string{
+				"-i", "'filename with whitespaces'", "-o", "'filename'",
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := SplitString(tt.args.str, tt.args.r); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("SplitString() = %v, want %v", got, tt.want)
 			}
 		})
 	}
