@@ -2,7 +2,7 @@ Scicat:
   Host: http://scicat:8080/api/v3
   AccessToken: "token"
 Transfer:
-  Method: Globus
+  Method: S3
   S3:
     Endpoint: s3:9000
     Bucket: landingzone
@@ -10,19 +10,13 @@ Transfer:
     Location: "eu-west-1"
     User: "minio_user"
     Password: "minio_pass"
-  Globus:
-    ClientID: ""
-    ClientSecret: ""
-    RedirectURL: ""
-    Scopes: []
-    SourceCollection: ""
-    SourcePrefixPath: ""
-    DestinationCollection: ""
-    DestinationPrefixPath: ""
 Misc:
   ConcurrencyLimit: 2
   Port: 8888
 MetadataExtractors:
+  InstallationPath: ./extractors/
+  SchemasLocation: ./schemas/
+  DownloadMissingExtractors: true
   Extractors:
   - Name: LS
     GithubOrg: SwissOpenEM
@@ -31,6 +25,13 @@ MetadataExtractors:
     Executable: LS_Metadata_reader
     Checksum: 1c552f222df836cb617ec228cb01859dfcf933776a235fd35f702be4b70031c9 
     ChecksumAlg: sha256
-    CommandLineTemplate: "-i {{.SourceFolder}} -o {{.OutputFile}}"
-  MetadataExtractorsLocation: ./parentPathToAllExtractors/
-  Default: LS
+    CommandLineTemplate: "-i '{{.SourceFolder}}' -o '{{.OutputFile}}'"
+    Methods:
+      - Name: Single Particle
+        Schema: oscem_schemas.schema.json
+      - Name: Cellular Tomography
+        Schema: oscem_schemas.schema.json
+      - Name: Tomography
+        Schema: oscem_schemas.schema.json
+      - Name: EnvironmentalTomography
+        Schema: oscem_schemas.schema.json
