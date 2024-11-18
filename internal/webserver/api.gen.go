@@ -14,7 +14,6 @@ import (
 	"net/url"
 	"path"
 	"strings"
-	"time"
 
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/gin-gonic/gin"
@@ -75,41 +74,13 @@ type IngestorUiPostDatasetResponse struct {
 	Status *string `json:"status,omitempty"`
 }
 
-// OidcCallbackOk defines model for OidcCallbackOk.
-type OidcCallbackOk struct {
-	// OAuth2Token Oauth2 Token object
-	OAuth2Token struct {
-		AccessToken  string     `json:"access_token"`
-		ExpiresIn    *int64     `json:"expires_in,omitempty"`
-		Expiry       *time.Time `json:"expiry,omitempty"`
-		RefreshToken *string    `json:"refresh_token,omitempty"`
-		TokenType    *string    `json:"token_type,omitempty"`
-	} `json:"OAuth2Token"`
-
-	// UserInfo OIDC UserInfo object
-	UserInfo struct {
-		Email         string `json:"email"`
-		EmailVerified bool   `json:"email_verified"`
-		Profile       string `json:"profile"`
-
-		// Sub subject of user
-		Sub string `json:"sub"`
-	} `json:"UserInfo"`
-}
-
 // GetCallbackParams defines parameters for GetCallback.
 type GetCallbackParams struct {
 	// Code For handling the authorization code received from the OIDC provider
 	Code string `form:"code" json:"code"`
 
-	// State State parameter for CSRF protection
+	// State parameter for CSRF protection
 	State string `form:"state" json:"state"`
-
-	// LoginFlowCookie The state saved at login
-	LoginFlowCookie string `form:"login-flow-cookie" json:"login-flow-cookie"`
-
-	// Nonce String value used to associate a Client session with an ID Token, and to mitigate replay attacks
-	Nonce string `form:"nonce" json:"nonce"`
 }
 
 // TransferControllerGetTransferParams defines parameters for TransferControllerGetTransfer.
@@ -161,8 +132,6 @@ func (siw *ServerInterfaceWrapper) GetCallback(c *gin.Context) {
 
 	var err error
 
-	c.Set(OpenIDScopes, []string{"ingestor_read", "ingestor_write", "admin"})
-
 	// Parameter object where we will unmarshal all parameters from the context
 	var params GetCallbackParams
 
@@ -196,42 +165,6 @@ func (siw *ServerInterfaceWrapper) GetCallback(c *gin.Context) {
 		return
 	}
 
-	{
-		var cookie string
-
-		if cookie, err = c.Cookie("login-flow-cookie"); err == nil {
-			var value string
-			err = runtime.BindStyledParameterWithOptions("simple", "login-flow-cookie", cookie, &value, runtime.BindStyledParameterOptions{Explode: true, Required: true})
-			if err != nil {
-				siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter login-flow-cookie: %w", err), http.StatusBadRequest)
-				return
-			}
-			params.LoginFlowCookie = value
-
-		} else {
-			siw.ErrorHandler(c, fmt.Errorf("Query argument login-flow-cookie is required, but not found"), http.StatusBadRequest)
-			return
-		}
-	}
-
-	{
-		var cookie string
-
-		if cookie, err = c.Cookie("nonce"); err == nil {
-			var value string
-			err = runtime.BindStyledParameterWithOptions("simple", "nonce", cookie, &value, runtime.BindStyledParameterOptions{Explode: true, Required: true})
-			if err != nil {
-				siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter nonce: %w", err), http.StatusBadRequest)
-				return
-			}
-			params.Nonce = value
-
-		} else {
-			siw.ErrorHandler(c, fmt.Errorf("Query argument nonce is required, but not found"), http.StatusBadRequest)
-			return
-		}
-	}
-
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
 		if c.IsAborted() {
@@ -259,8 +192,6 @@ func (siw *ServerInterfaceWrapper) DatasetControllerIngestDataset(c *gin.Context
 
 // GetLogin operation middleware
 func (siw *ServerInterfaceWrapper) GetLogin(c *gin.Context) {
-
-	c.Set(OpenIDScopes, []string{"ingestor_read", "ingestor_write", "admin"})
 
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
@@ -387,13 +318,18 @@ type GetCallbackResponseObject interface {
 	VisitGetCallbackResponse(w http.ResponseWriter) error
 }
 
-type GetCallback200JSONResponse OidcCallbackOk
+type GetCallback302ResponseHeaders struct {
+	Location string
+}
 
-func (response GetCallback200JSONResponse) VisitGetCallbackResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
+type GetCallback302Response struct {
+	Headers GetCallback302ResponseHeaders
+}
 
-	return json.NewEncoder(w).Encode(response)
+func (response GetCallback302Response) VisitGetCallbackResponse(w http.ResponseWriter) error {
+	w.Header().Set("location", fmt.Sprint(response.Headers.Location))
+	w.WriteHeader(302)
+	return nil
 }
 
 type GetCallback400TextResponse string
@@ -449,8 +385,7 @@ type GetLoginResponseObject interface {
 }
 
 type GetLogin302ResponseHeaders struct {
-	SetCookie string
-	Location  string
+	Location string
 }
 
 type GetLogin302Response struct {
@@ -458,7 +393,6 @@ type GetLogin302Response struct {
 }
 
 func (response GetLogin302Response) VisitGetLoginResponse(w http.ResponseWriter) error {
-	w.Header().Set("Set-Cookie", fmt.Sprint(response.Headers.SetCookie))
 	w.Header().Set("location", fmt.Sprint(response.Headers.Location))
 	w.WriteHeader(302)
 	return nil
@@ -741,36 +675,31 @@ func (sh *strictHandler) OtherControllerGetVersion(ctx *gin.Context) {
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
+	"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",
+	"pxPN1Tnd3e7+CgAA//8mu0Ag7xUAAA==",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

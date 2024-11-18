@@ -139,25 +139,23 @@ paths:
     get:
       tags:
         - authentication
+      security: []
       summary: "OIDC login"
       description: "Initiates the OIDC authorization flow."
       responses:
-        '302':
+        "302":
           description: "Redirect to OIDC provider for atuhentication"
           headers:
             location:
               description: "redirect"
               schema:
                 type: string
-            Set-Cookie:
-              schema:
-                type: string
-                example: 'login-flow-cookie="{"state": "abc", "verifier": "abc"}"; HttpOnly;' 
-                description: the cookie value is percent encoded
+
   /callback:
     get:
       tags:
         - authentication
+      security: []
       summary: "OIDC callback"
       parameters:
         - name: code
@@ -172,25 +170,14 @@ paths:
           schema:
             type: string
           description: "parameter for CSRF protection"
-        - name: login-flow-cookie
-          in: cookie
-          required: true
-          schema:
-            type: string
-          description: "The state saved at login"
-        - name: nonce
-          in: cookie
-          required: true
-          schema:
-            type: string
-          description: "String value used to associate a Client session with an ID Token, and to mitigate replay attacks"
       responses:
-        "200":
+        "302":
           description: "OIDC callback successful"
-          content:
-            application/json:
+          headers:
+            location:
+              description: "redirect"
               schema:
-                $ref: "#/components/schemas/OidcCallbackOk"
+                type: string
         "400":
           description: "OIDC callback failed due to invalid code or state"
           content:

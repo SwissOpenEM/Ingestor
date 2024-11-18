@@ -10,6 +10,9 @@ import (
 
 	"github.com/coreos/go-oidc/v3/oidc"
 	"github.com/getkin/kin-openapi/openapi3filter"
+	"github.com/gin-contrib/sessions"
+	"github.com/gin-gonic/gin"
+	"golang.org/x/oauth2"
 )
 
 type tokenClaims struct {
@@ -24,20 +27,32 @@ type loginFlowCookie struct {
 var oidcVerifier *oidc.IDTokenVerifier
 
 func oidcAuthFunc(ctx context.Context, input *openapi3filter.AuthenticationInput) error {
-	// find user scopes
-	token := input.RequestValidationInput.Request.Header.Get("Authorization")
+	// find user scopes (currently disabled, could be a nice fallback solution later)
+	/* token := input.RequestValidationInput.Request.Header.Get("Authorization")
 	if token == "" {
 		return errors.New("authorization header required")
+	}*/
+
+	ginCtx := ctx.(*gin.Context)
+	authSession := sessions.DefaultMany(ginCtx, "auth")
+	tokenSource, ok := authSession.Get("auth_token_source").(oauth2.TokenSource)
+	if !ok {
+		return errors.New("user is not logged in")
 	}
 
-	idToken, err := oidcVerifier.Verify(context.Background(), token)
+	token, err := tokenSource.Token()
 	if err != nil {
-		return errors.New("invalid token")
+		return fmt.Errorf("can't obtain token: %s", err.Error())
+	}
+
+	idToken, err := oidcVerifier.Verify(ctx, token.AccessToken)
+	if err != nil {
+		return fmt.Errorf("can't verify token: %s", err.Error())
 	}
 
 	var claims tokenClaims
 	if err := idToken.Claims(&claims); err != nil {
-		return err
+		return fmt.Errorf("can't extract claims: %s", err.Error())
 	}
 
 	scopes := strings.Split(claims.Scope, " ")
