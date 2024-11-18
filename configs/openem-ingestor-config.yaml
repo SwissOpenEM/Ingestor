@@ -21,9 +21,9 @@ MetadataExtractors:
   - Name: LS
     GithubOrg: SwissOpenEM
     GithubProject: LS_Metadata_reader
-    Version: v0.2.5
+    Version: v0.2.8
     Executable: LS_Metadata_reader
-    Checksum: 1c552f222df836cb617ec228cb01859dfcf933776a235fd35f702be4b70031c9 
+    Checksum: e8a2abc7a0d8759edf4559e27879b7977000a868a2f7d39b7804ff5e5c0d1559 
     ChecksumAlg: sha256
     CommandLineTemplate: "-i '{{.SourceFolder}}' -o '{{.OutputFile}}'"
     Methods:
