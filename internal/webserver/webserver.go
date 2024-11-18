@@ -9,6 +9,8 @@ import (
 	docs "github.com/SwissOpenEM/Ingestor/docs"
 	"github.com/getkin/kin-openapi/openapi3filter"
 	cors "github.com/gin-contrib/cors"
+	"github.com/gin-contrib/sessions"
+	"github.com/gin-contrib/sessions/cookie"
 	gin "github.com/gin-gonic/gin"
 	middleware "github.com/oapi-codegen/gin-middleware"
 	swaggerfiles "github.com/swaggo/files"
@@ -39,6 +41,20 @@ func NewIngesterServer(ingestor StrictServerInterface, port int) *http.Server {
 	docs.SwaggerInfo.BasePath = r.BasePath()
 	r.GET("/docs/*any", ginSwagger.WrapHandler(swaggerfiles.Handler))
 
+	// setup auth session store
+	authKey, err := generateRandomByteSlice(64) // authentication key
+	if err != nil {
+		panic(err)
+	}
+	encKey, err := generateRandomByteSlice(32) // encryption key
+	if err != nil {
+		panic(err)
+	}
+	store := cookie.NewStore(authKey, encKey)
+	store.Options(sessions.Options{
+		HttpOnly: true,
+	})
+
 	// Use our validation middleware to check all requests against the
 	// OpenAPI schema.
 	r.Use(
@@ -47,6 +63,7 @@ func NewIngesterServer(ingestor StrictServerInterface, port int) *http.Server {
 				AuthenticationFunc: oidcAuthFunc,
 			},
 		}),
+		sessions.SessionsMany([]string{"auth"}, store),
 	)
 	RegisterHandlers(r, NewStrictHandler(ingestor, []StrictMiddlewareFunc{}))
 

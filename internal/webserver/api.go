@@ -8,16 +8,16 @@ import (
 	"context"
 	"crypto/aes"
 	"crypto/cipher"
-	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math"
 	"os"
-	"reflect"
-	"time"
 
 	"github.com/SwissOpenEM/Ingestor/internal/core"
 	"github.com/coreos/go-oidc/v3/oidc"
+	"github.com/gin-contrib/sessions"
+	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"golang.org/x/oauth2"
 )
@@ -43,7 +43,15 @@ type IngestorWebServerImplemenation struct {
 func NewIngestorWebServer(version string, taskQueue *core.TaskQueue, oauth core.OAuth2Conf) *IngestorWebServerImplemenation {
 	oidcProvider, err := oidc.NewProvider(context.Background(), "")
 	if err != nil {
-		panic(err)
+		// fallback provider (this could also be replaced with an error)
+		a := &oidc.ProviderConfig{
+			IssuerURL:   "",
+			AuthURL:     "",
+			TokenURL:    "",
+			UserInfoURL: "",
+			Algorithms:  []string{},
+		}
+		oidcProvider = a.NewProvider(context.Background())
 	}
 	oidcVerifier := oidcProvider.Verifier(&oidc.Config{ClientID: oauth.ClientID})
 	oauthConf := oauth2.Config{
@@ -268,25 +276,21 @@ func (i *IngestorWebServerImplemenation) GetLogin(ctx context.Context, request G
 	if err != nil {
 		return GetLogin302Response{}, err
 	}
-
-	// encrypt verifier
-	nonce1, err := generateRandomByteSlice(uint(i.aesgcm.NonceSize()))
+	nonce, err := generateRandomString(32)
 	if err != nil {
 		return GetLogin302Response{}, err
 	}
-	nonce2, err := generateRandomByteSlice(uint(i.aesgcm.NonceSize()))
-	if err != nil {
-		return GetLogin302Response{}, err
-	}
-	encState := i.aesgcm.Seal(nil, nonce1, []byte(state), nil)
-	encVerifier := i.aesgcm.Seal(nil, nonce2, []byte(verifier), nil)
 
-	// create cookie struct
-	cookie := loginFlowCookie{
-		State:    encState,
-		Verifier: encVerifier,
+	// store state & verifier in session
+	ginCtx, ok := ctx.(*gin.Context)
+	if !ok {
+		return GetLogin302Response{}, errors.New("CANT CONVERT")
 	}
-	cookieJson, err := json.Marshal(cookie)
+	authSession := sessions.DefaultMany(ginCtx, "auth")
+	authSession.Set("state", state)
+	authSession.Set("verifier", verifier)
+	authSession.Set("nonce", nonce)
+	err = authSession.Save()
 	if err != nil {
 		return GetLogin302Response{}, err
 	}
@@ -298,44 +302,42 @@ func (i *IngestorWebServerImplemenation) GetLogin(ctx context.Context, request G
 				state,
 				oauth2.AccessTypeOffline,
 				oauth2.S256ChallengeOption(verifier),
+				oidc.Nonce(nonce),
 			),
-			SetCookie: fmt.Sprintf("security-cookie=%s; HttpOnly; Max-Age=600", base64.StdEncoding.EncodeToString(cookieJson)),
 		},
 	}, nil
 }
 
 func (i *IngestorWebServerImplemenation) GetCallback(ctx context.Context, request GetCallbackRequestObject) (GetCallbackResponseObject, error) {
-	// CSRF attack protection
-	var cookie loginFlowCookie
-	cookieJson, err := base64.StdEncoding.DecodeString(request.Params.LoginFlowCookie)
-	if err != nil {
-		return GetCallback500Response{}, err
+	// get session
+	ginCtx := ctx.(*gin.Context)
+	authSession := sessions.DefaultMany(ginCtx, "auth")
+	state, ok := authSession.Get("state").(string)
+	if !ok {
+		return GetCallback500Response{}, errors.New("auth session: state is not a string or is not set")
 	}
-	if err := json.Unmarshal(cookieJson, &cookie); err != nil {
-		return GetCallback400TextResponse(err.Error()), nil
+	verifier, ok := authSession.Get("verifier").(string)
+	if !ok {
+		return GetCallback500Response{}, errors.New("auth session: verifier is not a string or is not set")
 	}
+	nonce, ok := authSession.Get("nonce").(string)
+	if !ok {
+		return GetCallback500Response{}, errors.New("auth session: nonce is not a string is not set")
+	}
+	authSession.Delete("state")
+	authSession.Delete("verifier")
+	authSession.Delete("nonce")
 
-	// decrypt state & verifier
-	nonce, encState := cookie.Verifier[:i.aesgcm.NonceSize()], cookie.Verifier[i.aesgcm.NonceSize():]
-	state, err := i.aesgcm.Open(nil, nonce, encState, nil)
-	if err != nil {
-		return GetCallback500Response{}, err
-	}
-	nonce, encVerifier := cookie.Verifier[:i.aesgcm.NonceSize()], cookie.Verifier[i.aesgcm.NonceSize():]
-	verifier, err := i.aesgcm.Open(nil, nonce, encVerifier, nil)
-	if err != nil {
-		return GetCallback500Response{}, err
-	}
-
-	// verify state
+	// verify state (CSRF protection)
 	if request.Params.State != string(state) {
 		return GetCallback400TextResponse("invalid state"), nil
 	}
 
 	// exchange authorization code for accessToken
 	oauthToken, err := i.oauth2Config.Exchange(
-		context.Background(),
+		ctx,
 		request.Params.Code,
+		oauth2.AccessTypeOffline,
 		oauth2.VerifierOption(string(verifier)),
 	)
 	if err != nil {
@@ -353,62 +355,38 @@ func (i *IngestorWebServerImplemenation) GetCallback(ctx context.Context, reques
 	if !ok {
 		return GetCallback400TextResponse("'id_token' was not found in token"), nil
 	}
-	idToken, err := oidcVerifier.Verify(context.Background(), rawIdToken)
+	idToken, err := oidcVerifier.Verify(ctx, rawIdToken)
 	if err != nil {
 		return GetCallback400TextResponse(fmt.Sprintf("idToken verification failed: %s", err.Error())), nil
 	}
-	if idToken.Nonce != request.Params.Nonce {
+	if idToken.Nonce != nonce {
 		return GetCallback400TextResponse("nonce did not match"), nil
 	}
 
 	// extract claims
 	claims := struct {
-		Email string `json:"email"`
-		Name  string `json:"name"`
+		Email          string `json:"email"`
+		EmailVerifierd bool   `json:"email_verified"`
+		Name           string `json:"name"`
 	}{}
 	if err := idToken.Claims(&claims); err != nil {
 		return GetCallback400TextResponse("could not parse token claims"), nil
 	}
 
-	// return response
-	// create oauth token "DTO"
-	retOauthToken := struct {
-		AccessToken  string     `json:"access_token"`
-		ExpiresIn    *int64     `json:"expires_in,omitempty"`
-		Expiry       *time.Time `json:"expiry,omitempty"`
-		RefreshToken *string    `json:"refresh_token,omitempty"`
-		TokenType    *string    `json:"token_type,omitempty"`
-	}{
-		AccessToken:  oauthToken.AccessToken,
-		RefreshToken: ptrIfNotZero(oauthToken.RefreshToken),
-		TokenType:    ptrIfNotZero(oauthToken.TokenType),
-		ExpiresIn:    ptrIfNotZero(oauthToken.ExpiresIn),
-		Expiry:       ptrIfNotZero(oauthToken.Expiry),
-	}
+	tokenSource := i.oauth2Config.TokenSource(ctx, oauthToken)
 
-	// create userInfo "DTO"
-	retUserInfo := struct {
-		Email         string `json:"email"`
-		EmailVerified bool   `json:"email_verified"`
-		Profile       string `json:"profile"`
-		Sub           string `json:"sub"` // subject
-	}{
-		Email:         userInfo.Email,
-		EmailVerified: userInfo.EmailVerified,
-		Profile:       userInfo.Profile,
-		Sub:           userInfo.Subject,
+	// set auth cookies
+	authSession.Set("user_info", userInfo)
+	authSession.Set("auth_token_source", tokenSource)
+	err = authSession.Save()
+	if err != nil {
+		return GetCallback500Response{}, err
 	}
 
 	// reply
-	return GetCallback200JSONResponse{
-		OAuth2Token: retOauthToken,
-		UserInfo:    retUserInfo,
+	return GetCallback302Response{
+		Headers: GetCallback302ResponseHeaders{
+			Location: "/",
+		},
 	}, nil
-}
-
-func ptrIfNotZero[T any](v T) *T {
-	if reflect.ValueOf(v).IsZero() {
-		return nil
-	}
-	return &v
 }
