@@ -3,6 +3,7 @@ package core
 import (
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/SwissOpenEM/Ingestor/internal/metadataextractor"
 	"github.com/SwissOpenEM/Ingestor/internal/task"
@@ -84,6 +85,7 @@ func createExpectedValidConfig() Config {
 		InstallationPath:          "./parentPathToAllExtractors/",
 		DownloadMissingExtractors: false,
 		SchemasLocation:           "./ExtractorSchemas",
+		Timeout:                   time.Minute * 4,
 	}
 
 	expected_config := Config{

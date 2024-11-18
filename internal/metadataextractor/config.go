@@ -1,5 +1,7 @@
 package metadataextractor
 
+import "time"
+
 type MethodConfig struct {
 	Name   string `string:"Name" validate:"required"`
 	Schema string `string:"Schema" validate:"required"`
@@ -23,4 +25,5 @@ type ExtractorsConfig struct {
 	InstallationPath          string            `string:"InstallationPath" validate:"required"`
 	SchemasLocation           string            `string:"SchemasLocation" validate:"required"`
 	DownloadMissingExtractors bool              `bool:"DownloadMissingExtractors"`
+	Timeout                   time.Duration     `string:"Timeout"`
 }

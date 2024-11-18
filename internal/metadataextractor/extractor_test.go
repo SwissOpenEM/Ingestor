@@ -1,6 +1,7 @@
 package metadataextractor
 
 import (
+	"context"
 	b64 "encoding/base64"
 	"html/template"
 	"log"
@@ -298,7 +299,8 @@ func Test_runExtractor(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := runExtractor(tt.args.executable, tt.args.args, stdout_callback, stderr_callback); (err != nil) != tt.wantErr {
+			ctx := context.Background()
+			if err := runExtractor(ctx, tt.args.executable, tt.args.args, stdout_callback, stderr_callback); (err != nil) != tt.wantErr {
 				t.Errorf("runExtractor() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
@@ -350,7 +352,8 @@ func TestExtractorHandler_ExtractMetadata(t *testing.T) {
 				extractors:   tt.fields.extractors,
 				outputFolder: tt.fields.outputFolder,
 			}
-			got, err := e.ExtractMetadata(tt.args.extractor_name, tt.args.folder, tt.args.output_file, stdout_callback, stderr_callback)
+			ctx := context.Background()
+			got, err := e.ExtractMetadata(ctx, tt.args.extractor_name, tt.args.folder, tt.args.output_file, stdout_callback, stderr_callback)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ExtractorHandler.ExtractMetadata() error = %v, wantErr %v", err, tt.wantErr)
 				return

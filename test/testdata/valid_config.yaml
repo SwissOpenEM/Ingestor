@@ -17,6 +17,7 @@ MetadataExtractors:
   InstallationPath: ./parentPathToAllExtractors/
   DownloadMissingExtractors: false
   SchemasLocation: ./ExtractorSchemas
+  Timeout: 4m
   Extractors:
   - Name: LS
     GithubOrg: SwissOpenEM

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"log/slog"
 
@@ -127,10 +128,12 @@ func (a *App) ExtractMetadata(extractor_name string, id uuid.UUID) string {
 	}
 
 	outputfile := metadataextractor.MetadataFilePath(folder)
-	metadata, err := a.extractorHandler.ExtractMetadata(extractor_name, folder, outputfile, func(message string) { log_message(id, message) }, func(message string) { log_error(id, message) })
+
+	metadata, err := a.extractorHandler.ExtractMetadata(a.ctx, extractor_name, folder, outputfile, func(message string) { log_message(id, message) }, func(message string) { log_error(id, message) })
+
 	if err != nil {
 		slog.Error("Metadata extraction failed", "error", err.Error())
-		return "{\"status\":\"failed\"}"
+		return fmt.Sprintf("{\"status\":\"%s\"}", err.Error())
 	}
 	return metadata
 }

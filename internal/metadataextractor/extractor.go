@@ -21,6 +21,7 @@ import (
 	"runtime"
 	"sort"
 	"strings"
+	"time"
 
 	b64 "encoding/base64"
 
@@ -60,6 +61,7 @@ type ExtractorHandler struct {
 	methods      map[string]Method
 	extractors   map[string]Extractor
 	outputFolder string
+	timeout      time.Duration
 }
 
 func IsValidJSON(str string) bool {
@@ -103,6 +105,8 @@ func NewExtractorHandler(config ExtractorsConfig) *ExtractorHandler {
 			slog.Error("Failed to parse extractor commandline template", "name", extractorConfig.Name, "template", extractorConfig.CommandLineTemplate)
 			continue
 		}
+
+		h.timeout = config.Timeout
 
 		for _, m := range extractorConfig.Methods {
 			if _, exists := h.methods[m.Name]; exists {
@@ -328,10 +332,10 @@ func buildCommandline(templ *template.Template, template_params ExtractorInvokat
 
 type outputCallback func(string)
 
-func runExtractor(executable string, args []string, stdout_callback outputCallback, stderr_callback outputCallback) error {
+func runExtractor(ctx context.Context, executable string, args []string, stdout_callback outputCallback, stderr_callback outputCallback) error {
 	slog.Info("Executing command", "command", executable, "args", args)
 
-	cmd := exec.Command(executable, args...)
+	cmd := exec.CommandContext(ctx, executable, args...)
 
 	stdout, _ := cmd.StdoutPipe()
 	stderr, _ := cmd.StderrPipe()
@@ -360,7 +364,7 @@ func runExtractor(executable string, args []string, stdout_callback outputCallba
 	return err
 }
 
-func (e *ExtractorHandler) ExtractMetadata(method_name string, folder string, output_file string, stdout_callback outputCallback, stderr_callback outputCallback) (string, error) {
+func (e *ExtractorHandler) ExtractMetadata(ctx context.Context, method_name string, folder string, output_file string, stdout_callback outputCallback, stderr_callback outputCallback) (string, error) {
 	method, ok := e.methods[method_name]
 
 	if !ok {
@@ -395,8 +399,15 @@ func (e *ExtractorHandler) ExtractMetadata(method_name string, folder string, ou
 	if err != nil {
 		return "", err
 	}
+	ctx, cancel := context.WithTimeout(ctx, e.timeout)
+	defer cancel()
+	if err := runExtractor(ctx, binary_path, args, stdout_callback, stderr_callback); err == nil {
 
-	if err := runExtractor(binary_path, args, stdout_callback, stderr_callback); err == nil {
+		if ctx.Err() == context.DeadlineExceeded {
+			slog.Error("Extraction timed out")
+			return "", ctx.Err()
+		}
+
 		b, err := os.ReadFile(output_file)
 		if err != nil {
 			slog.Error("Failed to read file", "file", output_file)
