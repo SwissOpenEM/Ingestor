@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/SwissOpenEM/Ingestor/internal/s3upload"
 	"github.com/SwissOpenEM/Ingestor/internal/task"
 	"github.com/fatih/color"
 	"github.com/paulscherrerinstitute/scicat-cli/v3/datasetIngestor"
@@ -198,7 +199,7 @@ func TransferDataset(
 	it *task.TransferTask,
 	serviceUser *UserCreds,
 	config Config,
-	notifier ProgressNotifier,
+	notifier task.ProgressNotifier,
 ) error {
 	datasetId := it.GetDatasetId()
 	datasetFolder := it.DatasetFolder.FolderPath
@@ -210,12 +211,13 @@ func TransferDataset(
 
 	switch it.TransferMethod {
 	case task.TransferS3:
-		_, err = UploadS3(task_context, datasetId, datasetFolder, it.DatasetFolder.Id, config.Transfer.S3, notifier)
+		err = s3upload.UploadS3(task_context, datasetId, datasetFolder, fileList, it.DatasetFolder.Id, config.Transfer.S3, notifier)
 	case task.TransferGlobus:
 		// globus doesn't work with absolute folders, this library uses sourcePrefix to adapt the path to the globus' own path from a relative path
 		relativeDatasetFolder := strings.TrimPrefix(datasetFolder, config.WebServer.CollectionLocation)
 		err = GlobusTransfer(config.Transfer.Globus, it, task_context, it.DatasetFolder.Id, relativeDatasetFolder, fileList, notifier)
 	_:
+		return fmt.Errorf("unknown transfer method: %d", it.TransferMethod)
 	}
 
 	if err != nil {
