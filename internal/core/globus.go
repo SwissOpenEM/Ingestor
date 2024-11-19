@@ -100,7 +100,7 @@ func GlobusTransfer(globusConf task.GlobusTransferConfig, task *task.TransferTas
 	if taskCompleted {
 		return nil
 	}
-	notifier.OnTaskProgress(localTaskId, filesTransferred, totalFiles, int(time.Since(startTime).Seconds()))
+	notifier.OnTaskProgress(localTaskId, float32(filesTransferred)/float32(totalFiles)*100, int(time.Since(startTime).Seconds()))
 
 	timerUpdater := time.After(1 * time.Second)
 	transferUpdater := time.After(1 * time.Minute)
@@ -122,7 +122,7 @@ func GlobusTransfer(globusConf task.GlobusTransferConfig, task *task.TransferTas
 		case <-timerUpdater:
 			// update timer every second
 			timerUpdater = time.After(1 * time.Second)
-			notifier.OnTaskProgress(localTaskId, filesTransferred, totalFiles, int(time.Since(startTime).Seconds()))
+			notifier.OnTaskProgress(localTaskId, float32(filesTransferred)/float32(totalFiles)*100, int(time.Since(startTime).Seconds()))
 		case <-transferUpdater:
 			// check state of transfer
 			transferUpdater = time.After(1 * time.Minute)
@@ -135,7 +135,7 @@ func GlobusTransfer(globusConf task.GlobusTransferConfig, task *task.TransferTas
 			}
 
 			task.SetStatus(&bytesTransferred, nil, &filesTransferred, &totalFiles, nil, nil, nil, nil)
-			notifier.OnTaskProgress(localTaskId, filesTransferred, totalFiles, int(time.Since(startTime).Seconds()))
+			notifier.OnTaskProgress(localTaskId, float32(filesTransferred)/float32(totalFiles)*100, int(time.Since(startTime).Seconds()))
 
 			if taskCompleted {
 				return nil // we're done!

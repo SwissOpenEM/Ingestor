@@ -37,12 +37,12 @@ type TaskStatus struct {
 }
 
 type TransferTask struct {
-	// DatasetFolderId   uuid.UUID
-	DatasetFolder
+	DatasetFolder DatasetFolder
 	datasetId       string
 	fileList        []datasetIngestor.Datafile
 	DatasetMetadata map[string]interface{}
 	TransferMethod  TransferMethod
+	Context         context.Context
 	Cancel          context.CancelFunc
 	status          *TaskStatus
 	statusLock      *sync.RWMutex
