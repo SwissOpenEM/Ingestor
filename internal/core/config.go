@@ -24,13 +24,28 @@ type OAuth2Conf struct {
 	Scopes       []string // list of scopes to ask for from the OAuth2 provider
 }
 
+type OIDCConf struct {
+	IssuerURL string
+
+	// the ones below are only needed if the OIDC discovery mechanism doesn't work
+	AuthURL     string
+	TokenURL    string
+	UserInfoURL string
+	Algorithms  []string
+}
+
+type AuthConf struct {
+	OAuth2Conf `mapstructure:"OAuth2"`
+	OIDCConf   `mapstructure:"OIDC"`
+}
+
 type MiscConfig struct {
 	ConcurrencyLimit int `int:"ConcurrencyLimit" validate:"gte=0"`
 	Port             int `int:"Port" validate:"required,gte=0"`
 }
 
 type Config struct {
-	Oauth              OAuth2Conf                         `mapstructure:"Oauth"`
+	Auth               AuthConf                           `mapstructure:"Auth"`
 	Scicat             ScicatConfig                       `mapstructure:"Scicat"`
 	Transfer           task.TransferConfig                `mapstructure:"Transfer"`
 	Misc               MiscConfig                         `mapstructure:"Misc"`
