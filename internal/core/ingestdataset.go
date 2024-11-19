@@ -199,7 +199,11 @@ func IngestDataset(
 
 	switch ingestionTask.TransferMethod {
 	case task.TransferS3:
-		_, err = UploadS3(task_context, datasetId, datasetFolder, ingestionTask.DatasetFolder.Id, config.Transfer.S3, notifier)
+		fileList := []string{}
+		for _, f := range fullFileArray {
+			fileList = append(fileList, f.Path)
+		}
+		err = UploadS3(task_context, datasetId, datasetFolder, fileList, ingestionTask.DatasetFolder.Id, config.Transfer.S3, notifier)
 	case task.TransferGlobus:
 		err = GlobusTransfer(config.Transfer.Globus, ingestionTask, task_context, ingestionTask.DatasetFolder.Id, datasetFolder, fullFileArray, notifier)
 	_:
