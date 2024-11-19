@@ -36,7 +36,7 @@ func main() {
 	}
 	taskqueue.Startup()
 
-	ingestor := webserver.NewIngestorWebServer(version, &taskqueue, config.Oauth)
+	ingestor := webserver.NewIngestorWebServer(version, &taskqueue, config.Auth)
 	s := webserver.NewIngesterServer(ingestor, config.Misc.Port)
 	log.Fatal(s.ListenAndServe())
 }

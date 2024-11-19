@@ -40,26 +40,27 @@ type IngestorWebServerImplemenation struct {
 // @license.name	Apache 2.0
 // @license.url	http://www.apache.org/licenses/LICENSE-2.0.html
 
-func NewIngestorWebServer(version string, taskQueue *core.TaskQueue, oauth core.OAuth2Conf) *IngestorWebServerImplemenation {
-	oidcProvider, err := oidc.NewProvider(context.Background(), "")
+func NewIngestorWebServer(version string, taskQueue *core.TaskQueue, authConf core.AuthConf) *IngestorWebServerImplemenation {
+	oidcProvider, err := oidc.NewProvider(context.Background(), authConf.IssuerURL)
 	if err != nil {
+		fmt.Println("Warning: OIDC discovery mechanism failed. Falling back to manual OIDC config")
 		// fallback provider (this could also be replaced with an error)
 		a := &oidc.ProviderConfig{
-			IssuerURL:   "",
-			AuthURL:     "",
-			TokenURL:    "",
-			UserInfoURL: "",
-			Algorithms:  []string{},
+			IssuerURL:   authConf.IssuerURL,
+			AuthURL:     authConf.AuthURL,
+			TokenURL:    authConf.TokenURL,
+			UserInfoURL: authConf.UserInfoURL,
+			Algorithms:  authConf.Algorithms,
 		}
 		oidcProvider = a.NewProvider(context.Background())
 	}
-	oidcVerifier := oidcProvider.Verifier(&oidc.Config{ClientID: oauth.ClientID})
+	oidcVerifier := oidcProvider.Verifier(&oidc.Config{ClientID: authConf.ClientID})
 	oauthConf := oauth2.Config{
-		ClientID:     oauth.ClientID,
-		ClientSecret: oauth.ClientSecret,
+		ClientID:     authConf.ClientID,
+		ClientSecret: authConf.ClientSecret,
 		Endpoint:     oidcProvider.Endpoint(),
-		RedirectURL:  oauth.RedirectURL,
-		Scopes:       append([]string{oidc.ScopeOpenID, "profile", "email"}, oauth.Scopes...),
+		RedirectURL:  authConf.RedirectURL,
+		Scopes:       append([]string{oidc.ScopeOpenID}, authConf.Scopes...),
 	}
 	key, err := generateRandomByteSlice(32)
 	if err != nil {
@@ -314,22 +315,22 @@ func (i *IngestorWebServerImplemenation) GetCallback(ctx context.Context, reques
 	authSession := sessions.DefaultMany(ginCtx, "auth")
 	state, ok := authSession.Get("state").(string)
 	if !ok {
-		return GetCallback500Response{}, errors.New("auth session: state is not a string or is not set")
+		return GetCallback400TextResponse("auth session: state is not set"), nil
 	}
 	verifier, ok := authSession.Get("verifier").(string)
 	if !ok {
-		return GetCallback500Response{}, errors.New("auth session: verifier is not a string or is not set")
+		return GetCallback400TextResponse("auth session: verifier is not set"), nil
 	}
 	nonce, ok := authSession.Get("nonce").(string)
 	if !ok {
-		return GetCallback500Response{}, errors.New("auth session: nonce is not a string is not set")
+		return GetCallback400TextResponse("auth session: nonce is not set"), nil
 	}
 	authSession.Delete("state")
 	authSession.Delete("verifier")
 	authSession.Delete("nonce")
 
 	// verify state (CSRF protection)
-	if request.Params.State != string(state) {
+	if request.Params.State != state {
 		return GetCallback400TextResponse("invalid state"), nil
 	}
 
@@ -338,14 +339,17 @@ func (i *IngestorWebServerImplemenation) GetCallback(ctx context.Context, reques
 		ctx,
 		request.Params.Code,
 		oauth2.AccessTypeOffline,
-		oauth2.VerifierOption(string(verifier)),
+		oauth2.VerifierOption(verifier),
 	)
 	if err != nil {
 		return GetCallback400TextResponse(fmt.Sprintf("code exchange failed: %s", err.Error())), nil
 	}
 
+	// create token source
+	tokenSource := i.oauth2Config.TokenSource(ctx, oauthToken)
+
 	// userInfo
-	userInfo, err := i.oidcProvider.UserInfo(ctx, oauth2.StaticTokenSource(oauthToken))
+	userInfo, err := i.oidcProvider.UserInfo(ctx, tokenSource)
 	if err != nil {
 		return GetCallback500Response{}, err
 	}
@@ -353,7 +357,7 @@ func (i *IngestorWebServerImplemenation) GetCallback(ctx context.Context, reques
 	// get id token (not sure if needed here?)
 	rawIdToken, ok := oauthToken.Extra("id_token").(string)
 	if !ok {
-		return GetCallback400TextResponse("'id_token' was not found in token"), nil
+		return GetCallback400TextResponse("'id_token' field was not found in oauth2 token"), nil
 	}
 	idToken, err := oidcVerifier.Verify(ctx, rawIdToken)
 	if err != nil {
@@ -367,17 +371,19 @@ func (i *IngestorWebServerImplemenation) GetCallback(ctx context.Context, reques
 	claims := struct {
 		Email          string `json:"email"`
 		EmailVerifierd bool   `json:"email_verified"`
-		Name           string `json:"name"`
 	}{}
 	if err := idToken.Claims(&claims); err != nil {
 		return GetCallback400TextResponse("could not parse token claims"), nil
 	}
 
-	tokenSource := i.oauth2Config.TokenSource(ctx, oauthToken)
+	var fullClaims json.RawMessage
+	idToken.Claims(&fullClaims)
+	fmt.Printf("the full claims:\n\n=====\n%s\n======\n", string(fullClaims))
 
 	// set auth cookies
 	authSession.Set("user_info", userInfo)
 	authSession.Set("auth_token_source", tokenSource)
+	authSession.Set("claims", claims)
 	err = authSession.Save()
 	if err != nil {
 		return GetCallback500Response{}, err

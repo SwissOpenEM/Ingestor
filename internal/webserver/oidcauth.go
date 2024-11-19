@@ -40,12 +40,18 @@ func oidcAuthFunc(ctx context.Context, input *openapi3filter.AuthenticationInput
 		return errors.New("user is not logged in")
 	}
 
-	token, err := tokenSource.Token()
+	oauthToken, err := tokenSource.Token()
 	if err != nil {
 		return fmt.Errorf("can't obtain token: %s", err.Error())
 	}
 
-	idToken, err := oidcVerifier.Verify(ctx, token.AccessToken)
+	// get id token (not sure if needed here?)
+	rawIDToken, ok := oauthToken.Extra("id_token").(string)
+	if !ok {
+		return errors.New("id token is not part of the oauth token")
+	}
+
+	idToken, err := oidcVerifier.Verify(ctx, rawIDToken)
 	if err != nil {
 		return fmt.Errorf("can't verify token: %s", err.Error())
 	}
