@@ -4,12 +4,7 @@ Scicat:
 Transfer:
   Method: S3
   S3:
-    Endpoint: s3:9000
-    Bucket: landingzone
-    Checksum: true
-    Location: "eu-west-1"
-    User: "minio_user"
-    Password: "minio_pass"
+    Endpoint: http://localhost:8000
 Misc:
   ConcurrencyLimit: 2
   Port: 8888
