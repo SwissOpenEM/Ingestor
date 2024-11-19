@@ -273,10 +273,7 @@ func (i *IngestorWebServerImplemenation) GetLogin(ctx context.Context, request G
 	if err != nil {
 		return GetLogin302Response{}, err
 	}
-	verifier, err := generateRandomString(128)
-	if err != nil {
-		return GetLogin302Response{}, err
-	}
+	verifier := oauth2.GenerateVerifier()
 	nonce, err := generateRandomString(32)
 	if err != nil {
 		return GetLogin302Response{}, err
@@ -359,7 +356,7 @@ func (i *IngestorWebServerImplemenation) GetCallback(ctx context.Context, reques
 	if !ok {
 		return GetCallback400TextResponse("'id_token' field was not found in oauth2 token"), nil
 	}
-	idToken, err := oidcVerifier.Verify(ctx, rawIdToken)
+	idToken, err := i.oidcVerifier.Verify(ctx, rawIdToken)
 	if err != nil {
 		return GetCallback400TextResponse(fmt.Sprintf("idToken verification failed: %s", err.Error())), nil
 	}
