@@ -365,10 +365,7 @@ func (i *IngestorWebServerImplemenation) GetCallback(ctx context.Context, reques
 	}
 
 	// extract claims
-	claims := struct {
-		Email          string `json:"email"`
-		EmailVerifierd bool   `json:"email_verified"`
-	}{}
+	var claims claims
 	if err := idToken.Claims(&claims); err != nil {
 		return GetCallback400TextResponse("could not parse token claims"), nil
 	}
@@ -379,8 +376,9 @@ func (i *IngestorWebServerImplemenation) GetCallback(ctx context.Context, reques
 
 	// set auth cookies
 	authSession.Set("user_info", userInfo)
-	authSession.Set("auth_token_source", tokenSource)
-	authSession.Set("claims", claims)
+	authSession.Set("access_token", oauthToken.AccessToken)
+	authSession.Set("refresh_token", oauthToken.RefreshToken)
+	authSession.Set("expires_in", oauthToken.ExpiresIn)
 	err = authSession.Save()
 	if err != nil {
 		return GetCallback500Response{}, err
