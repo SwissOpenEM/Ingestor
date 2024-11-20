@@ -100,7 +100,7 @@ func (a *App) startup(ctx context.Context) {
 
 func (a *App) SelectFolder() {
 	folder, err := task.SelectFolder(a.ctx)
-	if err != nil {
+	if err != nil || folder.FolderPath == "" {
 		return
 	}
 
