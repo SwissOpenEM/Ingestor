@@ -25,6 +25,7 @@ go.work.sum
 .env
 
 **/build/**
+!cmd/openem-ingestor-app/build/appicon.png
 
 dist/**
 
