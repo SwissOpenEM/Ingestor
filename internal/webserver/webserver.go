@@ -1,12 +1,14 @@
 package webserver
 
 import (
+	"encoding/gob"
 	"fmt"
 	"net"
 	"net/http"
 	"os"
 
 	docs "github.com/SwissOpenEM/Ingestor/docs"
+	"github.com/coreos/go-oidc/v3/oidc"
 	"github.com/getkin/kin-openapi/openapi3filter"
 	cors "github.com/gin-contrib/cors"
 	"github.com/gin-contrib/sessions"
@@ -54,6 +56,10 @@ func NewIngesterServer(ingestor StrictServerInterface, port int) *http.Server {
 	store.Options(sessions.Options{
 		HttpOnly: true,
 	})
+
+	// register types to be stored in cookies
+	gob.Register(oidc.UserInfo{})
+	gob.Register(claims{})
 
 	// Use our validation middleware to check all requests against the
 	// OpenAPI schema.
