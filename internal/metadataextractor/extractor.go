@@ -259,7 +259,7 @@ func downloadExtractor(full_install_path string, config ExtractorConfig) error {
 			return err
 		}
 		x := &xtractr.XFile{
-			FilePath:  file,
+			FilePath:  path.Clean(file),
 			OutputDir: path.Dir(full_install_path),
 		}
 
