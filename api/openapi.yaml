@@ -26,6 +26,25 @@ tags:
 
 paths:
     /dataset:
+        get:
+            tags:
+                - dataset
+            summary: Get the available datasets.
+            description: Retrieve the folder structure of the available datasets.
+            operationId: DatasetController_getDataset
+            responses:
+                "200":
+                    description: Dataset successfully retrieved.
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/IngestorUiGetDatasetResponse"
+                "400":
+                    description: Invalid request
+                    content:
+                        text/plain:
+                            schema:
+                                type: string
         post:
             tags:
                 - dataset
@@ -129,6 +148,12 @@ paths:
                         application/json:
                             schema:
                                 $ref: "#/components/schemas/IngestorUiOtherHealthResponse"
+                "400":
+                    description: Invalid request
+                    content:
+                        text/plain:
+                            schema:
+                                type: string
     /version:
         get:
             tags:
@@ -143,6 +168,12 @@ paths:
                         application/json:
                             schema:
                                 $ref: "#/components/schemas/IngestorUiOtherVersionResponse"
+                "400":
+                    description: Invalid request
+                    content:
+                        text/plain:
+                            schema:
+                                type: string
     /extractor:
         get:
             tags:
@@ -157,6 +188,12 @@ paths:
                         application/json:
                             schema:
                                 $ref: "#/components/schemas/IngestorUiOtherVersionResponse"                 
+                "400":
+                    description: Invalid request
+                    content:
+                        text/plain:
+                            schema:
+                                type: string
         post:
             tags:
                 - extractor
@@ -290,7 +327,7 @@ components:
                         $ref: "#/components/schemas/IngestorUiGetExtractorItem"
                 total:
                     type: integer
-                    description: Total number of transfers.
+                    description: Total number of extractors.
         IngestorUiPostExtractionRequest:
             type: object
             properties:
@@ -306,3 +343,18 @@ components:
                 schema:
                     type: string
                     description: Schema which belongs to an extractor method.
+        IngestorUiGetDatasetItem:
+            type: object
+            properties:
+                dataset:
+                    type: string
+        IngestorUiGetDatasetResponse:
+            type: object
+            properties:
+                datasets:
+                    type: array
+                    items:
+                        $ref: "#/components/schemas/IngestorUiGetDatasetItem"
+                total:
+                    type: integer
+                    description: Total number of datasets.
