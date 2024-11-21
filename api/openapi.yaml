@@ -12,8 +12,13 @@ tags:
     description: Operations related to datasets
   - name: transfer
     description: Operations related to data transfers
+  - name: extractor
+    description: Operations related to metadata extraction
+  - name: schema
+    description: Operations related to schemas
   - name: other
     description: Further operations for general information
+
 
 # Uncomment this do enable authentication for all endpoints
 # security:
@@ -119,6 +124,21 @@ paths:
               schema:
                 type: string
 
+  /health:
+    get:
+      tags:
+        - other
+      summary: Get the health status.
+      description: Retrieve information about the status of openEm components.
+      operationId: OtherController_getHealth
+      responses:
+        "200":
+          description: Health status retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IngestorUiOtherHealthResponse"
+
   /version:
     get:
       tags:
@@ -210,8 +230,75 @@ paths:
             text/plain:
               schema:
                 type: string
-      
 
+  /extractor:
+    get:
+      tags:
+        - extractor
+      summary: Get available extractors
+      description: "Retrieve the available extractors configured in the ingestor."
+      operationId: ExtractorController_getExtractors
+      responses:
+        "200":
+          description: Avilable extractors retrieved sucessfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IngestorUiOtherVersionResponse"
+
+    post:
+      tags:
+        - extractor
+      summary: Start a new metadata extraction
+      description: Start a new metadata extraction on the specified data set with the selected method.
+      operationId: ExtractorController_startExtraction
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/IngestorUiPostExtractionRequest"
+      responses:
+        "200":
+          description: Dataset ingestion successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IngestorUiPostDatasetResponse"
+        "400":
+          description: Invalid request
+          content:
+            text/plain:
+              schema:
+                type: string
+
+  /schema:
+    get:
+      tags:
+        - schema
+      summary: Get schema for selected method
+      description: "Retrieve the right schema for the selected extractor."
+      operationId: SchemaController_getSchema
+      parameters:
+        - name: methodName
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Schema retrieved sucessfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IngestorUiGetSchemaRequest"
+        "400":
+          description: Invalid request
+          content:
+            text/plain:
+              schema:
+                type: string
+ 
 components:
   schemas:
     IngestorUiPostDatasetRequest:
@@ -309,6 +396,49 @@ components:
       required:
         - OAuth2Token
         - UserInfo
+    IngestorUiOtherHealthResponse:
+      type: object
+      properties:
+        ingestorStatus:
+          type: string
+          description: Status of the ingestor.
+        scicatStatus:
+          type: string
+          description: Status of SciCat.
+        globusStatus:
+          type: string
+          description: Status of Globus.
+    IngestorUiGetExtractorItem:
+      type: object
+      properties:
+        methodName:
+          type: string
+          description: Available method names of the extractor configurered in the ingestor.
+    IngestorUiGetExtractorResponse:
+      type: object
+      properties:
+        extractors:
+          type: array
+          items:
+            $ref: "#/components/schemas/IngestorUiGetExtractorItem"
+        total:
+          type: integer
+          description: Total number of transfers.
+    IngestorUiPostExtractionRequest:
+      type: object
+      properties:
+        filePath:
+          type: string
+          description: The file path of the selected data record.
+        methodName:
+          type: string
+          description: The selected methodName for data extraction.
+    IngestorUiGetSchemaRequest:
+      type: object
+      properties:
+        schema:
+          type: string
+          description: Schema which belongs to an extractor method.
   securitySchemes:
     OpenID:
       type: openIdConnect
