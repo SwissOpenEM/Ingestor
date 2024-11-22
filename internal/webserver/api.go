@@ -6,13 +6,12 @@ package webserver
 
 import (
 	"context"
-	"crypto/aes"
-	"crypto/cipher"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"math"
 	"os"
+	"time"
 
 	"github.com/SwissOpenEM/Ingestor/internal/core"
 	"github.com/coreos/go-oidc/v3/oidc"
@@ -25,12 +24,13 @@ import (
 var _ StrictServerInterface = (*IngestorWebServerImplemenation)(nil)
 
 type IngestorWebServerImplemenation struct {
-	version      string
-	taskQueue    *core.TaskQueue
-	oauth2Config *oauth2.Config
-	oidcProvider *oidc.Provider
-	oidcVerifier *oidc.IDTokenVerifier
-	aesgcm       cipher.AEAD
+	version            string
+	taskQueue          *core.TaskQueue
+	oauth2Config       *oauth2.Config
+	oidcProvider       *oidc.Provider
+	oidcVerifier       *oidc.IDTokenVerifier
+	jwtSignatureMethod string
+	jwtPublicKey       string
 }
 
 //	@contact.name	SwissOpenEM
@@ -62,26 +62,15 @@ func NewIngestorWebServer(version string, taskQueue *core.TaskQueue, authConf co
 		RedirectURL:  authConf.RedirectURL,
 		Scopes:       append([]string{oidc.ScopeOpenID}, authConf.Scopes...),
 	}
-	key, err := generateRandomByteSlice(32)
-	if err != nil {
-		panic(err)
-	}
-	aes, err := aes.NewCipher(key)
-	if err != nil {
-		panic(err)
-	}
-	aesGcm, err := cipher.NewGCM(aes)
-	if err != nil {
-		panic(err)
-	}
 
 	return &IngestorWebServerImplemenation{
-		version:      version,
-		taskQueue:    taskQueue,
-		oauth2Config: &oauthConf,
-		oidcProvider: oidcProvider,
-		oidcVerifier: oidcVerifier,
-		aesgcm:       aesGcm,
+		version:            version,
+		taskQueue:          taskQueue,
+		oauth2Config:       &oauthConf,
+		oidcProvider:       oidcProvider,
+		oidcVerifier:       oidcVerifier,
+		jwtSignatureMethod: authConf.JWTConf.SignatureMethod,
+		jwtPublicKey:       authConf.JWTConf.PublicKey,
 	}
 }
 
@@ -268,7 +257,23 @@ func (i *IngestorWebServerImplemenation) TransferControllerGetTransfer(ctx conte
 func (i *IngestorWebServerImplemenation) GetLogin(ctx context.Context, request GetLoginRequestObject) (GetLoginResponseObject, error) {
 	// auth code flow
 
-	// generate state and verifier
+	// get session
+	ginCtx, ok := ctx.(*gin.Context)
+	if !ok {
+		return GetLogin302Response{}, errors.New("CANT CONVERT")
+	}
+	authSession := sessions.DefaultMany(ginCtx, "auth")
+
+	// check if already logged-in
+	if _, ok := authSession.Get("access_token").(string); ok {
+		return GetLogin302Response{
+			Headers: GetLogin302ResponseHeaders{
+				Location: "/",
+			},
+		}, nil
+	}
+
+	// generate state, verifier and nonce
 	state, err := generateRandomString(16)
 	if err != nil {
 		return GetLogin302Response{}, err
@@ -279,12 +284,7 @@ func (i *IngestorWebServerImplemenation) GetLogin(ctx context.Context, request G
 		return GetLogin302Response{}, err
 	}
 
-	// store state & verifier in session
-	ginCtx, ok := ctx.(*gin.Context)
-	if !ok {
-		return GetLogin302Response{}, errors.New("CANT CONVERT")
-	}
-	authSession := sessions.DefaultMany(ginCtx, "auth")
+	// store state, verifier & nonce in session
 	authSession.Set("state", state)
 	authSession.Set("verifier", verifier)
 	authSession.Set("nonce", nonce)
@@ -310,6 +310,7 @@ func (i *IngestorWebServerImplemenation) GetCallback(ctx context.Context, reques
 	// get session
 	ginCtx := ctx.(*gin.Context)
 	authSession := sessions.DefaultMany(ginCtx, "auth")
+	userSession := sessions.DefaultMany(ginCtx, "user")
 	state, ok := authSession.Get("state").(string)
 	if !ok {
 		return GetCallback400TextResponse("auth session: state is not set"), nil
@@ -325,6 +326,10 @@ func (i *IngestorWebServerImplemenation) GetCallback(ctx context.Context, reques
 	authSession.Delete("state")
 	authSession.Delete("verifier")
 	authSession.Delete("nonce")
+	err := authSession.Save()
+	if err != nil {
+		return GetCallback500Response{}, err
+	}
 
 	// verify state (CSRF protection)
 	if request.Params.State != state {
@@ -375,14 +380,14 @@ func (i *IngestorWebServerImplemenation) GetCallback(ctx context.Context, reques
 	fmt.Printf("the full claims:\n\n=====\n%s\n======\n", string(fullClaims))
 
 	// set auth cookies
-	authSession.Set("user_info", userInfo)
-	authSession.Set("access_token", oauthToken.AccessToken)
-	authSession.Set("refresh_token", oauthToken.RefreshToken)
-	authSession.Set("expires_in", oauthToken.ExpiresIn)
-	err = authSession.Save()
+	userSession.Set("user_info", userInfo)
+	userSession.Set("expiry", time.Now().Add(time.Hour*24).String())
+	err = userSession.Save()
 	if err != nil {
-		return GetCallback500Response{}, err
+		return GetCallback500Response{}, fmt.Errorf("can't set user session: %s", err.Error())
 	}
+
+	fmt.Printf("access token: \"%s\"\n", oauthToken.AccessToken)
 
 	// reply
 	return GetCallback302Response{
