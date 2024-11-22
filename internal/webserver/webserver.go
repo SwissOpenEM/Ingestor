@@ -19,7 +19,7 @@ import (
 	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
-func NewIngesterServer(ingestor StrictServerInterface, port int) *http.Server {
+func NewIngesterServer(ingestor *IngestorWebServerImplemenation, port int) *http.Server {
 	swagger, err := GetSwagger()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error loading swagger spec\n: %s", err)
@@ -59,17 +59,16 @@ func NewIngesterServer(ingestor StrictServerInterface, port int) *http.Server {
 
 	// register types to be stored in cookies
 	gob.Register(oidc.UserInfo{})
-	gob.Register(claims{})
 
 	// Use our validation middleware to check all requests against the
 	// OpenAPI schema.
 	r.Use(
 		middleware.OapiRequestValidatorWithOptions(swagger, &middleware.Options{
 			Options: openapi3filter.Options{
-				AuthenticationFunc: oidcAuthFunc,
+				AuthenticationFunc: ingestor.oidcAuthFunc,
 			},
 		}),
-		sessions.SessionsMany([]string{"auth"}, store),
+		sessions.SessionsMany([]string{"auth", "user"}, store),
 	)
 	RegisterHandlers(r, NewStrictHandler(ingestor, []StrictMiddlewareFunc{}))
 

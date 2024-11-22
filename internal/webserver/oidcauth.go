@@ -2,17 +2,13 @@ package webserver
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/base64"
 	"errors"
 	"fmt"
 	"strings"
 
 	"github.com/coreos/go-oidc/v3/oidc"
 	"github.com/getkin/kin-openapi/openapi3filter"
-	"github.com/gin-contrib/sessions"
-	"github.com/gin-gonic/gin"
-	"golang.org/x/oauth2"
+	"github.com/golang-jwt/jwt/v5"
 )
 
 type tokenClaims struct {
@@ -26,48 +22,41 @@ type loginFlowCookie struct {
 
 var oidcVerifier *oidc.IDTokenVerifier
 
-func oidcAuthFunc(ctx context.Context, input *openapi3filter.AuthenticationInput) error {
+func (i *IngestorWebServerImplemenation) oidcAuthFunc(ctx context.Context, input *openapi3filter.AuthenticationInput) error {
 	// find user scopes (currently disabled, could be a nice fallback solution later)
-	/* token := input.RequestValidationInput.Request.Header.Get("Authorization")
-	if token == "" {
-		return errors.New("authorization header required")
-	}*/
-
-	ginCtx := ctx.(*gin.Context)
-	authSession := sessions.DefaultMany(ginCtx, "auth")
-	tokenSource, ok := authSession.Get("auth_token_source").(oauth2.TokenSource)
-	if !ok {
-		return errors.New("user is not logged in")
+	bearer := input.RequestValidationInput.Request.Header.Get("Authorization")
+	if bearer == "" {
+		return errors.New("user is not logged-in")
+	}
+	splitToken := strings.Split(bearer, "Bearer ")
+	if len(splitToken) != 2 {
+		return errors.New("invalid bearer token")
 	}
 
-	oauthToken, err := tokenSource.Token()
+	jwtToken := splitToken[1]
+	_ = jwtToken
+
+	token, err := jwt.Parse(jwtToken, func(token *jwt.Token) (interface{}, error) {
+		// validate signing algorithm
+		if token.Header["alg"] != i.jwtSignatureMethod {
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+		}
+
+		// return public key if the algorithm is what is expected
+		return jwt.ParseRSAPublicKeyFromPEM([]byte(i.jwtPublicKey))
+	})
 	if err != nil {
-		return fmt.Errorf("can't obtain token: %s", err.Error())
+		return err
 	}
 
-	// get id token (not sure if needed here?)
-	rawIDToken, ok := oauthToken.Extra("id_token").(string)
+	claims, ok := token.Claims.(jwt.MapClaims)
 	if !ok {
-		return errors.New("id token is not part of the oauth token")
+		return errors.New("can't extract claims")
 	}
 
-	idToken, err := oidcVerifier.Verify(ctx, rawIDToken)
-	if err != nil {
-		return fmt.Errorf("can't verify token: %s", err.Error())
-	}
+	fmt.Printf("here's the claims of the token: \n=====\n%v\n=====\n", claims)
 
-	var claims tokenClaims
-	if err := idToken.Claims(&claims); err != nil {
-		return fmt.Errorf("can't extract claims: %s", err.Error())
-	}
-
-	scopes := strings.Split(claims.Scope, " ")
-
-	// check scopes
-	missingScopes := findMissingScopes(input.Scopes, scopes)
-	reqPath := input.RequestValidationInput.Request.URL.Path
-	reqMethod := input.RequestValidationInput.Request.Method
-	return missingScopesCheck(missingScopes, fmt.Sprintf("%s %s", reqMethod, reqPath))
+	return nil // for now we accept anything that has a valid JWT token
 }
 
 func findMissingScopes(desiredScopes []string, actualScopes []string) []string {
@@ -92,18 +81,4 @@ func missingScopesCheck(missingScopes []string, methodName string) error {
 		return nil
 	}
 	return fmt.Errorf("missing scopes for \"%s\": %v", methodName, missingScopes)
-}
-
-func generateRandomByteSlice(len uint) ([]byte, error) {
-	b := make([]byte, len)
-	_, err := rand.Read(b)
-	if err != nil {
-		return []byte{}, err
-	}
-	return b, nil
-}
-
-func generateRandomString(len uint) (string, error) {
-	b, err := generateRandomByteSlice(len)
-	return base64.URLEncoding.EncodeToString(b), err
 }

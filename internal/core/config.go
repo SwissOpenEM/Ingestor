@@ -34,7 +34,13 @@ type OIDCConf struct {
 	Algorithms  []string
 }
 
+type JWTConf struct {
+	SignatureMethod string
+	PublicKey       string
+}
+
 type AuthConf struct {
+	JWTConf    `mapstructure:"JWT"`
 	OAuth2Conf `mapstructure:"OAuth2"`
 	OIDCConf   `mapstructure:"OIDC"`
 }
