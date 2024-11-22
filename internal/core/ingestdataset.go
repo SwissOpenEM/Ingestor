@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/tls"
 	"errors"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -13,6 +14,7 @@ import (
 	"time"
 
 	"github.com/SwissOpenEM/Ingestor/internal/metadataextractor"
+	"github.com/SwissOpenEM/Ingestor/internal/s3upload"
 	"github.com/SwissOpenEM/Ingestor/internal/scicat"
 	"github.com/SwissOpenEM/Ingestor/internal/task"
 	"github.com/fatih/color"
@@ -113,7 +115,7 @@ func IngestDataset(
 	task_context context.Context,
 	ingestionTask task.IngestionTask,
 	config Config,
-	notifier ProgressNotifier,
+	notifier task.ProgressNotifier,
 ) (string, error) {
 	var http_client = &http.Client{
 		Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}},
@@ -203,10 +205,11 @@ func IngestDataset(
 		for _, f := range fullFileArray {
 			fileList = append(fileList, f.Path)
 		}
-		err = UploadS3(task_context, datasetId, datasetFolder, fileList, ingestionTask.DatasetFolder.Id, config.Transfer.S3, notifier)
+		err = s3upload.UploadS3(task_context, datasetId, datasetFolder, fileList, ingestionTask.DatasetFolder.Id, config.Transfer.S3, notifier)
 	case task.TransferGlobus:
 		err = GlobusTransfer(config.Transfer.Globus, ingestionTask, task_context, ingestionTask.DatasetFolder.Id, datasetFolder, fullFileArray, notifier)
 	_:
+		return "", fmt.Errorf("unknown transfer method: %s", ingestionTask.TransferMethod)
 	}
 
 	if err != nil {

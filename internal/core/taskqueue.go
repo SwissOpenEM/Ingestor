@@ -21,7 +21,7 @@ type TaskQueue struct {
 	resultChannel      chan task.Result                                      // The result of the upload is put into this channel
 	AppContext         context.Context
 	Config             Config
-	Notifier           ProgressNotifier
+	Notifier           task.ProgressNotifier
 }
 
 func (w *TaskQueue) Startup() {
@@ -231,7 +231,7 @@ func (w *TaskQueue) GetTaskFolder(id uuid.UUID) string {
 	return ""
 }
 
-func TestIngestionFunction(task_context context.Context, task task.IngestionTask, config Config, notifier ProgressNotifier) (string, error) {
+func TestIngestionFunction(task_context context.Context, task task.IngestionTask, config Config, notifier task.ProgressNotifier) (string, error) {
 	start := time.Now()
 
 	for i := 0; i < 10; i++ {
@@ -258,6 +258,8 @@ func (w *TaskQueue) getTransferMethod() (transferMethod task.TransferMethod) {
 		transferMethod = task.TransferGlobus
 	case "s3":
 		transferMethod = task.TransferS3
+	default:
+		panic("unknown transfer method")
 	}
 	return transferMethod
 }
