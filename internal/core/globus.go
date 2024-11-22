@@ -98,7 +98,7 @@ func globusCheckTransfer(globusTaskId string) (bytesTransferred int, filesTransf
 	}
 }
 
-func GlobusTransfer(globusConf task.GlobusTransferConfig, task task.IngestionTask, taskCtx context.Context, localTaskId uuid.UUID, datasetFolder string, fileList []datasetIngestor.Datafile, notifier ProgressNotifier) error {
+func GlobusTransfer(globusConf task.GlobusTransferConfig, task task.IngestionTask, taskCtx context.Context, localTaskId uuid.UUID, datasetFolder string, fileList []datasetIngestor.Datafile, notifier task.ProgressNotifier) error {
 	// check if globus client is properly set up, use refresh token if available
 	if !globusClient.IsClientSet() {
 		if globusConf.RefreshToken == "" {
