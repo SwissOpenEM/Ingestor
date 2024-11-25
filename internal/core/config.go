@@ -35,8 +35,13 @@ type OIDCConf struct {
 }
 
 type JWTConf struct {
-	SignatureMethod string
-	PublicKey       string
+	UseJWKS bool
+	// used when UseJWKS is set to true
+	JwksURL              string
+	JwksSignatureMethods []string
+	// used when UseJWKS is set to false
+	PublicKey      string
+	PKeySignMethod string
 }
 
 type AuthConf struct {
