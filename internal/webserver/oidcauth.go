@@ -12,13 +12,27 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-type tokenClaims struct {
-	Scope string `json:"scope"`
+type rolesList struct {
+	Roles []string `json:"roles,omitempty"`
 }
 
-func initKeyfunc(authConf core.AuthConf) (jwt.Keyfunc, error) {
-	if authConf.UseJWKS {
-		jwks, err := keyfunc.NewDefault([]string{authConf.JwksURL})
+type keycloakClaims struct {
+	RealmAccess    rolesList            `json:"realm_access,omitempty"`
+	ResourceAccess map[string]rolesList `json:"resource_access,omitempty"`
+	jwt.RegisteredClaims
+}
+
+func (c *keycloakClaims) GetRealmRoles() []string {
+	return c.RealmAccess.Roles
+}
+
+func (c *keycloakClaims) GetResourceRolesByClient(clientName string) []string {
+	return c.ResourceAccess[clientName].Roles
+}
+
+func initKeyfunc(jwtConf core.JWTConf) (jwt.Keyfunc, error) {
+	if jwtConf.UseJWKS {
+		jwks, err := keyfunc.NewDefault([]string{jwtConf.JwksURL})
 		if err != nil {
 			return nil, err
 		}
@@ -26,17 +40,28 @@ func initKeyfunc(authConf core.AuthConf) (jwt.Keyfunc, error) {
 	} else {
 		return func(token *jwt.Token) (interface{}, error) {
 			// validate signing algorithm
-			if token.Header["alg"] != authConf.PKeySignMethod {
+			if token.Header["alg"] != jwtConf.KeySignMethod {
 				return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 			}
 
 			// return public key if the algorithm is what is expected
-			return jwt.ParseRSAPublicKeyFromPEM([]byte(authConf.PublicKey))
+			switch jwtConf.KeySignMethod {
+			case "HS256", "HS384", "HS512":
+				return []byte(jwtConf.Key), nil
+			case "RS256", "RS384", "RS512":
+				return jwt.ParseRSAPublicKeyFromPEM([]byte(jwtConf.Key))
+			case "ES256", "ES384", "ES512":
+				return jwt.ParseECPublicKeyFromPEM([]byte(jwtConf.Key))
+			case "EdDSA":
+				return jwt.ParseEdPublicKeyFromPEM([]byte(jwtConf.Key))
+			default:
+				return nil, errors.New("unsupported signature method")
+			}
 		}, nil
 	}
 }
 
-func (i *IngestorWebServerImplemenation) oidcAuthFunc(ctx context.Context, input *openapi3filter.AuthenticationInput) error {
+func (i *IngestorWebServerImplemenation) apiAuthFunc(ctx context.Context, input *openapi3filter.AuthenticationInput) error {
 	// find user scopes (currently disabled, could be a nice fallback solution later)
 	bearer := input.RequestValidationInput.Request.Header.Get("Authorization")
 	if bearer == "" {
@@ -49,17 +74,17 @@ func (i *IngestorWebServerImplemenation) oidcAuthFunc(ctx context.Context, input
 
 	jwtToken := splitToken[1]
 
-	token, err := jwt.Parse(jwtToken, i.jwtKeyfunc, jwt.WithValidMethods(i.jwtSignMethods))
+	var claims keycloakClaims
+	_, err := jwt.ParseWithClaims(jwtToken, &claims, i.jwtKeyfunc, jwt.WithValidMethods(i.jwtSignMethods))
 	if err != nil {
 		return err // token is not valid (expired), likely
 	}
 
-	claims, ok := token.Claims.(jwt.MapClaims)
-	if !ok {
-		return errors.New("can't extract claims")
-	}
-
-	fmt.Printf("here's the claims of the token: \n=====\n%v\n=====\n", claims)
+	//kcClaims, ok := token.Claims.(keycloakClaims)
+	//if !ok {
+	//	return errors.New("claim extraction failed")
+	//}
+	fmt.Printf("here are the realm roles: \"%v\"", claims.GetRealmRoles())
 
 	return nil // for now we accept anything that has a valid JWT token
 }

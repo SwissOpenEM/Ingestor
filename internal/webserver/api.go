@@ -64,7 +64,7 @@ func NewIngestorWebServer(version string, taskQueue *core.TaskQueue, authConf co
 		Scopes:       append([]string{oidc.ScopeOpenID}, authConf.Scopes...),
 	}
 
-	keyfunc, err := initKeyfunc(authConf)
+	keyfunc, err := initKeyfunc(authConf.JWTConf)
 	if err != nil {
 		return nil, err
 	}
@@ -73,7 +73,7 @@ func NewIngestorWebServer(version string, taskQueue *core.TaskQueue, authConf co
 	if authConf.UseJWKS {
 		signMethods = authConf.JwksSignatureMethods
 	} else {
-		signMethods = []string{authConf.JWTConf.PKeySignMethod}
+		signMethods = []string{authConf.JWTConf.KeySignMethod}
 	}
 
 	return &IngestorWebServerImplemenation{
