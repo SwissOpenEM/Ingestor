@@ -65,7 +65,7 @@ func NewIngesterServer(ingestor *IngestorWebServerImplemenation, port int) *http
 	r.Use(
 		middleware.OapiRequestValidatorWithOptions(swagger, &middleware.Options{
 			Options: openapi3filter.Options{
-				AuthenticationFunc: ingestor.oidcAuthFunc,
+				AuthenticationFunc: ingestor.apiAuthFunc,
 			},
 		}),
 		sessions.SessionsMany([]string{"auth", "user"}, store),

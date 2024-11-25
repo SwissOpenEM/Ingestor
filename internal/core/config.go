@@ -40,8 +40,8 @@ type JWTConf struct {
 	JwksURL              string
 	JwksSignatureMethods []string
 	// used when UseJWKS is set to false
-	PublicKey      string
-	PKeySignMethod string
+	Key           string // public key in case of asymmetric method, otherwise common secret (HMAC)
+	KeySignMethod string // can be "HS#", "RS#", "EC#", "EdDSA" (where # can be 256, 384, 512)
 }
 
 type AuthConf struct {
