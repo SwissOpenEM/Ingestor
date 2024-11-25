@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/SwissOpenEM/Ingestor/internal/task"
+	task "github.com/SwissOpenEM/Ingestor/internal/task"
 	"github.com/elliotchance/orderedmap/v2"
 	"github.com/google/uuid"
 )
@@ -219,6 +219,16 @@ func (w *TaskQueue) GetTaskCount() int {
 	w.taskListLock.RLock()
 	defer w.taskListLock.RUnlock()
 	return w.datasetUploadTasks.Len()
+}
+
+func (w *TaskQueue) GetTaskFolder(id uuid.UUID) string {
+	w.taskListLock.RLock()
+	defer w.taskListLock.RUnlock()
+
+	if t, ok := w.datasetUploadTasks.Get(id); ok {
+		return t.FolderPath
+	}
+	return ""
 }
 
 func TestIngestionFunction(task_context context.Context, task task.IngestionTask, config Config, notifier ProgressNotifier) (string, error) {

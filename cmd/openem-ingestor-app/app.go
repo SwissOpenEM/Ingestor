@@ -2,10 +2,13 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
+	"log/slog"
 
 	core "github.com/SwissOpenEM/Ingestor/internal/core"
-	"github.com/SwissOpenEM/Ingestor/internal/task"
+	metadataextractor "github.com/SwissOpenEM/Ingestor/internal/metadataextractor"
+	task "github.com/SwissOpenEM/Ingestor/internal/task"
 	webserver "github.com/SwissOpenEM/Ingestor/internal/webserver"
 
 	"github.com/google/uuid"
@@ -48,10 +51,11 @@ func (w *WailsNotifier) OnTaskProgress(id uuid.UUID, current_file int, total_fil
 
 // App struct
 type App struct {
-	ctx       context.Context
-	taskqueue core.TaskQueue
-	config    core.Config
-	version   string
+	ctx              context.Context
+	taskqueue        core.TaskQueue
+	config           core.Config
+	extractorHandler *metadataextractor.ExtractorHandler
+	version          string
 }
 
 // NewApp creates a new App application struct
@@ -77,6 +81,9 @@ func (b *App) beforeClose(ctx context.Context) (prevent bool) {
 // so we can call the runtime methods
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
+
+	a.extractorHandler = metadataextractor.NewExtractorHandler(a.config.MetadataExtractors)
+
 	a.taskqueue = core.TaskQueue{Config: a.config,
 		AppContext: a.ctx,
 		Notifier:   &WailsNotifier{AppContext: a.ctx},
@@ -88,11 +95,12 @@ func (a *App) startup(ctx context.Context) {
 		s := webserver.NewIngesterServer(ingestor, port)
 		log.Fatal(s.ListenAndServe())
 	}(a.config.Misc.Port)
+
 }
 
 func (a *App) SelectFolder() {
 	folder, err := task.SelectFolder(a.ctx)
-	if err != nil {
+	if err != nil || folder.FolderPath == "" {
 		return
 	}
 
@@ -100,6 +108,58 @@ func (a *App) SelectFolder() {
 	if err != nil {
 		return
 	}
+}
+
+func (a *App) ExtractMetadata(extractor_name string, id uuid.UUID) string {
+
+	folder := a.taskqueue.GetTaskFolder(id)
+	if folder == "" {
+		return ""
+	}
+
+	log_message := func(id uuid.UUID, msg string) {
+		slog.Info("Extractor output: ", "message", msg)
+		runtime.EventsEmit(a.ctx, "log-update", id, msg)
+	}
+
+	log_error := func(id uuid.UUID, msg string) {
+		slog.Info("Extractor error: ", "message", msg)
+		runtime.EventsEmit(a.ctx, "log-update", id, msg)
+	}
+
+	outputfile := metadataextractor.MetadataFilePath(folder)
+
+	metadata, err := a.extractorHandler.ExtractMetadata(a.ctx, extractor_name, folder, outputfile, func(message string) { log_message(id, message) }, func(message string) { log_error(id, message) })
+
+	if err != nil {
+		slog.Error("Metadata extraction failed", "error", err.Error())
+		return fmt.Sprintf("{\"status\":\"%s\"}", err.Error())
+	}
+	return metadata
+}
+
+type ExtractionMethod struct {
+	Name   string
+	Schema string
+}
+
+func (e *ExtractionMethod) GetName() string {
+	return e.Name
+}
+
+func (e *ExtractionMethod) GetSchema() string {
+	return e.Schema
+}
+
+func (a *App) AvailableMethods() []ExtractionMethod {
+	e := []ExtractionMethod{}
+	for _, ex := range a.extractorHandler.AvailableMethods() {
+		e = append(e, ExtractionMethod{
+			Name:   ex.Name,
+			Schema: ex.Schema,
+		})
+	}
+	return e
 }
 
 func (a *App) CancelTask(id uuid.UUID) {

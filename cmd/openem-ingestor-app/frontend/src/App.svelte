@@ -1,15 +1,22 @@
 <script lang="ts">
   import logo from "./assets/images/logo-wide-1024x317.png";
   import {
+    ExtractMetadata,
     SelectFolder,
     CancelTask,
     RemoveTask,
     ScheduleTask,
+    AvailableMethods,
   } from "../wailsjs/go/main/App.js";
   import { EventsOn } from "../wailsjs/runtime/runtime";
   import List from "./List.svelte";
   import ListElement from "./ListElement.svelte";
 
+  let selected_extractor;
+
+  async function extractMetadata(id: string): Promise<string> {
+    return await ExtractMetadata(selected_extractor, id);
+  }
   function selectFolder(): void {
     SelectFolder();
   }
@@ -38,12 +45,30 @@
       status: "Selected",
       progress: 0,
       component: ListElement,
+      extractMetadata: extractMetadata,
       cancelTask: cancelTask,
       scheduleTask: scheduleTask,
       removeTask: removeTask,
     };
     return id;
   }
+
+  let extractors = ["No extractors found"];
+  let schemas = {};
+
+  async function refreshExtractors() {
+    AvailableMethods().then((a) => {
+      extractors = [];
+      a.forEach((element) => {
+        extractors.push(element.Name);
+        schemas[element.Name] = atob(element.Schema);
+      });
+      if (extractors.length > 0) selected_extractor = extractors[0];
+      else selected_extractor = ["No extractors found"];
+    });
+  }
+
+  window.onload = refreshExtractors;
 
   EventsOn("folder-added", (id, folder) => {
     newItem(id, folder);
@@ -74,18 +99,46 @@
     items[id].status = "Canceled";
     items = items;
   });
+
+  EventsOn("log-update", (id, message) => {
+    console.log(id);
+    items[id].status += "\n" + message;
+    items = items;
+  });
+
   EventsOn(
     "progress-update",
     (id, current_file, total_files, elapsed_seconds) => {
       const perc = (parseFloat(current_file) / parseFloat(total_files)) * 100;
       items[id].progress = perc.toFixed(0);
-      items[id].status = "Uploading... " + secondsToStr(elapsed_seconds);
+      items[id].status +=
+        "\n" + "Uploading... " + secondsToStr(elapsed_seconds);
     },
   );
 </script>
 
 <main>
-  <img alt="OpenEM logo" id="logo" src={logo} />
+  <img alt="OpenEM logo" id="logo" src={logo} height="200px" />
+
+  <div>
+    <h3>Metadata Extractors</h3>
+    <select bind:value={selected_extractor}>
+      {#each extractors as extractor}
+        <option value={extractor}>
+          {extractor}
+        </option>
+      {/each}
+    </select>
+    <button class="btn" on:click={refreshExtractors}> Refresh </button>
+  </div>
+  <div>
+    <textarea
+      style="height:200px; width:400px"
+      bind:value={schemas[selected_extractor]}
+    />
+  </div>
+
+  <h3>Datasets</h3>
   <button class="btn" on:click={selectFolder}>Select Folder</button>
   <div>
     <div id="upload-list">
@@ -97,56 +150,13 @@
 <style>
   #logo {
     display: block;
-    width: 50%;
-    height: 50%;
+    width: 20%;
+    height: 20%;
     margin: auto;
     padding: 10% 0 0;
     background-position: center;
     background-repeat: no-repeat;
     background-size: 100% 100%;
     background-origin: content-box;
-  }
-
-  .result {
-    height: 20px;
-    line-height: 20px;
-    margin: 1.5rem auto;
-  }
-
-  .input-box .btn {
-    width: 60px;
-    height: 30px;
-    line-height: 30px;
-    border-radius: 3px;
-    border: none;
-    margin: 0 0 0 20px;
-    padding: 0 8px;
-    cursor: pointer;
-  }
-
-  .input-box .btn:hover {
-    background-image: linear-gradient(to top, #cfd9df 0%, #e2ebf0 100%);
-    color: #333333;
-  }
-
-  .input-box .input {
-    border: none;
-    border-radius: 3px;
-    outline: none;
-    height: 30px;
-    line-height: 30px;
-    padding: 0 10px;
-    background-color: rgba(240, 240, 240, 1);
-    -webkit-font-smoothing: antialiased;
-  }
-
-  .input-box .input:hover {
-    border: none;
-    background-color: rgba(255, 255, 255, 1);
-  }
-
-  .input-box .input:focus {
-    border: none;
-    background-color: rgba(255, 255, 255, 1);
   }
 </style>

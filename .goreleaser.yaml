@@ -22,7 +22,7 @@ before:
 
 builds:
   # The app build is invoked via wails and binary copied manually to the expected output folder
-  - id: "openem-ingestor-app"
+  - id: openem-ingestor-app-linux
     hooks:
         pre:
         - cmd: mkdir {{dir .Path}}
@@ -38,13 +38,33 @@ builds:
     dir: ./cmd/openem-ingestor-app
     goos:
       - linux
+    goarch:
+      - amd64
+    main: .
+    binary: openem-ingestor-app
+    gobinary: echo 
+    
+  - id: openem-ingestor-app-win
+    hooks:
+        pre:
+        - cmd: mkdir {{dir .Path}}
+        post:
+        - dir: cmd/openem-ingestor-app
+          cmd: wails build -platform {{ .Os }} -clean -windowsconsole -ldflags "-s -w  -X 'main.version={{.Version}}'" -trimpath -o {{base .Path}}
+          output: true
+        - dir: cmd/openem-ingestor-app
+          cmd: cp build/bin/{{base .Path}} {{dir .Path}}/
+          output: true
+    env:
+      - CGO_ENABLED=0
+    dir: ./cmd/openem-ingestor-app
+    goos:
       - windows
     goarch:
       - amd64
     main: .
     binary: openem-ingestor-app
     gobinary: echo 
-
 
   - id: "openem-ingestor-service"
     flags:
@@ -63,7 +83,8 @@ builds:
 archives:
   - id: "openem-ingestor-app"
     builds: 
-      - openem-ingestor-app
+      - openem-ingestor-app-linux
+      - openem-ingestor-app-win
     format: tar.gz
 
     wrap_in_directory: true
@@ -104,6 +125,7 @@ archives:
       dst: ./
     - src: configs/schemas/*.json
       dst: schemas
+      
 changelog:
   sort: asc
   filters:
