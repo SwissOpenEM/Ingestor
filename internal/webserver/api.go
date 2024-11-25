@@ -17,6 +17,7 @@ import (
 	"github.com/coreos/go-oidc/v3/oidc"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"golang.org/x/oauth2"
 )
@@ -24,13 +25,13 @@ import (
 var _ StrictServerInterface = (*IngestorWebServerImplemenation)(nil)
 
 type IngestorWebServerImplemenation struct {
-	version            string
-	taskQueue          *core.TaskQueue
-	oauth2Config       *oauth2.Config
-	oidcProvider       *oidc.Provider
-	oidcVerifier       *oidc.IDTokenVerifier
-	jwtSignatureMethod string
-	jwtPublicKey       string
+	version        string
+	taskQueue      *core.TaskQueue
+	oauth2Config   *oauth2.Config
+	oidcProvider   *oidc.Provider
+	oidcVerifier   *oidc.IDTokenVerifier
+	jwtKeyfunc     jwt.Keyfunc
+	jwtSignMethods []string
 }
 
 //	@contact.name	SwissOpenEM
@@ -40,7 +41,7 @@ type IngestorWebServerImplemenation struct {
 // @license.name	Apache 2.0
 // @license.url	http://www.apache.org/licenses/LICENSE-2.0.html
 
-func NewIngestorWebServer(version string, taskQueue *core.TaskQueue, authConf core.AuthConf) *IngestorWebServerImplemenation {
+func NewIngestorWebServer(version string, taskQueue *core.TaskQueue, authConf core.AuthConf) (*IngestorWebServerImplemenation, error) {
 	oidcProvider, err := oidc.NewProvider(context.Background(), authConf.IssuerURL)
 	if err != nil {
 		fmt.Println("Warning: OIDC discovery mechanism failed. Falling back to manual OIDC config")
@@ -63,15 +64,27 @@ func NewIngestorWebServer(version string, taskQueue *core.TaskQueue, authConf co
 		Scopes:       append([]string{oidc.ScopeOpenID}, authConf.Scopes...),
 	}
 
-	return &IngestorWebServerImplemenation{
-		version:            version,
-		taskQueue:          taskQueue,
-		oauth2Config:       &oauthConf,
-		oidcProvider:       oidcProvider,
-		oidcVerifier:       oidcVerifier,
-		jwtSignatureMethod: authConf.JWTConf.SignatureMethod,
-		jwtPublicKey:       authConf.JWTConf.PublicKey,
+	keyfunc, err := initKeyfunc(authConf)
+	if err != nil {
+		return nil, err
 	}
+
+	var signMethods []string
+	if authConf.UseJWKS {
+		signMethods = authConf.JwksSignatureMethods
+	} else {
+		signMethods = []string{authConf.JWTConf.PKeySignMethod}
+	}
+
+	return &IngestorWebServerImplemenation{
+		version:        version,
+		taskQueue:      taskQueue,
+		oauth2Config:   &oauthConf,
+		oidcProvider:   oidcProvider,
+		oidcVerifier:   oidcVerifier,
+		jwtKeyfunc:     keyfunc,
+		jwtSignMethods: signMethods,
+	}, nil
 }
 
 // DatasetControllerIngestDataset implements ServerInterface.
