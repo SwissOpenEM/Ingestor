@@ -10,6 +10,7 @@ import (
 	"github.com/SwissOpenEM/Ingestor/internal/task"
 	"github.com/go-playground/validator/v10"
 	"github.com/spf13/viper"
+	"golang.org/x/oauth2"
 )
 
 type ScicatConfig struct {
@@ -18,10 +19,11 @@ type ScicatConfig struct {
 }
 
 type OAuth2Conf struct {
-	ClientID     string   // OAuth client id (this app)
-	ClientSecret string   // OAuth2 secret (associated with ClientID)
-	RedirectURL  string   // where should the OAuth2 provider return the user to
-	Scopes       []string // list of scopes to ask for from the OAuth2 provider
+	ClientID     string          // OAuth client id (this app)
+	ClientSecret string          // OAuth2 secret (associated with ClientID)
+	Endpoint     oauth2.Endpoint // Oauth2 endpoint params
+	RedirectURL  string          // where should the OAuth2 provider return the user to
+	Scopes       []string        // list of scopes to ask for from the OAuth2 provider
 }
 
 type OIDCConf struct {
