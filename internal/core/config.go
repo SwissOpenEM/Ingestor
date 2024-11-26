@@ -35,7 +35,8 @@ type OIDCConf struct {
 }
 
 type JWTConf struct {
-	UseJWKS bool
+	ClientID string // Client ID of this server in IdP (Keycloak)
+	UseJWKS  bool
 	// used when UseJWKS is set to true
 	JwksURL              string
 	JwksSignatureMethods []string
@@ -44,8 +45,16 @@ type JWTConf struct {
 	KeySignMethod string // can be "HS#", "RS#", "EC#", "EdDSA" (where # can be 256, 384, 512)
 }
 
+type RBACConf struct {
+	AdminRole             string
+	CreateModifyTasksRole string
+	ViewTasksRole         string
+}
+
 type AuthConf struct {
+	Disable    bool
 	JWTConf    `mapstructure:"JWT"`
+	RBACConf   `mapstructure:"RBAC"`
 	OAuth2Conf `mapstructure:"OAuth2"`
 	OIDCConf   `mapstructure:"OIDC"`
 }

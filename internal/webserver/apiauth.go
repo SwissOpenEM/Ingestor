@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/MicahParks/keyfunc/v3"
@@ -11,24 +12,6 @@ import (
 	"github.com/getkin/kin-openapi/openapi3filter"
 	"github.com/golang-jwt/jwt/v5"
 )
-
-type rolesList struct {
-	Roles []string `json:"roles,omitempty"`
-}
-
-type keycloakClaims struct {
-	RealmAccess    rolesList            `json:"realm_access,omitempty"`
-	ResourceAccess map[string]rolesList `json:"resource_access,omitempty"`
-	jwt.RegisteredClaims
-}
-
-func (c *keycloakClaims) GetRealmRoles() []string {
-	return c.RealmAccess.Roles
-}
-
-func (c *keycloakClaims) GetResourceRolesByClient(clientName string) []string {
-	return c.ResourceAccess[clientName].Roles
-}
 
 func initKeyfunc(jwtConf core.JWTConf) (jwt.Keyfunc, error) {
 	if jwtConf.UseJWKS {
@@ -62,7 +45,12 @@ func initKeyfunc(jwtConf core.JWTConf) (jwt.Keyfunc, error) {
 }
 
 func (i *IngestorWebServerImplemenation) apiAuthFunc(ctx context.Context, input *openapi3filter.AuthenticationInput) error {
-	// find user scopes (currently disabled, could be a nice fallback solution later)
+	// if auth is disabled, return immediately
+	if i.taskQueue.Config.Auth.Disable {
+		return nil
+	}
+
+	// jwt authentication
 	bearer := input.RequestValidationInput.Request.Header.Get("Authorization")
 	if bearer == "" {
 		return errors.New("user is not logged-in")
@@ -80,35 +68,71 @@ func (i *IngestorWebServerImplemenation) apiAuthFunc(ctx context.Context, input 
 		return err // token is not valid (expired), likely
 	}
 
-	//kcClaims, ok := token.Claims.(keycloakClaims)
-	//if !ok {
-	//	return errors.New("claim extraction failed")
-	//}
-	fmt.Printf("here are the realm roles: \"%v\"", claims.GetRealmRoles())
+	// RBAC
+	foundRoles := claims.GetResourceRolesByKey(i.taskQueue.Config.Auth.JWTConf.ClientID)
 
-	return nil // for now we accept anything that has a valid JWT token
-}
-
-func findMissingScopes(desiredScopes []string, actualScopes []string) []string {
-	missingScopes := []string{}
-	scopeMap := make(map[string]bool)
-
-	for _, scope := range actualScopes {
-		scopeMap[scope] = false
+	// if admin, accept
+	if slices.Contains(foundRoles, i.scopeToRoleMap["admin"]) {
+		return nil
 	}
 
-	for _, scope := range desiredScopes {
-		if _, ok := scopeMap[scope]; !ok {
-			missingScopes = append(missingScopes, scope)
+	// check for missing roles
+	requiredRoles := i.mapScopesToRoles(input.Scopes)
+	missingRoles := findMissingRoles(requiredRoles, foundRoles)
+	return missingRolesCheck(missingRoles, input.RequestValidationInput.Request.Method+" "+input.RequestValidationInput.Request.RequestURI)
+}
+
+func (i *IngestorWebServerImplemenation) mapScopesToRoles(scopes []string) []string {
+	var roles []string
+	for _, role := range scopes {
+		if val, ok := i.scopeToRoleMap[role]; ok {
+			roles = append(roles, val)
+		}
+	}
+	return roles
+}
+
+func createScopeToRoleMap(conf core.RBACConf) (map[string]string, error) {
+	scopeMap := make(map[string]string)
+
+	// check config
+	if conf.AdminRole == "" {
+		return nil, errors.New("AdminRole is not set in config")
+	}
+	if conf.CreateModifyTasksRole == "" {
+		return nil, errors.New("CreateModifyTasksRole is not set in config")
+	}
+	if conf.ViewTasksRole == "" {
+		return nil, errors.New("ViewTasksRole is not set in config")
+	}
+
+	// map the roles to scopes
+	scopeMap["admin"] = conf.AdminRole
+	scopeMap["ingestor_write"] = conf.CreateModifyTasksRole
+	scopeMap["ingestor_read"] = conf.ViewTasksRole
+	return scopeMap, nil
+}
+
+func findMissingRoles(requiredRoles []string, foundRoles []string) []string {
+	missingRoles := []string{}
+	roleMap := make(map[string]bool)
+
+	for _, role := range foundRoles {
+		roleMap[role] = false
+	}
+
+	for _, role := range requiredRoles {
+		if _, ok := roleMap[role]; !ok {
+			missingRoles = append(missingRoles, role)
 		}
 	}
 
-	return missingScopes
+	return missingRoles
 }
 
-func missingScopesCheck(missingScopes []string, methodName string) error {
-	if len(missingScopes) == 0 {
+func missingRolesCheck(missingRoles []string, methodName string) error {
+	if len(missingRoles) == 0 {
 		return nil
 	}
-	return fmt.Errorf("missing scopes for \"%s\": %v", methodName, missingScopes)
+	return fmt.Errorf("missing roles for \"%s\": %v", methodName, missingRoles)
 }

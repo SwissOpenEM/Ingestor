@@ -32,6 +32,7 @@ type IngestorWebServerImplemenation struct {
 	oidcVerifier   *oidc.IDTokenVerifier
 	jwtKeyfunc     jwt.Keyfunc
 	jwtSignMethods []string
+	scopeToRoleMap map[string]string
 }
 
 //	@contact.name	SwissOpenEM
@@ -55,9 +56,9 @@ func NewIngestorWebServer(version string, taskQueue *core.TaskQueue, authConf co
 		}
 		oidcProvider = a.NewProvider(context.Background())
 	}
-	oidcVerifier := oidcProvider.Verifier(&oidc.Config{ClientID: authConf.ClientID})
+	oidcVerifier := oidcProvider.Verifier(&oidc.Config{ClientID: authConf.OAuth2Conf.ClientID})
 	oauthConf := oauth2.Config{
-		ClientID:     authConf.ClientID,
+		ClientID:     authConf.OAuth2Conf.ClientID,
 		ClientSecret: authConf.ClientSecret,
 		Endpoint:     oidcProvider.Endpoint(),
 		RedirectURL:  authConf.RedirectURL,
@@ -76,6 +77,11 @@ func NewIngestorWebServer(version string, taskQueue *core.TaskQueue, authConf co
 		signMethods = []string{authConf.JWTConf.KeySignMethod}
 	}
 
+	scopeToRoleMap, err := createScopeToRoleMap(authConf.RBACConf)
+	if err != nil {
+		return nil, err
+	}
+
 	return &IngestorWebServerImplemenation{
 		version:        version,
 		taskQueue:      taskQueue,
@@ -84,6 +90,7 @@ func NewIngestorWebServer(version string, taskQueue *core.TaskQueue, authConf co
 		oidcVerifier:   oidcVerifier,
 		jwtKeyfunc:     keyfunc,
 		jwtSignMethods: signMethods,
+		scopeToRoleMap: scopeToRoleMap,
 	}, nil
 }
 
@@ -380,12 +387,6 @@ func (i *IngestorWebServerImplemenation) GetCallback(ctx context.Context, reques
 	}
 	if idToken.Nonce != nonce {
 		return GetCallback400TextResponse("nonce did not match"), nil
-	}
-
-	// extract claims
-	var claims claims
-	if err := idToken.Claims(&claims); err != nil {
-		return GetCallback400TextResponse("could not parse token claims"), nil
 	}
 
 	var fullClaims json.RawMessage
