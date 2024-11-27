@@ -3,16 +3,6 @@ Scicat:
   AccessToken: "token"
 Transfer:
   Method: S3
-  # Globus:
-  #   ClientId: "clientid_registered_with_globus"
-  #   RedirectUrl: "https://auth.globus.org/v2/web/auth-code"
-  #   SourceCollection: "collectionid1"
-  #   SourcePrefixPath: "/some/optional/path"
-  #   DestinationCollection: "collectionid2"
-  #   DestinationPrefixPath: "/another/optional/path"
-  #   RefreshToken: "refresh_token"
-  #   Scopes:
-  #     - "urn:globus:auth:scope:transfer.api.globus.org:all[*https://auth.globus.org/scopes/[collection_id1]/data_access]"
   S3:
     Endpoint: s3:9000
     Bucket: landingzone
