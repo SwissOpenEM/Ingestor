@@ -9,18 +9,8 @@ import (
 	"github.com/SwissOpenEM/Ingestor/internal/task"
 )
 
-func createExpectedValidConfig() Config {
-	expected_misc := MiscConfig{
-		ConcurrencyLimit: 2,
-		Port:             8888,
-	}
-
-	expected_scicat := ScicatConfig{
-		Host:        "http://scicat:8080/api/v3",
-		AccessToken: "token",
-	}
-
-	expected_s3 := task.TransferConfig{
+func createExpectedValidConfigS3() task.TransferConfig {
+	return task.TransferConfig{
 		Method: "S3",
 		S3: task.S3TransferConfig{
 			Endpoint: "s3:9000",
@@ -31,6 +21,36 @@ func createExpectedValidConfig() Config {
 			Checksum: true,
 		},
 	}
+}
+
+func createExpectedValidConfigGlobus() task.TransferConfig {
+	return task.TransferConfig{
+		Method: "Globus",
+		Globus: task.GlobusTransferConfig{
+			ClientID:              "clientid_registered_with_globus",
+			RedirectURL:           "https://auth.globus.org/v2/web/auth-code",
+			Scopes:                []string{"urn:globus:auth:scope:transfer.api.globus.org:all[*https://auth.globus.org/scopes/[collection_id1]/data_access]"},
+			SourceCollection:      "collectionid1",
+			SourcePrefixPath:      "/some/optional/path",
+			DestinationCollection: "collectionid2",
+			DestinationPrefixPath: "/another/optional/path",
+			RefreshToken:          "refresh_token",
+		},
+	}
+}
+
+func createExpectedValidConfig(transferConfig task.TransferConfig) Config {
+	expected_misc := MiscConfig{
+		ConcurrencyLimit: 2,
+		Port:             8888,
+	}
+
+	expected_scicat := ScicatConfig{
+		Host:        "http://scicat:8080/api/v3",
+		AccessToken: "token",
+	}
+
+	expected_tranfer := transferConfig
 
 	expected_LS_methods := []metadataextractor.MethodConfig{
 		{
@@ -92,12 +112,12 @@ func createExpectedValidConfig() Config {
 		Misc:               expected_misc,
 		MetadataExtractors: expected_meta,
 		Scicat:             expected_scicat,
-		Transfer:           expected_s3,
+		Transfer:           expected_tranfer,
 	}
 	return expected_config
 }
 
-func TestReadConfig(t *testing.T) {
+func TestReadConfigS3(t *testing.T) {
 	viperConf.AddConfigPath("../../test/testdata")
 
 	type args struct {
@@ -112,9 +132,44 @@ func TestReadConfig(t *testing.T) {
 		{
 			name: "valid config file",
 			args: args{
-				configFileName: "valid_config.yaml",
+				configFileName: "valid_config_s3.yaml",
 			},
-			want:    createExpectedValidConfig(),
+			want:    createExpectedValidConfig(createExpectedValidConfigS3()),
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := ReadConfig(tt.args.configFileName)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ReadConfig() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("ReadConfig() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestReadConfigGlobus(t *testing.T) {
+	viperConf.AddConfigPath("../../test/testdata")
+
+	type args struct {
+		configFileName string
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    Config
+		wantErr bool
+	}{
+		{
+			name: "valid config file",
+			args: args{
+				configFileName: "valid_config_globus.yaml",
+			},
+			want:    createExpectedValidConfig(createExpectedValidConfigGlobus()),
 			wantErr: false,
 		},
 	}
