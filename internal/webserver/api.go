@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"math"
 	"os"
+	"slices"
 	"time"
 
 	"github.com/SwissOpenEM/Ingestor/internal/core"
@@ -25,14 +26,15 @@ import (
 var _ StrictServerInterface = (*IngestorWebServerImplemenation)(nil)
 
 type IngestorWebServerImplemenation struct {
-	version        string
-	taskQueue      *core.TaskQueue
-	oauth2Config   *oauth2.Config
-	oidcProvider   *oidc.Provider
-	oidcVerifier   *oidc.IDTokenVerifier
-	jwtKeyfunc     jwt.Keyfunc
-	jwtSignMethods []string
-	scopeToRoleMap map[string]string
+	version         string
+	taskQueue       *core.TaskQueue
+	oauth2Config    *oauth2.Config
+	oidcProvider    *oidc.Provider
+	oidcVerifier    *oidc.IDTokenVerifier
+	jwtKeyfunc      jwt.Keyfunc
+	jwtSignMethods  []string
+	sessionDuration uint
+	scopeToRoleMap  map[string]string
 }
 
 //	@contact.name	SwissOpenEM
@@ -305,9 +307,13 @@ func (i *IngestorWebServerImplemenation) GetLogin(ctx context.Context, request G
 	}
 
 	// store state, verifier & nonce in session
+	authSession.Options(sessions.Options{
+		MaxAge: 300,
+	})
 	authSession.Set("state", state)
 	authSession.Set("verifier", verifier)
 	authSession.Set("nonce", nonce)
+
 	err = authSession.Save()
 	if err != nil {
 		return GetLogin302Response{}, err
@@ -347,6 +353,9 @@ func (i *IngestorWebServerImplemenation) GetCallback(ctx context.Context, reques
 	authSession.Delete("verifier")
 	authSession.Delete("nonce")
 	err := authSession.Save()
+	authSession.Options(sessions.Options{
+		MaxAge: -1,
+	})
 	if err != nil {
 		return GetCallback500Response{}, err
 	}
@@ -389,18 +398,28 @@ func (i *IngestorWebServerImplemenation) GetCallback(ctx context.Context, reques
 		return GetCallback400TextResponse("nonce did not match"), nil
 	}
 
-	var fullClaims json.RawMessage
-	idToken.Claims(&fullClaims)
-	fmt.Printf("the full claims:\n\n=====\n%s\n======\n", string(fullClaims))
+	claims, err := parseKeycloakJWTToken(oauthToken.AccessToken, i.jwtKeyfunc, i.jwtSignMethods)
+	if err != nil {
+		return GetCallback500Response{}, fmt.Errorf("can't parse jwt token: %s", err.Error())
+	}
+
+	if !slices.Contains([]string(claims.Audience), i.oauth2Config.ClientID) {
+		return GetCallback500Response{}, fmt.Errorf("jwt: audience does not contain the client id")
+	}
 
 	// set auth cookies
-	userSession.Set("user_info", userInfo)
-	userSession.Set("expiry", time.Now().Add(time.Hour*24).String())
+	userSession.Options(sessions.Options{
+		MaxAge: int(i.sessionDuration),
+	})
+	userSession.Set("expires_at", time.Now().Add(time.Second*time.Duration(i.sessionDuration)).String())
+	userSession.Set("email", userInfo.Email)
+	userSession.Set("profile", userInfo.Profile)
+	userSession.Set("subject", userInfo.Subject)
+	userSession.Set("roles", claims.GetResourceRolesByKey(i.oauth2Config.ClientID))
 	err = userSession.Save()
 	if err != nil {
 		return GetCallback500Response{}, fmt.Errorf("can't set user session: %s", err.Error())
 	}
-
 	fmt.Printf("access token: \"%s\"\n", oauthToken.AccessToken)
 
 	// reply

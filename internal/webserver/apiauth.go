@@ -4,12 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"slices"
-	"strings"
+	"time"
 
 	"github.com/MicahParks/keyfunc/v3"
 	"github.com/SwissOpenEM/Ingestor/internal/core"
 	"github.com/getkin/kin-openapi/openapi3filter"
+	"github.com/gin-contrib/sessions"
+	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 )
 
@@ -50,36 +51,46 @@ func (i *IngestorWebServerImplemenation) apiAuthFunc(ctx context.Context, input 
 		return nil
 	}
 
-	// jwt authentication
-	bearer := input.RequestValidationInput.Request.Header.Get("Authorization")
-	if bearer == "" {
-		return errors.New("user is not logged-in")
+	// get session
+	ginCtx, ok := ctx.(*gin.Context)
+	if !ok {
+		return fmt.Errorf("can't access gin context")
 	}
-	splitToken := strings.Split(bearer, "Bearer ")
-	if len(splitToken) != 2 {
-		return errors.New("invalid bearer token")
+	userSession := sessions.DefaultMany(ginCtx, "user")
+
+	// check expiry
+	expireByString, ok := userSession.Get("expire_by").(string)
+	if !ok {
+		return errors.New("there's no valid expiry date")
 	}
-
-	jwtToken := splitToken[1]
-
-	var claims keycloakClaims
-	_, err := jwt.ParseWithClaims(jwtToken, &claims, i.jwtKeyfunc, jwt.WithValidMethods(i.jwtSignMethods))
+	expireBy, err := time.Parse(time.RFC3339Nano, expireByString)
 	if err != nil {
-		return err // token is not valid (expired), likely
+		return fmt.Errorf("can't parse \"expire by\" string: %s", err.Error())
+	}
+	if expireBy.Before(time.Now()) {
+		userSession.Options(sessions.Options{
+			MaxAge: -1,
+		})
+		return errors.New("login session has expired")
 	}
 
 	// RBAC
-	foundRoles := claims.GetResourceRolesByKey(i.taskQueue.Config.Auth.JWTConf.ClientID)
-
-	// if admin, accept
-	if slices.Contains(foundRoles, i.scopeToRoleMap["admin"]) {
-		return nil
+	foundRoles, ok := userSession.Get("roles").([]string)
+	if !ok {
+		return errors.New("can't extract roles")
 	}
-
-	// check for missing roles
 	requiredRoles := i.mapScopesToRoles(input.Scopes)
 	missingRoles := findMissingRoles(requiredRoles, foundRoles)
 	return missingRolesCheck(missingRoles, input.RequestValidationInput.Request.Method+" "+input.RequestValidationInput.Request.RequestURI)
+}
+
+func parseKeycloakJWTToken(token string, keyfunc jwt.Keyfunc, signMethods []string) (keycloakClaims, error) {
+	var claims keycloakClaims
+	_, err := jwt.ParseWithClaims(token, &claims, keyfunc, jwt.WithValidMethods(signMethods))
+	if err != nil {
+		return keycloakClaims{}, err // token is not valid (expired), likely
+	}
+	return claims, nil
 }
 
 func (i *IngestorWebServerImplemenation) mapScopesToRoles(scopes []string) []string {

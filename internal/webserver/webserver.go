@@ -55,6 +55,7 @@ func NewIngesterServer(ingestor *IngestorWebServerImplemenation, port int) *http
 	store := cookie.NewStore(authKey, encKey)
 	store.Options(sessions.Options{
 		HttpOnly: true,
+		MaxAge:   -1,
 	})
 
 	// register types to be stored in cookies
