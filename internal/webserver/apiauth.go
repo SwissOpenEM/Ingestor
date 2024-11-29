@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/MicahParks/keyfunc/v3"
@@ -12,6 +13,7 @@ import (
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
+	ginmiddleware "github.com/oapi-codegen/gin-middleware"
 )
 
 func initKeyfunc(jwtConf core.JWTConf) (jwt.Keyfunc, error) {
@@ -52,25 +54,26 @@ func (i *IngestorWebServerImplemenation) apiAuthFunc(ctx context.Context, input 
 	}
 
 	// get session
-	ginCtx, ok := ctx.(*gin.Context)
+	ginCtx, ok := ctx.Value(ginmiddleware.GinContextKey).(*gin.Context)
 	if !ok {
-		return fmt.Errorf("can't access gin context")
+		return errors.New("can't get gin context")
 	}
 	userSession := sessions.DefaultMany(ginCtx, "user")
 
 	// check expiry
-	expireByString, ok := userSession.Get("expire_by").(string)
+	expiresAtString, ok := userSession.Get("expires_at").(string)
 	if !ok {
-		return errors.New("there's no valid expiry date")
+		return errors.New("login session has expired")
 	}
-	expireBy, err := time.Parse(time.RFC3339Nano, expireByString)
+	expiresAt, err := time.Parse(time.RFC3339Nano, expiresAtString)
 	if err != nil {
 		return fmt.Errorf("can't parse \"expire by\" string: %s", err.Error())
 	}
-	if expireBy.Before(time.Now()) {
+	if expiresAt.Before(time.Now()) {
 		userSession.Options(sessions.Options{
 			MaxAge: -1,
 		})
+		userSession.Save() // ignore error
 		return errors.New("login session has expired")
 	}
 
@@ -78,6 +81,9 @@ func (i *IngestorWebServerImplemenation) apiAuthFunc(ctx context.Context, input 
 	foundRoles, ok := userSession.Get("roles").([]string)
 	if !ok {
 		return errors.New("can't extract roles")
+	}
+	if slices.Contains(foundRoles, i.scopeToRoleMap["admin"]) {
+		return nil // if admin, accept by default
 	}
 	requiredRoles := i.mapScopesToRoles(input.Scopes)
 	missingRoles := findMissingRoles(requiredRoles, foundRoles)

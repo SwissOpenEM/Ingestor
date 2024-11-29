@@ -186,7 +186,31 @@ paths:
                 type: string
         "500":
           description: "Internal Server Error"
-
+          content:
+            text/plain:
+              schema:
+                type: string
+  /logout:
+    get:
+      tags:
+        - authentication
+      security: []
+      summary: "end user session"
+      responses:
+        "302":
+          description: "Logout succeeded, redirect back to home page"
+          headers:
+            location:
+              description: "redirect path"
+              schema:
+                type: string
+        "500":
+          description: "Internal server error"
+          content:
+            text/plain:
+              schema:
+                type: string
+      
 
 components:
   schemas:

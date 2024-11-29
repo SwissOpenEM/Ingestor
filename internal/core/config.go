@@ -54,11 +54,12 @@ type RBACConf struct {
 }
 
 type AuthConf struct {
-	Disable    bool
-	JWTConf    `mapstructure:"JWT"`
-	RBACConf   `mapstructure:"RBAC"`
-	OAuth2Conf `mapstructure:"OAuth2"`
-	OIDCConf   `mapstructure:"OIDC"`
+	Disable         bool
+	SessionDuration uint // duration of a user session before it expires (by default never)
+	JWTConf         `mapstructure:"JWT"`
+	RBACConf        `mapstructure:"RBAC"`
+	OAuth2Conf      `mapstructure:"OAuth2"`
+	OIDCConf        `mapstructure:"OIDC"`
 }
 
 type MiscConfig struct {
