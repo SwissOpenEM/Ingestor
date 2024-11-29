@@ -107,6 +107,9 @@ type ServerInterface interface {
 	// OIDC login
 	// (GET /login)
 	GetLogin(c *gin.Context)
+	// end user session
+	// (GET /logout)
+	GetLogout(c *gin.Context)
 	// Cancel a data transfer
 	// (DELETE /transfer)
 	TransferControllerDeleteTransfer(c *gin.Context)
@@ -201,6 +204,19 @@ func (siw *ServerInterfaceWrapper) GetLogin(c *gin.Context) {
 	}
 
 	siw.Handler.GetLogin(c)
+}
+
+// GetLogout operation middleware
+func (siw *ServerInterfaceWrapper) GetLogout(c *gin.Context) {
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.GetLogout(c)
 }
 
 // TransferControllerDeleteTransfer operation middleware
@@ -305,6 +321,7 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 	router.GET(options.BaseURL+"/callback", wrapper.GetCallback)
 	router.POST(options.BaseURL+"/dataset", wrapper.DatasetControllerIngestDataset)
 	router.GET(options.BaseURL+"/login", wrapper.GetLogin)
+	router.GET(options.BaseURL+"/logout", wrapper.GetLogout)
 	router.DELETE(options.BaseURL+"/transfer", wrapper.TransferControllerDeleteTransfer)
 	router.GET(options.BaseURL+"/transfer", wrapper.TransferControllerGetTransfer)
 	router.GET(options.BaseURL+"/version", wrapper.OtherControllerGetVersion)
@@ -342,12 +359,14 @@ func (response GetCallback400TextResponse) VisitGetCallbackResponse(w http.Respo
 	return err
 }
 
-type GetCallback500Response struct {
-}
+type GetCallback500TextResponse string
 
-func (response GetCallback500Response) VisitGetCallbackResponse(w http.ResponseWriter) error {
+func (response GetCallback500TextResponse) VisitGetCallbackResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(500)
-	return nil
+
+	_, err := w.Write([]byte(response))
+	return err
 }
 
 type DatasetControllerIngestDatasetRequestObject struct {
@@ -396,6 +415,37 @@ func (response GetLogin302Response) VisitGetLoginResponse(w http.ResponseWriter)
 	w.Header().Set("location", fmt.Sprint(response.Headers.Location))
 	w.WriteHeader(302)
 	return nil
+}
+
+type GetLogoutRequestObject struct {
+}
+
+type GetLogoutResponseObject interface {
+	VisitGetLogoutResponse(w http.ResponseWriter) error
+}
+
+type GetLogout302ResponseHeaders struct {
+	Location string
+}
+
+type GetLogout302Response struct {
+	Headers GetLogout302ResponseHeaders
+}
+
+func (response GetLogout302Response) VisitGetLogoutResponse(w http.ResponseWriter) error {
+	w.Header().Set("location", fmt.Sprint(response.Headers.Location))
+	w.WriteHeader(302)
+	return nil
+}
+
+type GetLogout500TextResponse string
+
+func (response GetLogout500TextResponse) VisitGetLogoutResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "text/plain")
+	w.WriteHeader(500)
+
+	_, err := w.Write([]byte(response))
+	return err
 }
 
 type TransferControllerDeleteTransferRequestObject struct {
@@ -479,6 +529,9 @@ type StrictServerInterface interface {
 	// OIDC login
 	// (GET /login)
 	GetLogin(ctx context.Context, request GetLoginRequestObject) (GetLoginResponseObject, error)
+	// end user session
+	// (GET /logout)
+	GetLogout(ctx context.Context, request GetLogoutRequestObject) (GetLogoutResponseObject, error)
 	// Cancel a data transfer
 	// (DELETE /transfer)
 	TransferControllerDeleteTransfer(ctx context.Context, request TransferControllerDeleteTransferRequestObject) (TransferControllerDeleteTransferResponseObject, error)
@@ -587,6 +640,31 @@ func (sh *strictHandler) GetLogin(ctx *gin.Context) {
 	}
 }
 
+// GetLogout operation middleware
+func (sh *strictHandler) GetLogout(ctx *gin.Context) {
+	var request GetLogoutRequestObject
+
+	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.GetLogout(ctx, request.(GetLogoutRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetLogout")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		ctx.Error(err)
+		ctx.Status(http.StatusInternalServerError)
+	} else if validResponse, ok := response.(GetLogoutResponseObject); ok {
+		if err := validResponse.VisitGetLogoutResponse(ctx.Writer); err != nil {
+			ctx.Error(err)
+		}
+	} else if response != nil {
+		ctx.Error(fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // TransferControllerDeleteTransfer operation middleware
 func (sh *strictHandler) TransferControllerDeleteTransfer(ctx *gin.Context) {
 	var request TransferControllerDeleteTransferRequestObject
@@ -675,31 +753,32 @@ func (sh *strictHandler) OtherControllerGetVersion(ctx *gin.Context) {
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
-	"pxPN1Tnd3e7+CgAA//8mu0Ag7xUAAA==",
+	"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",
+	"becOi6bLjObqnG5n278DAAD//2A7C5WhFwAA",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

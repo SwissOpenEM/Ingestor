@@ -6,10 +6,20 @@ type rolesList struct {
 	Roles []string `json:"roles,omitempty"`
 }
 
+type idTokenClaims struct {
+	// the `azp` (Authorized Party) claim. See https://openid.net/specs/openid-connect-core-1_0.html#IDToken
+	AuthorizedParty string `json:"azp,omitempty"`
+}
+
 type keycloakClaims struct {
 	RealmAccess    rolesList            `json:"realm_access,omitempty"`
 	ResourceAccess map[string]rolesList `json:"resource_access,omitempty"`
+	idTokenClaims
 	jwt.RegisteredClaims
+}
+
+func (c *idTokenClaims) GetAuthorizedParty() string {
+	return c.AuthorizedParty
 }
 
 func (c *keycloakClaims) GetRealmRoles() []string {

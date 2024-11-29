@@ -55,7 +55,6 @@ func NewIngesterServer(ingestor *IngestorWebServerImplemenation, port int) *http
 	store := cookie.NewStore(authKey, encKey)
 	store.Options(sessions.Options{
 		HttpOnly: true,
-		MaxAge:   -1,
 	})
 
 	// register types to be stored in cookies
@@ -64,12 +63,12 @@ func NewIngesterServer(ingestor *IngestorWebServerImplemenation, port int) *http
 	// Use our validation middleware to check all requests against the
 	// OpenAPI schema.
 	r.Use(
+		sessions.SessionsMany([]string{"auth", "user"}, store),
 		middleware.OapiRequestValidatorWithOptions(swagger, &middleware.Options{
 			Options: openapi3filter.Options{
 				AuthenticationFunc: ingestor.apiAuthFunc,
 			},
 		}),
-		sessions.SessionsMany([]string{"auth", "user"}, store),
 	)
 	RegisterHandlers(r, NewStrictHandler(ingestor, []StrictMiddlewareFunc{}))
 
