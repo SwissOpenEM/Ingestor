@@ -8,58 +8,14 @@ import (
 
 	"github.com/SwissOpenEM/Ingestor/internal/metadataextractor"
 	"github.com/SwissOpenEM/Ingestor/internal/task"
+	"github.com/SwissOpenEM/Ingestor/internal/webserver/wsauthconfig"
 	"github.com/go-playground/validator/v10"
 	"github.com/spf13/viper"
-	"golang.org/x/oauth2"
 )
 
 type ScicatConfig struct {
 	Host        string `string:"Host" validate:"required,url"`
 	AccessToken string `string:"AccessToken"`
-}
-
-type OAuth2Conf struct {
-	ClientID     string          // OAuth client id (this app)
-	ClientSecret string          // OAuth2 secret (associated with ClientID)
-	Endpoint     oauth2.Endpoint // Oauth2 endpoint params
-	RedirectURL  string          // where should the OAuth2 provider return the user to
-	Scopes       []string        // list of scopes to ask for from the OAuth2 provider
-}
-
-type OIDCConf struct {
-	IssuerURL string
-
-	// the ones below are only needed if the OIDC discovery mechanism doesn't work
-	AuthURL     string
-	TokenURL    string
-	UserInfoURL string
-	Algorithms  []string
-}
-
-type JWTConf struct {
-	ClientID string // Client ID of this server in IdP (Keycloak)
-	UseJWKS  bool
-	// used when UseJWKS is set to true
-	JwksURL              string
-	JwksSignatureMethods []string
-	// used when UseJWKS is set to false
-	Key           string // public key in case of asymmetric method, otherwise common secret (HMAC)
-	KeySignMethod string // can be "HS#", "RS#", "EC#", "EdDSA" (where # can be 256, 384, 512)
-}
-
-type RBACConf struct {
-	AdminRole             string
-	CreateModifyTasksRole string
-	ViewTasksRole         string
-}
-
-type AuthConf struct {
-	Disable         bool
-	SessionDuration uint // duration of a user session before it expires (by default never)
-	JWTConf         `mapstructure:"JWT"`
-	RBACConf        `mapstructure:"RBAC"`
-	OAuth2Conf      `mapstructure:"OAuth2"`
-	OIDCConf        `mapstructure:"OIDC"`
 }
 
 type MiscConfig struct {
@@ -68,9 +24,9 @@ type MiscConfig struct {
 }
 
 type Config struct {
-	Auth               AuthConf                           `mapstructure:"Auth"`
 	Scicat             ScicatConfig                       `mapstructure:"Scicat"`
 	Transfer           task.TransferConfig                `mapstructure:"Transfer"`
+	WebServerAuth      wsauthconfig.AuthConf              `mapstructure:"WebServerAuth"`
 	Misc               MiscConfig                         `mapstructure:"Misc"`
 	MetadataExtractors metadataextractor.ExtractorsConfig `mapstructure:"MetadataExtractors"`
 }

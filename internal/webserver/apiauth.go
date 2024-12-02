@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/MicahParks/keyfunc/v3"
-	"github.com/SwissOpenEM/Ingestor/internal/core"
+	"github.com/SwissOpenEM/Ingestor/internal/webserver/wsauthconfig"
 	"github.com/getkin/kin-openapi/openapi3filter"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
@@ -16,7 +16,7 @@ import (
 	ginmiddleware "github.com/oapi-codegen/gin-middleware"
 )
 
-func initKeyfunc(jwtConf core.JWTConf) (jwt.Keyfunc, error) {
+func initKeyfunc(jwtConf wsauthconfig.JWTConf) (jwt.Keyfunc, error) {
 	if jwtConf.UseJWKS {
 		jwks, err := keyfunc.NewDefault([]string{jwtConf.JwksURL})
 		if err != nil {
@@ -49,7 +49,7 @@ func initKeyfunc(jwtConf core.JWTConf) (jwt.Keyfunc, error) {
 
 func (i *IngestorWebServerImplemenation) apiAuthFunc(ctx context.Context, input *openapi3filter.AuthenticationInput) error {
 	// if auth is disabled, return immediately
-	if i.taskQueue.Config.Auth.Disable {
+	if i.taskQueue.Config.WebServerAuth.Disable {
 		return nil
 	}
 
@@ -109,7 +109,7 @@ func (i *IngestorWebServerImplemenation) mapScopesToRoles(scopes []string) []str
 	return roles
 }
 
-func createScopeToRoleMap(conf core.RBACConf) (map[string]string, error) {
+func createScopeToRoleMap(conf wsauthconfig.RBACConf) (map[string]string, error) {
 	scopeMap := make(map[string]string)
 
 	// check config

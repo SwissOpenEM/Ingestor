@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/SwissOpenEM/Ingestor/internal/core"
+	"github.com/SwissOpenEM/Ingestor/internal/webserver/wsauthconfig"
 	"github.com/coreos/go-oidc/v3/oidc"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
@@ -44,7 +45,7 @@ type IngestorWebServerImplemenation struct {
 // @license.name	Apache 2.0
 // @license.url	http://www.apache.org/licenses/LICENSE-2.0.html
 
-func NewIngestorWebServer(version string, taskQueue *core.TaskQueue, authConf core.AuthConf) (*IngestorWebServerImplemenation, error) {
+func NewIngestorWebServer(version string, taskQueue *core.TaskQueue, authConf wsauthconfig.AuthConf) (*IngestorWebServerImplemenation, error) {
 	oidcProvider, err := oidc.NewProvider(context.Background(), authConf.IssuerURL)
 	if err != nil {
 		fmt.Println("Warning: OIDC discovery mechanism failed. Falling back to manual OIDC config")
