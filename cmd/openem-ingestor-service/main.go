@@ -36,7 +36,7 @@ func main() {
 	}
 	taskqueue.Startup()
 
-	ingestor, err := webserver.NewIngestorWebServer(version, &taskqueue, config.Auth)
+	ingestor, err := webserver.NewIngestorWebServer(version, &taskqueue, config.WebServerAuth)
 	if err != nil {
 		log.Fatal(err)
 	}
