@@ -73,7 +73,7 @@ func (i *IngestorWebServerImplemenation) apiAuthFunc(ctx context.Context, input 
 		userSession.Options(sessions.Options{
 			MaxAge: -1,
 		})
-		userSession.Save() // ignore error
+		_ = userSession.Save() // ignore error
 		return errors.New("login session has expired")
 	}
 
