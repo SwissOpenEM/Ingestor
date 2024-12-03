@@ -9,23 +9,22 @@ definitions:
           back to the ui.
         type: string
     type: object
-  webserver.IngestorUiDeleteTransferRequest:
+  webserver.DatasetControllerIngestDatasetJSONRequestBody:
     properties:
-      ingestId:
-        description: IngestId Ingestion id to abort the ingestion
+      metaData:
+        description: MetaData The metadata of the dataset.
         type: string
+    type: object
+  webserver.DatasetControllerIngestDatasetRequestObject:
+    properties:
+      body:
+        $ref: '#/definitions/webserver.DatasetControllerIngestDatasetJSONRequestBody'
     type: object
   webserver.IngestorUiGetTransferItem:
     properties:
       status:
         type: string
       transferId:
-        type: string
-    type: object
-  webserver.IngestorUiPostDatasetRequest:
-    properties:
-      metaData:
-        description: MetaData The metadata of the dataset.
         type: string
     type: object
   webserver.OtherControllerGetVersion200JSONResponse:
@@ -42,6 +41,17 @@ definitions:
       status:
         description: Status New status of the ingestion.
         type: string
+    type: object
+  webserver.TransferControllerDeleteTransferJSONRequestBody:
+    properties:
+      ingestId:
+        description: IngestId Ingestion id to abort the ingestion
+        type: string
+    type: object
+  webserver.TransferControllerDeleteTransferRequestObject:
+    properties:
+      body:
+        $ref: '#/definitions/webserver.TransferControllerDeleteTransferJSONRequestBody'
     type: object
   webserver.TransferControllerGetTransfer200JSONResponse:
     properties:
@@ -101,13 +111,12 @@ paths:
       - application/json
       description: Ingest a new dataset
       parameters:
-      - description: the 'metaData' attribute should contain the full yaml formatted
-          metadata of the ingested dataset
+      - description: mainly contains the dataset metadata
         in: body
         name: request
         required: true
         schema:
-          $ref: '#/definitions/webserver.IngestorUiPostDatasetRequest'
+          $ref: '#/definitions/webserver.DatasetControllerIngestDatasetRequestObject'
       produces:
       - json      text/plain
       responses:
@@ -125,18 +134,6 @@ paths:
             type: string
       tags:
       - datasets
-  /login:
-    get:
-      description: '"Initiates the OIDC authorization flow."'
-      responses:
-        "302":
-          description: Found
-          headers:
-            Location:
-              description: redirect link to IdP with query params
-              type: string
-      tags:
-      - authentication
   /logout:
     get:
       description: Ends user session by deleting the session cookie.
@@ -148,7 +145,7 @@ paths:
               description: goes to '/'
               type: string
         "500":
-          description: the cookie couldn't be deleted due to some error
+          description: can't delete cookie
           schema:
             type: string
       tags:
@@ -164,16 +161,16 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/webserver.IngestorUiDeleteTransferRequest'
+          $ref: '#/definitions/webserver.TransferControllerDeleteTransferRequestObject'
       produces:
       - application/json
       responses:
         "200":
-          description: returns the status and id of the affected task
+          description: OK
           schema:
             $ref: '#/definitions/webserver.TransferControllerDeleteTransfer200JSONResponse'
         "400":
-          description: invalid request
+          description: Bad Request
           schema:
             type: string
       tags:
@@ -214,7 +211,7 @@ paths:
       - application/json
       responses:
         "200":
-          description: returns the version of the servedrf
+          description: OK
           schema:
             $ref: '#/definitions/webserver.OtherControllerGetVersion200JSONResponse'
       tags:
