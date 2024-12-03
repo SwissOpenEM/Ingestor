@@ -38,7 +38,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/IngestorUiGetDatasetResponse"
+                $ref: "#/components/schemas/GetDatasetResponse"
         "400":
           description: Invalid request
           content:
@@ -59,14 +59,14 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/IngestorUiPostDatasetRequest"
+              $ref: "#/components/schemas/PostDatasetRequest"
       responses:
         "200":
           description: Dataset ingestion successful
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/IngestorUiPostDatasetResponse"
+                $ref: "#/components/schemas/PostDatasetResponse"
         "400":
           description: Invalid request
           content:
@@ -108,7 +108,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/IngestorUiGetTransferResponse"
+                $ref: "#/components/schemas/GetTransferResponse"
         "400":
           description: Invalid request
           content:
@@ -128,14 +128,14 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/IngestorUiDeleteTransferRequest"
+              $ref: "#/components/schemas/DeleteTransferRequest"
       responses:
         "200":
           description: Transfer canceled successfully
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/IngestorUiDeleteTransferResponse"
+                $ref: "#/components/schemas/DeleteTransferResponse"
         "400":
           description: Invalid request
           content:
@@ -156,7 +156,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/IngestorUiOtherHealthResponse"
+                $ref: "#/components/schemas/OtherHealthResponse"
         "400":
           description: Invalid request
           content:
@@ -178,7 +178,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/IngestorUiOtherVersionResponse"
+                $ref: "#/components/schemas/OtherVersionResponse"
         "400":
           description: Invalid request
           content:
@@ -275,7 +275,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/IngestorUiOtherVersionResponse"
+                $ref: "#/components/schemas/OtherVersionResponse"
         "400":
           description: Invalid request
           content:
@@ -294,14 +294,14 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/IngestorUiPostExtractionRequest"
+              $ref: "#/components/schemas/PostExtractionRequest"
       responses:
         "200":
           description: Dataset ingestion successful
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/IngestorUiPostDatasetResponse"
+                $ref: "#/components/schemas/PostDatasetResponse"
         "400":
           description: Invalid request
           content:
@@ -328,7 +328,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/IngestorUiGetSchemaRequest"
+                $ref: "#/components/schemas/GetSchemaRequest"
         "400":
           description: Invalid request
           content:
@@ -338,13 +338,13 @@ paths:
  
 components:
   schemas:
-    IngestorUiPostDatasetRequest:
+    PostDatasetRequest:
       type: object
       properties:
         metaData:
           type: string
           description: The metadata of the dataset.
-    IngestorUiPostDatasetResponse:
+    PostDatasetResponse:
       type: object
       properties:
         ingestId:
@@ -353,30 +353,30 @@ components:
         status:
           type: string
           description: The status of the ingestion. Can be used to send a message back to the ui.
-    IngestorUiGetTransferItem:
+    TransferItem:
       type: object
       properties:
         transferId:
           type: string
         status:
           type: string
-    IngestorUiGetTransferResponse:
+    GetTransferResponse:
       type: object
       properties:
         transfers:
           type: array
           items:
-            $ref: "#/components/schemas/IngestorUiGetTransferItem"
+            $ref: "#/components/schemas/TransferItem"
         total:
           type: integer
           description: Total number of transfers.
-    IngestorUiDeleteTransferRequest:
+    DeleteTransferRequest:
       type: object
       properties:
         ingestId:
           type: string
           description: Ingestion id to abort the ingestion
-    IngestorUiDeleteTransferResponse:
+    DeleteTransferResponse:
       type: object
       properties:
         ingestId:
@@ -385,7 +385,7 @@ components:
         status:
           type: string
           description: New status of the ingestion.
-    IngestorUiOtherVersionResponse:
+    OtherVersionResponse:
       type: object
       properties:
         version:
@@ -433,7 +433,7 @@ components:
       required:
         - OAuth2Token
         - UserInfo
-    IngestorUiOtherHealthResponse:
+    OtherHealthResponse:
       type: object
       properties:
         ingestorStatus:
@@ -445,23 +445,23 @@ components:
         globusStatus:
           type: string
           description: Status of Globus.
-    IngestorUiGetExtractorItem:
+    ExtractorItem:
       type: object
       properties:
         methodName:
           type: string
           description: Available method names of the extractor configurered in the ingestor.
-    IngestorUiGetExtractorResponse:
+    GetExtractorResponse:
       type: object
       properties:
         extractors:
           type: array
           items:
-            $ref: "#/components/schemas/IngestorUiGetExtractorItem"
+            $ref: "#/components/schemas/ExtractorItem"
         total:
           type: integer
           description: Total number of extractors.
-    IngestorUiPostExtractionRequest:
+    PostExtractionRequest:
       type: object
       properties:
         filePath:
@@ -470,24 +470,24 @@ components:
         methodName:
           type: string
           description: The selected methodName for data extraction.
-    IngestorUiGetSchemaRequest:
+    GetSchemaRequest:
       type: object
       properties:
         schema:
           type: string
           description: Schema which belongs to an extractor method.
-    IngestorUiGetDatasetItem:
+    DatasetItem:
       type: object
       properties:
         dataset:
           type: string
-    IngestorUiGetDatasetResponse:
+    GetDatasetResponse:
       type: object
       properties:
         datasets:
           type: array
           items:
-            $ref: "#/components/schemas/IngestorUiGetDatasetItem"
+            $ref: "#/components/schemas/DatasetItem"
         total:
           type: integer
           description: Total number of datasets.
