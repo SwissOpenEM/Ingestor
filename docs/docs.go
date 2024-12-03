@@ -23,6 +23,56 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/callback": {
+            "get": {
+                "description": "For handling the authorization code received from the OIDC provider",
+                "produces": [
+                    "text/plain"
+                ],
+                "tags": [
+                    "authentication"
+                ],
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "OAuth2 authorization code",
+                        "name": "code",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "OAuth2 state param",
+                        "name": "state",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "302": {
+                        "description": "Found",
+                        "headers": {
+                            "Location": {
+                                "type": "string",
+                                "description": "goes to '/'"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "request error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "server error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/datasets": {
             "post": {
                 "description": "Ingest a new dataset",
@@ -30,20 +80,91 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "produces": [
-                    "application/json"
+                    "json      text/plain"
                 ],
                 "tags": [
                     "datasets"
                 ],
-                "responses": {}
+                "parameters": [
+                    {
+                        "description": "the 'metaData' attribute should contain the full yaml formatted metadata of the ingested dataset",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/webserver.IngestorUiPostDatasetRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/webserver.DatasetControllerIngestDataset200JSONResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/login": {
+            "get": {
+                "description": "\"Initiates the OIDC authorization flow.\"",
+                "tags": [
+                    "authentication"
+                ],
+                "responses": {
+                    "302": {
+                        "description": "Found",
+                        "headers": {
+                            "Location": {
+                                "type": "string",
+                                "description": "redirect link to IdP with query params"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/logout": {
+            "get": {
+                "description": "Ends user session by deleting the session cookie.",
+                "tags": [
+                    "authentication"
+                ],
+                "responses": {
+                    "302": {
+                        "description": "Found",
+                        "headers": {
+                            "Location": {
+                                "type": "string",
+                                "description": "goes to '/'"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "the cookie couldn't be deleted due to some error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
             }
         },
         "/transfer": {
             "get": {
-                "description": "Get list of transfers. Optional use the transferId parameter to only get one item.",
-                "consumes": [
-                    "application/json"
-                ],
+                "description": "\"Get list of transfers. Optional use the transferId parameter to only get one item.\"",
                 "produces": [
                     "application/json"
                 ],
@@ -53,21 +174,37 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "integer",
+                        "description": "page of transfers",
                         "name": "page",
-                        "in": "path"
+                        "in": "query"
                     },
                     {
                         "type": "integer",
+                        "description": "number of elements per page",
                         "name": "pageSize",
-                        "in": "path"
+                        "in": "query"
                     },
                     {
-                        "type": "string",
+                        "type": "integer",
+                        "description": "get specific transfer by id",
                         "name": "transferId",
-                        "in": "path"
+                        "in": "query"
                     }
                 ],
-                "responses": {}
+                "responses": {
+                    "200": {
+                        "description": "returns the list of transfers",
+                        "schema": {
+                            "$ref": "#/definitions/webserver.TransferControllerGetTransfer200JSONResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "the request is invalid",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
             },
             "delete": {
                 "description": "Cancel a data transfer",
@@ -80,22 +217,131 @@ const docTemplate = `{
                 "tags": [
                     "transfer"
                 ],
-                "responses": {}
+                "parameters": [
+                    {
+                        "description": "it contains the id to cancel",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/webserver.IngestorUiDeleteTransferRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "returns the status and id of the affected task",
+                        "schema": {
+                            "$ref": "#/definitions/webserver.TransferControllerDeleteTransfer200JSONResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "invalid request",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
             }
         },
         "/version": {
             "get": {
                 "description": "Get the used ingestor version",
-                "consumes": [
-                    "application/json"
-                ],
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "other"
                 ],
-                "responses": {}
+                "responses": {
+                    "200": {
+                        "description": "returns the version of the servedrf",
+                        "schema": {
+                            "$ref": "#/definitions/webserver.OtherControllerGetVersion200JSONResponse"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "webserver.DatasetControllerIngestDataset200JSONResponse": {
+            "type": "object",
+            "properties": {
+                "ingestId": {
+                    "description": "IngestId The unique ingestion id of the dataset.",
+                    "type": "string"
+                },
+                "status": {
+                    "description": "Status The status of the ingestion. Can be used to send a message back to the ui.",
+                    "type": "string"
+                }
+            }
+        },
+        "webserver.IngestorUiDeleteTransferRequest": {
+            "type": "object",
+            "properties": {
+                "ingestId": {
+                    "description": "IngestId Ingestion id to abort the ingestion",
+                    "type": "string"
+                }
+            }
+        },
+        "webserver.IngestorUiGetTransferItem": {
+            "type": "object",
+            "properties": {
+                "status": {
+                    "type": "string"
+                },
+                "transferId": {
+                    "type": "string"
+                }
+            }
+        },
+        "webserver.IngestorUiPostDatasetRequest": {
+            "type": "object",
+            "properties": {
+                "metaData": {
+                    "description": "MetaData The metadata of the dataset.",
+                    "type": "string"
+                }
+            }
+        },
+        "webserver.OtherControllerGetVersion200JSONResponse": {
+            "type": "object",
+            "properties": {
+                "version": {
+                    "description": "Version Version of the ingestor.",
+                    "type": "string"
+                }
+            }
+        },
+        "webserver.TransferControllerDeleteTransfer200JSONResponse": {
+            "type": "object",
+            "properties": {
+                "ingestId": {
+                    "description": "IngestId Ingestion id to abort the ingestion",
+                    "type": "string"
+                },
+                "status": {
+                    "description": "Status New status of the ingestion.",
+                    "type": "string"
+                }
+            }
+        },
+        "webserver.TransferControllerGetTransfer200JSONResponse": {
+            "type": "object",
+            "properties": {
+                "total": {
+                    "description": "Total Total number of transfers.",
+                    "type": "integer"
+                },
+                "transfers": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/webserver.IngestorUiGetTransferItem"
+                    }
+                }
             }
         }
     }

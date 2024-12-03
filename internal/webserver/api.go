@@ -100,12 +100,15 @@ func NewIngestorWebServer(version string, taskQueue *core.TaskQueue, authConf ws
 
 // DatasetControllerIngestDataset implements ServerInterface.
 //
-//	@Description	Ingest a new dataset
-//	@Tags			datasets
-//	@Accept			json
-//	@Produce		json
-//
-//	@Router			/datasets [post]
+// @Description Ingest a new dataset
+// @Tags        datasets
+// @Accept      json
+// @Produce     json      text/plain
+// @Param       request   body     webserver.IngestorUiPostDatasetRequest                  true "the 'metaData' attribute should contain the full yaml formatted metadata of the ingested dataset"
+// @Success     200       {object} webserver.DatasetControllerIngestDataset200JSONResponse
+// @Failure     400       {string} string
+// @Failure     500       {string} string
+// @Router      /datasets [post]
 func (i *IngestorWebServerImplemenation) DatasetControllerIngestDataset(ctx context.Context, request DatasetControllerIngestDatasetRequestObject) (DatasetControllerIngestDatasetResponseObject, error) {
 	// get sourcefolder from metadata
 	metadataString := *request.Body.MetaData
@@ -141,12 +144,11 @@ func (i *IngestorWebServerImplemenation) DatasetControllerIngestDataset(ctx cont
 
 // OtherControllerGetVersion implements ServerInterface.
 //
-//	@Description	Get the used ingestor version
-//	@Tags			other
-//	@Accept			json
-//	@Produce		json
-//
-//	@Router			/version [get]
+// @Description     Get the used ingestor version
+// @Tags            other
+// @Produce         json
+// @Success         200      {object} webserver.OtherControllerGetVersion200JSONResponse "returns the version of the servedrf"
+// @Router			/version [get]
 func (i *IngestorWebServerImplemenation) OtherControllerGetVersion(ctx context.Context, request OtherControllerGetVersionRequestObject) (OtherControllerGetVersionResponseObject, error) {
 	return OtherControllerGetVersion200JSONResponse{
 		Version: &i.version,
@@ -155,12 +157,14 @@ func (i *IngestorWebServerImplemenation) OtherControllerGetVersion(ctx context.C
 
 // TransferControllerDeleteTransfer implements ServerInterface.
 //
-//	@Description	Cancel a data transfer
-//	@Tags			transfer
-//	@Accept			json
-//	@Produce		json
-//
-//	@Router			/transfer [delete]
+// @Description	Cancel a data transfer
+// @Tags            transfer
+// @Accept          json
+// @Produce		    json
+// @Param           request   body     webserver.IngestorUiDeleteTransferRequest true "it contains the id to cancel"
+// @Success         200       {object} webserver.TransferControllerDeleteTransfer200JSONResponse "returns the status and id of the affected task"
+// @Failure         400       {string} string                                                    "invalid request"
+// @Router          /transfer [delete]
 func (i *IngestorWebServerImplemenation) TransferControllerDeleteTransfer(ctx context.Context, request TransferControllerDeleteTransferRequestObject) (TransferControllerDeleteTransferResponseObject, error) {
 	if request.Body.IngestId == nil {
 		return TransferControllerDeleteTransfer400TextResponse("Ingest ID was not specified in the request"), nil
@@ -186,13 +190,15 @@ func (i *IngestorWebServerImplemenation) TransferControllerDeleteTransfer(ctx co
 
 // TransferControllerGetTransfer implements ServerInterface.
 //
-//	@Description	Get list of transfers. Optional use the transferId parameter to only get one item.
-//	@Tags			transfer
-//	@Accept			json
-//	@Produce		json
-//	@param			params	path	TransferControllerGetTransferParams	true	"params"
-//
-//	@Router			/transfer [get]
+// @Description	"Get list of transfers. Optional use the transferId parameter to only get one item."
+// @Tags	        transfer
+// @Produce         json
+// @Param           page       query    int                                            false                           "page of transfers"
+// @Param           pageSize   query    int                                            false                           "number of elements per page"
+// @Param           transferId query    int                                            false                           "get specific transfer by id"
+// @Success         200        {object} webserver.TransferControllerGetTransfer200JSONResponse   "returns the list of transfers"
+// @Failure         400        {string} string                                                   "the request is invalid"
+// @Router          /transfer  [get]
 func (i *IngestorWebServerImplemenation) TransferControllerGetTransfer(ctx context.Context, request TransferControllerGetTransferRequestObject) (TransferControllerGetTransferResponseObject, error) {
 	scopes := ctx.Value(OpenIDScopes)
 	fmt.Println("scopes: ", scopes)
@@ -278,6 +284,13 @@ func (i *IngestorWebServerImplemenation) TransferControllerGetTransfer(ctx conte
 	return TransferControllerGetTransfer400TextResponse("Not enough parameters"), nil
 }
 
+// GetLogin implements ServerInterface.
+//
+// @Description	    "Initiates the OIDC authorization flow."
+// @Tags			authentication
+// @Success         302
+// @Header          302       {string} Location "redirect link to IdP with query params"
+// @Router          /login    [get]
 func (i *IngestorWebServerImplemenation) GetLogin(ctx context.Context, request GetLoginRequestObject) (GetLoginResponseObject, error) {
 	// auth code flow
 
@@ -339,6 +352,18 @@ func (i *IngestorWebServerImplemenation) GetLogin(ctx context.Context, request G
 	}, nil
 }
 
+// GetCallback implements ServerInterface.
+//
+// @Description	    For handling the authorization code received from the OIDC provider
+// @Tags			authentication
+// @Produce         text/plain
+// @Param           code      query    string   true          "OAuth2 authorization code"
+// @Param           state     query    string   true          "OAuth2 state param"
+// @Success         302
+// @Header          302       {string} Location "goes to '/'"
+// @Failure         400       {string}   string "request error"
+// @Failure         500       {string}   string "server error"
+// @Router          /callback [get]
 func (i *IngestorWebServerImplemenation) GetCallback(ctx context.Context, request GetCallbackRequestObject) (GetCallbackResponseObject, error) {
 	// get sessions
 	ginCtx := ctx.(*gin.Context)
@@ -447,6 +472,14 @@ func (i *IngestorWebServerImplemenation) GetCallback(ctx context.Context, reques
 	}, nil
 }
 
+// GetLogout implements ServerInterface.
+//
+// @Description	    Ends user session by deleting the session cookie.
+// @Tags			authentication
+// @Success         302
+// @Header          302            {string} Location "goes to '/'"
+// @Failure         500            {string} string   "the cookie couldn't be deleted due to some error"
+// @Router			/logout [get]
 func (i *IngestorWebServerImplemenation) GetLogout(ctx context.Context, request GetLogoutRequestObject) (GetLogoutResponseObject, error) {
 	ginCtx, ok := ctx.(*gin.Context)
 	if !ok {
