@@ -50,7 +50,7 @@ paths:
         - dataset
       summary: Ingest a new dataset
       security:
-        - OpenID:
+        - cookieAuth:
           - ingestor_write
       description: Create a dataset element in SciCat and send the data to SciCat.
       operationId: DatasetController_ingestDataset
@@ -80,7 +80,7 @@ paths:
         - transfer
       summary: Get list of transfers. Optional use the transferId parameter to only get one item.
       security:
-        - OpenID:
+        - cookieAuth:
           - ingestor_read
       description: Retrieve a paginated list of transfers with optional filtering.
       operationId: TransferController_getTransfer
@@ -120,7 +120,7 @@ paths:
         - transfer
       summary: Cancel a data transfer
       security:
-        - OpenID:
+        - cookieAuth:
           - ingestor_write
       operationId: TransferController_deleteTransfer
       requestBody:
@@ -492,11 +492,12 @@ components:
           type: integer
           description: Total number of datasets.
   securitySchemes:
-    OpenID:
-      type: openIdConnect
-      openIdConnectUrl: http://keycloak.localhost/realms/master/.well-known/openid-configuration
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: user
 security:
-  - OpenID:
+  - cookieAuth:
     - ingestor_read
     - ingestor_write
     - admin
