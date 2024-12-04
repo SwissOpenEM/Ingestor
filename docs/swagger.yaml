@@ -9,29 +9,22 @@ definitions:
           back to the ui.
         type: string
     type: object
-  webserver.IngestorUiDeleteTransferRequest:
+  webserver.DeleteTransferRequest:
     properties:
       ingestId:
         description: IngestId Ingestion id to abort the ingestion
-        type: string
-    type: object
-  webserver.IngestorUiGetTransferItem:
-    properties:
-      status:
-        type: string
-      transferId:
-        type: string
-    type: object
-  webserver.IngestorUiPostDatasetRequest:
-    properties:
-      metaData:
-        description: MetaData The metadata of the dataset.
         type: string
     type: object
   webserver.OtherControllerGetVersion200JSONResponse:
     properties:
       version:
         description: Version Version of the ingestor.
+        type: string
+    type: object
+  webserver.PostDatasetRequest:
+    properties:
+      metaData:
+        description: MetaData The metadata of the dataset.
         type: string
     type: object
   webserver.TransferControllerDeleteTransfer200JSONResponse:
@@ -50,8 +43,15 @@ definitions:
         type: integer
       transfers:
         items:
-          $ref: '#/definitions/webserver.IngestorUiGetTransferItem'
+          $ref: '#/definitions/webserver.TransferItem'
         type: array
+    type: object
+  webserver.TransferItem:
+    properties:
+      status:
+        type: string
+      transferId:
+        type: string
     type: object
 info:
   contact:
@@ -107,7 +107,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/webserver.IngestorUiPostDatasetRequest'
+          $ref: '#/definitions/webserver.PostDatasetRequest'
       produces:
       - json      text/plain
       responses:
@@ -164,7 +164,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/webserver.IngestorUiDeleteTransferRequest'
+          $ref: '#/definitions/webserver.DeleteTransferRequest'
       produces:
       - application/json
       responses:
