@@ -92,7 +92,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/webserver.IngestorUiPostDatasetRequest"
+                            "$ref": "#/definitions/webserver.PostDatasetRequest"
                         }
                     }
                 ],
@@ -224,7 +224,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/webserver.IngestorUiDeleteTransferRequest"
+                            "$ref": "#/definitions/webserver.DeleteTransferRequest"
                         }
                     }
                 ],
@@ -278,31 +278,11 @@ const docTemplate = `{
                 }
             }
         },
-        "webserver.IngestorUiDeleteTransferRequest": {
+        "webserver.DeleteTransferRequest": {
             "type": "object",
             "properties": {
                 "ingestId": {
                     "description": "IngestId Ingestion id to abort the ingestion",
-                    "type": "string"
-                }
-            }
-        },
-        "webserver.IngestorUiGetTransferItem": {
-            "type": "object",
-            "properties": {
-                "status": {
-                    "type": "string"
-                },
-                "transferId": {
-                    "type": "string"
-                }
-            }
-        },
-        "webserver.IngestorUiPostDatasetRequest": {
-            "type": "object",
-            "properties": {
-                "metaData": {
-                    "description": "MetaData The metadata of the dataset.",
                     "type": "string"
                 }
             }
@@ -312,6 +292,15 @@ const docTemplate = `{
             "properties": {
                 "version": {
                     "description": "Version Version of the ingestor.",
+                    "type": "string"
+                }
+            }
+        },
+        "webserver.PostDatasetRequest": {
+            "type": "object",
+            "properties": {
+                "metaData": {
+                    "description": "MetaData The metadata of the dataset.",
                     "type": "string"
                 }
             }
@@ -339,8 +328,19 @@ const docTemplate = `{
                 "transfers": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/webserver.IngestorUiGetTransferItem"
+                        "$ref": "#/definitions/webserver.TransferItem"
                     }
+                }
+            }
+        },
+        "webserver.TransferItem": {
+            "type": "object",
+            "properties": {
+                "status": {
+                    "type": "string"
+                },
+                "transferId": {
+                    "type": "string"
                 }
             }
         }
