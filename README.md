@@ -78,7 +78,88 @@ transfer:
 misc:
   concurrencylimit: 3
   port: 8888
+WebServerAuth:
+  Disable: false # this will disable all endpoint protections, don't disable auth in production
+  SessionDuration: 28800
+  OAuth2:
+    ClientID: "ingestor"
+    RedirectURL: "http://localhost:8888/callback"
+    Scopes:
+      - email
+  OIDC:
+    IssuerURL: "http://keycloak.localhost/realms/facility"
+  JWT:
+    UseJWKS: true
+    JwksURL: "http://keycloak.localhost/realms/facility/protocol/openid-connect/certs"
+    JwksSignatureMethods:
+      - RS256
+  RBAC:
+    AdminRole: "FACILITY-ingestor-admin"
+    CreateModifyTasksRole: "FACILITY-ingestor-write"
+    ViewTasksRole: "FACILITY-ingestor-read"
 ```
+## Authentication and Access Control
+### Summary
+The server can be setup with an SSO provider using OAuth2 AuthZ protocol with the OIDC AuthN extension in order to verify the user identity and create a session for them. 
+
+### Technical details
+ - The server uses the provider's token to estabilish its own user session
+ - It does not directly accept bearer tokens estabilished by the SSO provider
+ - It creates an HttpOnly cookie based user session using the claims provider by the IdP (SSO Provider)
+ - This basically means that the server can't function as a "Resource server", you need a specific session with it
+ - Currently 3 basic roles exist: `Admin`, `CreateModifyTasks` and `ViewTasks`
+ - The roles' names can be defined in the config (eg. to add the facility name in the role name)
+ - These roles should be associated with the server's ClientId
+ - The roles must be served under the following claim in the `access_token`: `resource_access/[ClientId]/roles`, where `roles` is a list of strings
+ - Keycloak serves client-specific roles assigned to the user under the claim mentioned above by default
+
+### A typical Keycloak setup for development
+1. Create a keycloak instance (docker is recommended)
+2. Create a new realm (recommended, but you can use the master realm too)
+3. In that realm, create a client:
+    - ClientID: `ingestor`
+    - Root URL: `http://localhost:8888`
+    - Home URL: `/`
+    - Valid redirect URIs: `*`
+    - Valid post logout redirect URIs: `*`
+    - Add the following roles:
+      - FACILITY-ingestor-read
+      - FACILITY-ingestor-write
+      - FACILITY-ingestor-admin
+4. In the same realm, create a user:
+    - username: `test`
+    - password: `test`
+    - email: `test@test.test`
+    - Role mapping: assign `FACILITY-ingestor-read`, `FACILITY-ingestor-write`
+5. Make sure you have the following section in your ingestor config file:
+```yaml
+WebServerAuth:
+  Disable: false
+  SessionDuration: 28800
+  OAuth2:
+    ClientID: "ingestor"
+    RedirectURL: "http://localhost:8888/callback"
+    Scopes:
+      - email
+  OIDC:
+    IssuerURL: "http://[KEYCLOAK_URL]/realms/facility"
+  JWT:
+    UseJWKS: true
+    JwksURL: "http://[KEYCLOAK_URL]/realms/facility/protocol/openid-connect/certs"
+    JwksSignatureMethods:
+      - RS256
+  RBAC:
+    AdminRole: "FACILITY-ingestor-admin"
+    CreateModifyTasksRole: "FACILITY-ingestor-write"
+    ViewTasksRole: "FACILITY-ingestor-read"
+```
+6. To test if the auth works, go to [http://localhost:8888/login](http://localhost:8888/login) (if you haven't changed the defaults)
+7. Login with the `test` account from step 4
+8. Go into your browser's debugger and copy the `user` cookie created by the ingestor service
+9. Use the following curl command: `curl --cookie "user=[USER_COOKIE]" -v "localhost:8888/transfer?page=1"`
+10. If it is accepted, you have a working login session
+
+Todo: alternate setup with an ingestor frontend
 
 ## Debugging
 
