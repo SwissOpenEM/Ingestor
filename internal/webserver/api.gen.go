@@ -22,17 +22,22 @@ import (
 )
 
 const (
-	OpenIDScopes = "OpenID.Scopes"
+	CookieAuthScopes = "cookieAuth.Scopes"
 )
 
-// IngestorUiDeleteTransferRequest defines model for IngestorUiDeleteTransferRequest.
-type IngestorUiDeleteTransferRequest struct {
+// DatasetItem defines model for DatasetItem.
+type DatasetItem struct {
+	Dataset *string `json:"dataset,omitempty"`
+}
+
+// DeleteTransferRequest defines model for DeleteTransferRequest.
+type DeleteTransferRequest struct {
 	// IngestId Ingestion id to abort the ingestion
 	IngestId *string `json:"ingestId,omitempty"`
 }
 
-// IngestorUiDeleteTransferResponse defines model for IngestorUiDeleteTransferResponse.
-type IngestorUiDeleteTransferResponse struct {
+// DeleteTransferResponse defines model for DeleteTransferResponse.
+type DeleteTransferResponse struct {
 	// IngestId Ingestion id to abort the ingestion
 	IngestId *string `json:"ingestId,omitempty"`
 
@@ -40,38 +45,73 @@ type IngestorUiDeleteTransferResponse struct {
 	Status *string `json:"status,omitempty"`
 }
 
-// IngestorUiGetTransferItem defines model for IngestorUiGetTransferItem.
-type IngestorUiGetTransferItem struct {
-	Status     *string `json:"status,omitempty"`
-	TransferId *string `json:"transferId,omitempty"`
+// GetDatasetResponse defines model for GetDatasetResponse.
+type GetDatasetResponse struct {
+	Datasets *[]DatasetItem `json:"datasets,omitempty"`
+
+	// Total Total number of datasets.
+	Total *int `json:"total,omitempty"`
 }
 
-// IngestorUiGetTransferResponse defines model for IngestorUiGetTransferResponse.
-type IngestorUiGetTransferResponse struct {
+// GetSchemaRequest defines model for GetSchemaRequest.
+type GetSchemaRequest struct {
+	// Schema Schema which belongs to an extractor method.
+	Schema *string `json:"schema,omitempty"`
+}
+
+// GetTransferResponse defines model for GetTransferResponse.
+type GetTransferResponse struct {
 	// Total Total number of transfers.
-	Total     *int                         `json:"total,omitempty"`
-	Transfers *[]IngestorUiGetTransferItem `json:"transfers,omitempty"`
+	Total     *int            `json:"total,omitempty"`
+	Transfers *[]TransferItem `json:"transfers,omitempty"`
 }
 
-// IngestorUiOtherVersionResponse defines model for IngestorUiOtherVersionResponse.
-type IngestorUiOtherVersionResponse struct {
+// OtherHealthResponse defines model for OtherHealthResponse.
+type OtherHealthResponse struct {
+	// GlobusStatus Status of Globus.
+	GlobusStatus *string `json:"globusStatus,omitempty"`
+
+	// IngestorStatus Status of the ingestor.
+	IngestorStatus *string `json:"ingestorStatus,omitempty"`
+
+	// ScicatStatus Status of SciCat.
+	ScicatStatus *string `json:"scicatStatus,omitempty"`
+}
+
+// OtherVersionResponse defines model for OtherVersionResponse.
+type OtherVersionResponse struct {
 	// Version Version of the ingestor.
 	Version *string `json:"version,omitempty"`
 }
 
-// IngestorUiPostDatasetRequest defines model for IngestorUiPostDatasetRequest.
-type IngestorUiPostDatasetRequest struct {
+// PostDatasetRequest defines model for PostDatasetRequest.
+type PostDatasetRequest struct {
 	// MetaData The metadata of the dataset.
 	MetaData *string `json:"metaData,omitempty"`
 }
 
-// IngestorUiPostDatasetResponse defines model for IngestorUiPostDatasetResponse.
-type IngestorUiPostDatasetResponse struct {
+// PostDatasetResponse defines model for PostDatasetResponse.
+type PostDatasetResponse struct {
 	// IngestId The unique ingestion id of the dataset.
 	IngestId *string `json:"ingestId,omitempty"`
 
 	// Status The status of the ingestion. Can be used to send a message back to the ui.
 	Status *string `json:"status,omitempty"`
+}
+
+// PostExtractionRequest defines model for PostExtractionRequest.
+type PostExtractionRequest struct {
+	// FilePath The file path of the selected data record.
+	FilePath *string `json:"filePath,omitempty"`
+
+	// MethodName The selected methodName for data extraction.
+	MethodName *string `json:"methodName,omitempty"`
+}
+
+// TransferItem defines model for TransferItem.
+type TransferItem struct {
+	Status     *string `json:"status,omitempty"`
+	TransferId *string `json:"transferId,omitempty"`
 }
 
 // GetCallbackParams defines parameters for GetCallback.
@@ -83,6 +123,11 @@ type GetCallbackParams struct {
 	State string `form:"state" json:"state"`
 }
 
+// SchemaControllerGetSchemaParams defines parameters for SchemaControllerGetSchema.
+type SchemaControllerGetSchemaParams struct {
+	MethodName string `form:"methodName" json:"methodName"`
+}
+
 // TransferControllerGetTransferParams defines parameters for TransferControllerGetTransfer.
 type TransferControllerGetTransferParams struct {
 	TransferId *string `form:"transferId,omitempty" json:"transferId,omitempty"`
@@ -91,25 +136,43 @@ type TransferControllerGetTransferParams struct {
 }
 
 // DatasetControllerIngestDatasetJSONRequestBody defines body for DatasetControllerIngestDataset for application/json ContentType.
-type DatasetControllerIngestDatasetJSONRequestBody = IngestorUiPostDatasetRequest
+type DatasetControllerIngestDatasetJSONRequestBody = PostDatasetRequest
+
+// ExtractorControllerStartExtractionJSONRequestBody defines body for ExtractorControllerStartExtraction for application/json ContentType.
+type ExtractorControllerStartExtractionJSONRequestBody = PostExtractionRequest
 
 // TransferControllerDeleteTransferJSONRequestBody defines body for TransferControllerDeleteTransfer for application/json ContentType.
-type TransferControllerDeleteTransferJSONRequestBody = IngestorUiDeleteTransferRequest
+type TransferControllerDeleteTransferJSONRequestBody = DeleteTransferRequest
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
 	// OIDC callback
 	// (GET /callback)
 	GetCallback(c *gin.Context, params GetCallbackParams)
+	// Get the available datasets.
+	// (GET /dataset)
+	DatasetControllerGetDataset(c *gin.Context)
 	// Ingest a new dataset
 	// (POST /dataset)
 	DatasetControllerIngestDataset(c *gin.Context)
+	// Get available extractors
+	// (GET /extractor)
+	ExtractorControllerGetExtractors(c *gin.Context)
+	// Start a new metadata extraction
+	// (POST /extractor)
+	ExtractorControllerStartExtraction(c *gin.Context)
+	// Get the health status.
+	// (GET /health)
+	OtherControllerGetHealth(c *gin.Context)
 	// OIDC login
 	// (GET /login)
 	GetLogin(c *gin.Context)
 	// end user session
 	// (GET /logout)
 	GetLogout(c *gin.Context)
+	// Get schema for selected method
+	// (GET /schema)
+	SchemaControllerGetSchema(c *gin.Context, params SchemaControllerGetSchemaParams)
 	// Cancel a data transfer
 	// (DELETE /transfer)
 	TransferControllerDeleteTransfer(c *gin.Context)
@@ -178,10 +241,25 @@ func (siw *ServerInterfaceWrapper) GetCallback(c *gin.Context) {
 	siw.Handler.GetCallback(c, params)
 }
 
+// DatasetControllerGetDataset operation middleware
+func (siw *ServerInterfaceWrapper) DatasetControllerGetDataset(c *gin.Context) {
+
+	c.Set(CookieAuthScopes, []string{"ingestor_read", "ingestor_write", "admin"})
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.DatasetControllerGetDataset(c)
+}
+
 // DatasetControllerIngestDataset operation middleware
 func (siw *ServerInterfaceWrapper) DatasetControllerIngestDataset(c *gin.Context) {
 
-	c.Set(OpenIDScopes, []string{"ingestor_write"})
+	c.Set(CookieAuthScopes, []string{"ingestor_write"})
 
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
@@ -191,6 +269,51 @@ func (siw *ServerInterfaceWrapper) DatasetControllerIngestDataset(c *gin.Context
 	}
 
 	siw.Handler.DatasetControllerIngestDataset(c)
+}
+
+// ExtractorControllerGetExtractors operation middleware
+func (siw *ServerInterfaceWrapper) ExtractorControllerGetExtractors(c *gin.Context) {
+
+	c.Set(CookieAuthScopes, []string{"ingestor_read", "ingestor_write", "admin"})
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.ExtractorControllerGetExtractors(c)
+}
+
+// ExtractorControllerStartExtraction operation middleware
+func (siw *ServerInterfaceWrapper) ExtractorControllerStartExtraction(c *gin.Context) {
+
+	c.Set(CookieAuthScopes, []string{"ingestor_read", "ingestor_write", "admin"})
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.ExtractorControllerStartExtraction(c)
+}
+
+// OtherControllerGetHealth operation middleware
+func (siw *ServerInterfaceWrapper) OtherControllerGetHealth(c *gin.Context) {
+
+	c.Set(CookieAuthScopes, []string{"ingestor_read", "ingestor_write", "admin"})
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.OtherControllerGetHealth(c)
 }
 
 // GetLogin operation middleware
@@ -219,10 +342,45 @@ func (siw *ServerInterfaceWrapper) GetLogout(c *gin.Context) {
 	siw.Handler.GetLogout(c)
 }
 
+// SchemaControllerGetSchema operation middleware
+func (siw *ServerInterfaceWrapper) SchemaControllerGetSchema(c *gin.Context) {
+
+	var err error
+
+	c.Set(CookieAuthScopes, []string{"ingestor_read", "ingestor_write", "admin"})
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params SchemaControllerGetSchemaParams
+
+	// ------------- Required query parameter "methodName" -------------
+
+	if paramValue := c.Query("methodName"); paramValue != "" {
+
+	} else {
+		siw.ErrorHandler(c, fmt.Errorf("Query argument methodName is required, but not found"), http.StatusBadRequest)
+		return
+	}
+
+	err = runtime.BindQueryParameter("form", true, true, "methodName", c.Request.URL.Query(), &params.MethodName)
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter methodName: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.SchemaControllerGetSchema(c, params)
+}
+
 // TransferControllerDeleteTransfer operation middleware
 func (siw *ServerInterfaceWrapper) TransferControllerDeleteTransfer(c *gin.Context) {
 
-	c.Set(OpenIDScopes, []string{"ingestor_write"})
+	c.Set(CookieAuthScopes, []string{"ingestor_write"})
 
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
@@ -239,7 +397,7 @@ func (siw *ServerInterfaceWrapper) TransferControllerGetTransfer(c *gin.Context)
 
 	var err error
 
-	c.Set(OpenIDScopes, []string{"ingestor_read"})
+	c.Set(CookieAuthScopes, []string{"ingestor_read"})
 
 	// Parameter object where we will unmarshal all parameters from the context
 	var params TransferControllerGetTransferParams
@@ -319,9 +477,14 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 	}
 
 	router.GET(options.BaseURL+"/callback", wrapper.GetCallback)
+	router.GET(options.BaseURL+"/dataset", wrapper.DatasetControllerGetDataset)
 	router.POST(options.BaseURL+"/dataset", wrapper.DatasetControllerIngestDataset)
+	router.GET(options.BaseURL+"/extractor", wrapper.ExtractorControllerGetExtractors)
+	router.POST(options.BaseURL+"/extractor", wrapper.ExtractorControllerStartExtraction)
+	router.GET(options.BaseURL+"/health", wrapper.OtherControllerGetHealth)
 	router.GET(options.BaseURL+"/login", wrapper.GetLogin)
 	router.GET(options.BaseURL+"/logout", wrapper.GetLogout)
+	router.GET(options.BaseURL+"/schema", wrapper.SchemaControllerGetSchema)
 	router.DELETE(options.BaseURL+"/transfer", wrapper.TransferControllerDeleteTransfer)
 	router.GET(options.BaseURL+"/transfer", wrapper.TransferControllerGetTransfer)
 	router.GET(options.BaseURL+"/version", wrapper.OtherControllerGetVersion)
@@ -369,6 +532,32 @@ func (response GetCallback500TextResponse) VisitGetCallbackResponse(w http.Respo
 	return err
 }
 
+type DatasetControllerGetDatasetRequestObject struct {
+}
+
+type DatasetControllerGetDatasetResponseObject interface {
+	VisitDatasetControllerGetDatasetResponse(w http.ResponseWriter) error
+}
+
+type DatasetControllerGetDataset200JSONResponse GetDatasetResponse
+
+func (response DatasetControllerGetDataset200JSONResponse) VisitDatasetControllerGetDatasetResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type DatasetControllerGetDataset400TextResponse string
+
+func (response DatasetControllerGetDataset400TextResponse) VisitDatasetControllerGetDatasetResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "text/plain")
+	w.WriteHeader(400)
+
+	_, err := w.Write([]byte(response))
+	return err
+}
+
 type DatasetControllerIngestDatasetRequestObject struct {
 	Body *DatasetControllerIngestDatasetJSONRequestBody
 }
@@ -377,7 +566,7 @@ type DatasetControllerIngestDatasetResponseObject interface {
 	VisitDatasetControllerIngestDatasetResponse(w http.ResponseWriter) error
 }
 
-type DatasetControllerIngestDataset200JSONResponse IngestorUiPostDatasetResponse
+type DatasetControllerIngestDataset200JSONResponse PostDatasetResponse
 
 func (response DatasetControllerIngestDataset200JSONResponse) VisitDatasetControllerIngestDatasetResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
@@ -389,6 +578,85 @@ func (response DatasetControllerIngestDataset200JSONResponse) VisitDatasetContro
 type DatasetControllerIngestDataset400TextResponse string
 
 func (response DatasetControllerIngestDataset400TextResponse) VisitDatasetControllerIngestDatasetResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "text/plain")
+	w.WriteHeader(400)
+
+	_, err := w.Write([]byte(response))
+	return err
+}
+
+type ExtractorControllerGetExtractorsRequestObject struct {
+}
+
+type ExtractorControllerGetExtractorsResponseObject interface {
+	VisitExtractorControllerGetExtractorsResponse(w http.ResponseWriter) error
+}
+
+type ExtractorControllerGetExtractors200JSONResponse OtherVersionResponse
+
+func (response ExtractorControllerGetExtractors200JSONResponse) VisitExtractorControllerGetExtractorsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ExtractorControllerGetExtractors400TextResponse string
+
+func (response ExtractorControllerGetExtractors400TextResponse) VisitExtractorControllerGetExtractorsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "text/plain")
+	w.WriteHeader(400)
+
+	_, err := w.Write([]byte(response))
+	return err
+}
+
+type ExtractorControllerStartExtractionRequestObject struct {
+	Body *ExtractorControllerStartExtractionJSONRequestBody
+}
+
+type ExtractorControllerStartExtractionResponseObject interface {
+	VisitExtractorControllerStartExtractionResponse(w http.ResponseWriter) error
+}
+
+type ExtractorControllerStartExtraction200JSONResponse PostDatasetResponse
+
+func (response ExtractorControllerStartExtraction200JSONResponse) VisitExtractorControllerStartExtractionResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ExtractorControllerStartExtraction400TextResponse string
+
+func (response ExtractorControllerStartExtraction400TextResponse) VisitExtractorControllerStartExtractionResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "text/plain")
+	w.WriteHeader(400)
+
+	_, err := w.Write([]byte(response))
+	return err
+}
+
+type OtherControllerGetHealthRequestObject struct {
+}
+
+type OtherControllerGetHealthResponseObject interface {
+	VisitOtherControllerGetHealthResponse(w http.ResponseWriter) error
+}
+
+type OtherControllerGetHealth200JSONResponse OtherHealthResponse
+
+func (response OtherControllerGetHealth200JSONResponse) VisitOtherControllerGetHealthResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type OtherControllerGetHealth400TextResponse string
+
+func (response OtherControllerGetHealth400TextResponse) VisitOtherControllerGetHealthResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(400)
 
@@ -448,6 +716,33 @@ func (response GetLogout500TextResponse) VisitGetLogoutResponse(w http.ResponseW
 	return err
 }
 
+type SchemaControllerGetSchemaRequestObject struct {
+	Params SchemaControllerGetSchemaParams
+}
+
+type SchemaControllerGetSchemaResponseObject interface {
+	VisitSchemaControllerGetSchemaResponse(w http.ResponseWriter) error
+}
+
+type SchemaControllerGetSchema200JSONResponse GetSchemaRequest
+
+func (response SchemaControllerGetSchema200JSONResponse) VisitSchemaControllerGetSchemaResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type SchemaControllerGetSchema400TextResponse string
+
+func (response SchemaControllerGetSchema400TextResponse) VisitSchemaControllerGetSchemaResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "text/plain")
+	w.WriteHeader(400)
+
+	_, err := w.Write([]byte(response))
+	return err
+}
+
 type TransferControllerDeleteTransferRequestObject struct {
 	Body *TransferControllerDeleteTransferJSONRequestBody
 }
@@ -456,7 +751,7 @@ type TransferControllerDeleteTransferResponseObject interface {
 	VisitTransferControllerDeleteTransferResponse(w http.ResponseWriter) error
 }
 
-type TransferControllerDeleteTransfer200JSONResponse IngestorUiDeleteTransferResponse
+type TransferControllerDeleteTransfer200JSONResponse DeleteTransferResponse
 
 func (response TransferControllerDeleteTransfer200JSONResponse) VisitTransferControllerDeleteTransferResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
@@ -483,7 +778,7 @@ type TransferControllerGetTransferResponseObject interface {
 	VisitTransferControllerGetTransferResponse(w http.ResponseWriter) error
 }
 
-type TransferControllerGetTransfer200JSONResponse IngestorUiGetTransferResponse
+type TransferControllerGetTransfer200JSONResponse GetTransferResponse
 
 func (response TransferControllerGetTransfer200JSONResponse) VisitTransferControllerGetTransferResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
@@ -509,7 +804,7 @@ type OtherControllerGetVersionResponseObject interface {
 	VisitOtherControllerGetVersionResponse(w http.ResponseWriter) error
 }
 
-type OtherControllerGetVersion200JSONResponse IngestorUiOtherVersionResponse
+type OtherControllerGetVersion200JSONResponse OtherVersionResponse
 
 func (response OtherControllerGetVersion200JSONResponse) VisitOtherControllerGetVersionResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
@@ -518,20 +813,45 @@ func (response OtherControllerGetVersion200JSONResponse) VisitOtherControllerGet
 	return json.NewEncoder(w).Encode(response)
 }
 
+type OtherControllerGetVersion400TextResponse string
+
+func (response OtherControllerGetVersion400TextResponse) VisitOtherControllerGetVersionResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "text/plain")
+	w.WriteHeader(400)
+
+	_, err := w.Write([]byte(response))
+	return err
+}
+
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
 	// OIDC callback
 	// (GET /callback)
 	GetCallback(ctx context.Context, request GetCallbackRequestObject) (GetCallbackResponseObject, error)
+	// Get the available datasets.
+	// (GET /dataset)
+	DatasetControllerGetDataset(ctx context.Context, request DatasetControllerGetDatasetRequestObject) (DatasetControllerGetDatasetResponseObject, error)
 	// Ingest a new dataset
 	// (POST /dataset)
 	DatasetControllerIngestDataset(ctx context.Context, request DatasetControllerIngestDatasetRequestObject) (DatasetControllerIngestDatasetResponseObject, error)
+	// Get available extractors
+	// (GET /extractor)
+	ExtractorControllerGetExtractors(ctx context.Context, request ExtractorControllerGetExtractorsRequestObject) (ExtractorControllerGetExtractorsResponseObject, error)
+	// Start a new metadata extraction
+	// (POST /extractor)
+	ExtractorControllerStartExtraction(ctx context.Context, request ExtractorControllerStartExtractionRequestObject) (ExtractorControllerStartExtractionResponseObject, error)
+	// Get the health status.
+	// (GET /health)
+	OtherControllerGetHealth(ctx context.Context, request OtherControllerGetHealthRequestObject) (OtherControllerGetHealthResponseObject, error)
 	// OIDC login
 	// (GET /login)
 	GetLogin(ctx context.Context, request GetLoginRequestObject) (GetLoginResponseObject, error)
 	// end user session
 	// (GET /logout)
 	GetLogout(ctx context.Context, request GetLogoutRequestObject) (GetLogoutResponseObject, error)
+	// Get schema for selected method
+	// (GET /schema)
+	SchemaControllerGetSchema(ctx context.Context, request SchemaControllerGetSchemaRequestObject) (SchemaControllerGetSchemaResponseObject, error)
 	// Cancel a data transfer
 	// (DELETE /transfer)
 	TransferControllerDeleteTransfer(ctx context.Context, request TransferControllerDeleteTransferRequestObject) (TransferControllerDeleteTransferResponseObject, error)
@@ -582,6 +902,31 @@ func (sh *strictHandler) GetCallback(ctx *gin.Context, params GetCallbackParams)
 	}
 }
 
+// DatasetControllerGetDataset operation middleware
+func (sh *strictHandler) DatasetControllerGetDataset(ctx *gin.Context) {
+	var request DatasetControllerGetDatasetRequestObject
+
+	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.DatasetControllerGetDataset(ctx, request.(DatasetControllerGetDatasetRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "DatasetControllerGetDataset")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		ctx.Error(err)
+		ctx.Status(http.StatusInternalServerError)
+	} else if validResponse, ok := response.(DatasetControllerGetDatasetResponseObject); ok {
+		if err := validResponse.VisitDatasetControllerGetDatasetResponse(ctx.Writer); err != nil {
+			ctx.Error(err)
+		}
+	} else if response != nil {
+		ctx.Error(fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // DatasetControllerIngestDataset operation middleware
 func (sh *strictHandler) DatasetControllerIngestDataset(ctx *gin.Context) {
 	var request DatasetControllerIngestDatasetRequestObject
@@ -608,6 +953,89 @@ func (sh *strictHandler) DatasetControllerIngestDataset(ctx *gin.Context) {
 		ctx.Status(http.StatusInternalServerError)
 	} else if validResponse, ok := response.(DatasetControllerIngestDatasetResponseObject); ok {
 		if err := validResponse.VisitDatasetControllerIngestDatasetResponse(ctx.Writer); err != nil {
+			ctx.Error(err)
+		}
+	} else if response != nil {
+		ctx.Error(fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ExtractorControllerGetExtractors operation middleware
+func (sh *strictHandler) ExtractorControllerGetExtractors(ctx *gin.Context) {
+	var request ExtractorControllerGetExtractorsRequestObject
+
+	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.ExtractorControllerGetExtractors(ctx, request.(ExtractorControllerGetExtractorsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ExtractorControllerGetExtractors")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		ctx.Error(err)
+		ctx.Status(http.StatusInternalServerError)
+	} else if validResponse, ok := response.(ExtractorControllerGetExtractorsResponseObject); ok {
+		if err := validResponse.VisitExtractorControllerGetExtractorsResponse(ctx.Writer); err != nil {
+			ctx.Error(err)
+		}
+	} else if response != nil {
+		ctx.Error(fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ExtractorControllerStartExtraction operation middleware
+func (sh *strictHandler) ExtractorControllerStartExtraction(ctx *gin.Context) {
+	var request ExtractorControllerStartExtractionRequestObject
+
+	var body ExtractorControllerStartExtractionJSONRequestBody
+	if err := ctx.ShouldBindJSON(&body); err != nil {
+		ctx.Status(http.StatusBadRequest)
+		ctx.Error(err)
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.ExtractorControllerStartExtraction(ctx, request.(ExtractorControllerStartExtractionRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ExtractorControllerStartExtraction")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		ctx.Error(err)
+		ctx.Status(http.StatusInternalServerError)
+	} else if validResponse, ok := response.(ExtractorControllerStartExtractionResponseObject); ok {
+		if err := validResponse.VisitExtractorControllerStartExtractionResponse(ctx.Writer); err != nil {
+			ctx.Error(err)
+		}
+	} else if response != nil {
+		ctx.Error(fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// OtherControllerGetHealth operation middleware
+func (sh *strictHandler) OtherControllerGetHealth(ctx *gin.Context) {
+	var request OtherControllerGetHealthRequestObject
+
+	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.OtherControllerGetHealth(ctx, request.(OtherControllerGetHealthRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "OtherControllerGetHealth")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		ctx.Error(err)
+		ctx.Status(http.StatusInternalServerError)
+	} else if validResponse, ok := response.(OtherControllerGetHealthResponseObject); ok {
+		if err := validResponse.VisitOtherControllerGetHealthResponse(ctx.Writer); err != nil {
 			ctx.Error(err)
 		}
 	} else if response != nil {
@@ -658,6 +1086,33 @@ func (sh *strictHandler) GetLogout(ctx *gin.Context) {
 		ctx.Status(http.StatusInternalServerError)
 	} else if validResponse, ok := response.(GetLogoutResponseObject); ok {
 		if err := validResponse.VisitGetLogoutResponse(ctx.Writer); err != nil {
+			ctx.Error(err)
+		}
+	} else if response != nil {
+		ctx.Error(fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// SchemaControllerGetSchema operation middleware
+func (sh *strictHandler) SchemaControllerGetSchema(ctx *gin.Context, params SchemaControllerGetSchemaParams) {
+	var request SchemaControllerGetSchemaRequestObject
+
+	request.Params = params
+
+	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.SchemaControllerGetSchema(ctx, request.(SchemaControllerGetSchemaRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "SchemaControllerGetSchema")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		ctx.Error(err)
+		ctx.Status(http.StatusInternalServerError)
+	} else if validResponse, ok := response.(SchemaControllerGetSchemaResponseObject); ok {
+		if err := validResponse.VisitSchemaControllerGetSchemaResponse(ctx.Writer); err != nil {
 			ctx.Error(err)
 		}
 	} else if response != nil {
@@ -753,32 +1208,39 @@ func (sh *strictHandler) OtherControllerGetVersion(ctx *gin.Context) {
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
-	"becOi6bLjObqnG5n278DAAD//2A7C5WhFwAA",
+	"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",
+	"qGE/3i8WYD7cH/4bAAD//wP/ibUyJQAA",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

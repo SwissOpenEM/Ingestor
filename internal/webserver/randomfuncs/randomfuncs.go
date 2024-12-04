@@ -1,11 +1,11 @@
-package webserver
+package randomfuncs
 
 import (
 	"crypto/rand"
 	"encoding/base64"
 )
 
-func generateRandomByteSlice(len uint) ([]byte, error) {
+func GenerateRandomByteSlice(len uint) ([]byte, error) {
 	b := make([]byte, len)
 	_, err := rand.Read(b)
 	if err != nil {
@@ -14,7 +14,7 @@ func generateRandomByteSlice(len uint) ([]byte, error) {
 	return b, nil
 }
 
-func generateRandomString(len uint) (string, error) {
-	b, err := generateRandomByteSlice(len)
+func GenerateRandomString(len uint) (string, error) {
+	b, err := GenerateRandomByteSlice(len)
 	return base64.URLEncoding.EncodeToString(b), err
 }

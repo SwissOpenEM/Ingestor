@@ -8,6 +8,7 @@ import (
 	"os"
 
 	docs "github.com/SwissOpenEM/Ingestor/docs"
+	"github.com/SwissOpenEM/Ingestor/internal/webserver/randomfuncs"
 	"github.com/coreos/go-oidc/v3/oidc"
 	"github.com/getkin/kin-openapi/openapi3filter"
 	cors "github.com/gin-contrib/cors"
@@ -44,11 +45,11 @@ func NewIngesterServer(ingestor *IngestorWebServerImplemenation, port int) *http
 	r.GET("/docs/*any", ginSwagger.WrapHandler(swaggerfiles.Handler))
 
 	// setup auth session store
-	authKey, err := generateRandomByteSlice(64) // authentication key
+	authKey, err := randomfuncs.GenerateRandomByteSlice(64) // authentication key
 	if err != nil {
 		panic(err)
 	}
-	encKey, err := generateRandomByteSlice(32) // encryption key
+	encKey, err := randomfuncs.GenerateRandomByteSlice(32) // encryption key
 	if err != nil {
 		panic(err)
 	}
