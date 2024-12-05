@@ -25,11 +25,6 @@ const (
 	CookieAuthScopes = "cookieAuth.Scopes"
 )
 
-// DatasetItem defines model for DatasetItem.
-type DatasetItem struct {
-	Dataset *string `json:"dataset,omitempty"`
-}
-
 // DeleteTransferRequest defines model for DeleteTransferRequest.
 type DeleteTransferRequest struct {
 	// IngestId Ingestion id to abort the ingestion
@@ -47,10 +42,19 @@ type DeleteTransferResponse struct {
 
 // GetDatasetResponse defines model for GetDatasetResponse.
 type GetDatasetResponse struct {
-	Datasets *[]DatasetItem `json:"datasets,omitempty"`
+	Datasets []string `json:"datasets"`
 
 	// Total Total number of datasets.
-	Total *int `json:"total,omitempty"`
+	Total int `json:"total"`
+}
+
+// GetExtractorResponse defines model for GetExtractorResponse.
+type GetExtractorResponse struct {
+	// Extractors List of method names of the extractor configured in the ingestor
+	Extractors []string `json:"extractors"`
+
+	// Total Total number of extractors.
+	Total int `json:"total"`
 }
 
 // GetSchemaRequest defines model for GetSchemaRequest.
@@ -102,10 +106,10 @@ type PostDatasetResponse struct {
 // PostExtractionRequest defines model for PostExtractionRequest.
 type PostExtractionRequest struct {
 	// FilePath The file path of the selected data record.
-	FilePath *string `json:"filePath,omitempty"`
+	FilePath string `json:"filePath"`
 
 	// MethodName The selected methodName for data extraction.
-	MethodName *string `json:"methodName,omitempty"`
+	MethodName string `json:"methodName"`
 }
 
 // TransferItem defines model for TransferItem.
@@ -121,6 +125,18 @@ type GetCallbackParams struct {
 
 	// State parameter for CSRF protection
 	State string `form:"state" json:"state"`
+}
+
+// DatasetControllerGetDatasetParams defines parameters for DatasetControllerGetDataset.
+type DatasetControllerGetDatasetParams struct {
+	Page     *uint `form:"page,omitempty" json:"page,omitempty"`
+	PageSize *uint `form:"pageSize,omitempty" json:"pageSize,omitempty"`
+}
+
+// ExtractorControllerGetExtractorsParams defines parameters for ExtractorControllerGetExtractors.
+type ExtractorControllerGetExtractorsParams struct {
+	Page     *uint `form:"page,omitempty" json:"page,omitempty"`
+	PageSize *uint `form:"pageSize,omitempty" json:"pageSize,omitempty"`
 }
 
 // SchemaControllerGetSchemaParams defines parameters for SchemaControllerGetSchema.
@@ -151,13 +167,13 @@ type ServerInterface interface {
 	GetCallback(c *gin.Context, params GetCallbackParams)
 	// Get the available datasets.
 	// (GET /dataset)
-	DatasetControllerGetDataset(c *gin.Context)
+	DatasetControllerGetDataset(c *gin.Context, params DatasetControllerGetDatasetParams)
 	// Ingest a new dataset
 	// (POST /dataset)
 	DatasetControllerIngestDataset(c *gin.Context)
 	// Get available extractors
 	// (GET /extractor)
-	ExtractorControllerGetExtractors(c *gin.Context)
+	ExtractorControllerGetExtractors(c *gin.Context, params ExtractorControllerGetExtractorsParams)
 	// Start a new metadata extraction
 	// (POST /extractor)
 	ExtractorControllerStartExtraction(c *gin.Context)
@@ -244,7 +260,28 @@ func (siw *ServerInterfaceWrapper) GetCallback(c *gin.Context) {
 // DatasetControllerGetDataset operation middleware
 func (siw *ServerInterfaceWrapper) DatasetControllerGetDataset(c *gin.Context) {
 
+	var err error
+
 	c.Set(CookieAuthScopes, []string{"ingestor_read", "ingestor_write", "admin"})
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params DatasetControllerGetDatasetParams
+
+	// ------------- Optional query parameter "page" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "page", c.Request.URL.Query(), &params.Page)
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter page: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "pageSize" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "pageSize", c.Request.URL.Query(), &params.PageSize)
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter pageSize: %w", err), http.StatusBadRequest)
+		return
+	}
 
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
@@ -253,7 +290,7 @@ func (siw *ServerInterfaceWrapper) DatasetControllerGetDataset(c *gin.Context) {
 		}
 	}
 
-	siw.Handler.DatasetControllerGetDataset(c)
+	siw.Handler.DatasetControllerGetDataset(c, params)
 }
 
 // DatasetControllerIngestDataset operation middleware
@@ -274,7 +311,28 @@ func (siw *ServerInterfaceWrapper) DatasetControllerIngestDataset(c *gin.Context
 // ExtractorControllerGetExtractors operation middleware
 func (siw *ServerInterfaceWrapper) ExtractorControllerGetExtractors(c *gin.Context) {
 
+	var err error
+
 	c.Set(CookieAuthScopes, []string{"ingestor_read", "ingestor_write", "admin"})
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ExtractorControllerGetExtractorsParams
+
+	// ------------- Optional query parameter "page" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "page", c.Request.URL.Query(), &params.Page)
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter page: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "pageSize" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "pageSize", c.Request.URL.Query(), &params.PageSize)
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter pageSize: %w", err), http.StatusBadRequest)
+		return
+	}
 
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
@@ -283,7 +341,7 @@ func (siw *ServerInterfaceWrapper) ExtractorControllerGetExtractors(c *gin.Conte
 		}
 	}
 
-	siw.Handler.ExtractorControllerGetExtractors(c)
+	siw.Handler.ExtractorControllerGetExtractors(c, params)
 }
 
 // ExtractorControllerStartExtraction operation middleware
@@ -533,6 +591,7 @@ func (response GetCallback500TextResponse) VisitGetCallbackResponse(w http.Respo
 }
 
 type DatasetControllerGetDatasetRequestObject struct {
+	Params DatasetControllerGetDatasetParams
 }
 
 type DatasetControllerGetDatasetResponseObject interface {
@@ -586,13 +645,14 @@ func (response DatasetControllerIngestDataset400TextResponse) VisitDatasetContro
 }
 
 type ExtractorControllerGetExtractorsRequestObject struct {
+	Params ExtractorControllerGetExtractorsParams
 }
 
 type ExtractorControllerGetExtractorsResponseObject interface {
 	VisitExtractorControllerGetExtractorsResponse(w http.ResponseWriter) error
 }
 
-type ExtractorControllerGetExtractors200JSONResponse OtherVersionResponse
+type ExtractorControllerGetExtractors200JSONResponse GetExtractorResponse
 
 func (response ExtractorControllerGetExtractors200JSONResponse) VisitExtractorControllerGetExtractorsResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
@@ -903,8 +963,10 @@ func (sh *strictHandler) GetCallback(ctx *gin.Context, params GetCallbackParams)
 }
 
 // DatasetControllerGetDataset operation middleware
-func (sh *strictHandler) DatasetControllerGetDataset(ctx *gin.Context) {
+func (sh *strictHandler) DatasetControllerGetDataset(ctx *gin.Context, params DatasetControllerGetDatasetParams) {
 	var request DatasetControllerGetDatasetRequestObject
+
+	request.Params = params
 
 	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
 		return sh.ssi.DatasetControllerGetDataset(ctx, request.(DatasetControllerGetDatasetRequestObject))
@@ -961,8 +1023,10 @@ func (sh *strictHandler) DatasetControllerIngestDataset(ctx *gin.Context) {
 }
 
 // ExtractorControllerGetExtractors operation middleware
-func (sh *strictHandler) ExtractorControllerGetExtractors(ctx *gin.Context) {
+func (sh *strictHandler) ExtractorControllerGetExtractors(ctx *gin.Context, params ExtractorControllerGetExtractorsParams) {
 	var request ExtractorControllerGetExtractorsRequestObject
+
+	request.Params = params
 
 	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
 		return sh.ssi.ExtractorControllerGetExtractors(ctx, request.(ExtractorControllerGetExtractorsRequestObject))
@@ -1208,39 +1272,40 @@ func (sh *strictHandler) OtherControllerGetVersion(ctx *gin.Context) {
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
-	"qGE/3i8WYD7cH/4bAAD//wP/ibUyJQAA",
+	"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",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

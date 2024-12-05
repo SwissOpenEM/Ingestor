@@ -7,6 +7,7 @@ import (
 	"log/slog"
 
 	core "github.com/SwissOpenEM/Ingestor/internal/core"
+	"github.com/SwissOpenEM/Ingestor/internal/metadataextractor"
 	"github.com/SwissOpenEM/Ingestor/internal/webserver"
 
 	"github.com/spf13/viper"
@@ -36,7 +37,9 @@ func main() {
 	}
 	taskqueue.Startup()
 
-	ingestor, err := webserver.NewIngestorWebServer(version, &taskqueue, config.WebServerAuth)
+	extractorHander := metadataextractor.NewExtractorHandler(config.MetadataExtractors)
+
+	ingestor, err := webserver.NewIngestorWebServer(version, &taskqueue, extractorHander, config.WebServerAuth, config.WebServerPaths)
 	if err != nil {
 		log.Fatal(err)
 	}

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"slices"
 
 	"github.com/google/uuid"
 )
@@ -54,5 +55,54 @@ func (i *IngestorWebServerImplemenation) DatasetControllerIngestDataset(ctx cont
 }
 
 func (i *IngestorWebServerImplemenation) DatasetControllerGetDataset(ctx context.Context, request DatasetControllerGetDatasetRequestObject) (DatasetControllerGetDatasetResponseObject, error) {
-	return nil, nil
+	files, err := os.ReadDir(i.pathConfig.CollectionLocation)
+	if err != nil {
+		return nil, err
+	}
+
+	var datasets []string
+	for _, file := range files {
+		if file.IsDir() {
+			datasets = append(datasets, file.Name())
+		}
+	}
+	slices.Sort(datasets)
+
+	var page uint = 1
+	var pageSize uint = 10
+
+	if request.Params.Page != nil {
+		page = *request.Params.Page
+		if page == 0 {
+			page = 1
+		}
+	}
+	if request.Params.PageSize != nil {
+		pageSize = max(*request.Params.PageSize, 100)
+	}
+
+	return DatasetControllerGetDataset200JSONResponse{
+		Datasets: safeSubslice(datasets, (page-1)*pageSize, page*pageSize),
+		Total:    len(datasets),
+	}, nil
+}
+
+//func ptr[T any](v T) *T {
+//	var temp T = v
+//	return &temp
+//}
+
+func safeSubslice[T any](s []T, start, end uint) []T {
+	sLen := uint(len(s))
+	if start >= sLen {
+		return []T{}
+	}
+	if end >= sLen {
+		if sLen != 0 {
+			end = sLen - 1
+		} else {
+			end = 0
+		}
+	}
+	return s[start:end]
 }
