@@ -7,7 +7,7 @@ import (
 
 	"github.com/SwissOpenEM/Ingestor/internal/metadataextractor"
 	"github.com/SwissOpenEM/Ingestor/internal/task"
-	"github.com/SwissOpenEM/Ingestor/internal/webserver/wsauthconfig"
+	"github.com/SwissOpenEM/Ingestor/internal/webserver/wsconfig"
 )
 
 func createExpectedValidConfigS3() task.TransferConfig {
@@ -53,22 +53,22 @@ func createExpectedValidConfig(transferConfig task.TransferConfig) Config {
 
 	expected_tranfer := transferConfig
 
-	expected_wsauth := wsauthconfig.AuthConf{
+	expected_wsauth := wsconfig.AuthConf{
 		SessionDuration: 28800,
-		OAuth2Conf: wsauthconfig.OAuth2Conf{
+		OAuth2Conf: wsconfig.OAuth2Conf{
 			ClientID:    "ingestor",
 			RedirectURL: "http://localhost:8888/callback",
 			Scopes:      []string{"email"},
 		},
-		OIDCConf: wsauthconfig.OIDCConf{
+		OIDCConf: wsconfig.OIDCConf{
 			IssuerURL: "http://keycloak.localhost/realms/facility",
 		},
-		JWTConf: wsauthconfig.JWTConf{
+		JWTConf: wsconfig.JWTConf{
 			UseJWKS:              true,
 			JwksURL:              "http://keycloak.localhost/realms/facility/protocol/openid-connect/certs",
 			JwksSignatureMethods: []string{"RS256"},
 		},
-		RBACConf: wsauthconfig.RBACConf{
+		RBACConf: wsconfig.RBACConf{
 			AdminRole:             "FACILITY-ingestor-admin",
 			CreateModifyTasksRole: "FACILITY-ingestor-write",
 			ViewTasksRole:         "FACILITY-ingestor-read",

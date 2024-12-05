@@ -8,7 +8,7 @@ import (
 
 	"github.com/SwissOpenEM/Ingestor/internal/metadataextractor"
 	"github.com/SwissOpenEM/Ingestor/internal/task"
-	"github.com/SwissOpenEM/Ingestor/internal/webserver/wsauthconfig"
+	"github.com/SwissOpenEM/Ingestor/internal/webserver/wsconfig"
 	"github.com/go-playground/validator/v10"
 	"github.com/spf13/viper"
 )
@@ -26,7 +26,8 @@ type MiscConfig struct {
 type Config struct {
 	Scicat             ScicatConfig                       `mapstructure:"Scicat"`
 	Transfer           task.TransferConfig                `mapstructure:"Transfer"`
-	WebServerAuth      wsauthconfig.AuthConf              `mapstructure:"WebServerAuth"`
+	WebServerAuth      wsconfig.AuthConf                  `mapstructure:"WebServerAuth"`
+	WebServerPaths     wsconfig.WebServerPathsConf        `mapstrucuture:"WebServerPaths"`
 	Misc               MiscConfig                         `mapstructure:"Misc"`
 	MetadataExtractors metadataextractor.ExtractorsConfig `mapstructure:"MetadataExtractors"`
 }

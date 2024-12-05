@@ -1,4 +1,4 @@
-package wsauthconfig
+package wsconfig
 
 type OAuth2Conf struct {
 	ClientID     string   `validate:"required"` // OAuth client id (this app)
@@ -43,4 +43,9 @@ type AuthConf struct {
 	OIDCConf        `mapstructure:"OIDC" validate:"required_if=Disable false,omitempty"`
 	JWTConf         `mapstructure:"JWT" validate:"required_if=Disable false,omitempty"`
 	RBACConf        `mapstructure:"RBAC" validate:"required_if=Disable false,omitempty"`
+}
+
+type WebServerPathsConf struct {
+	CollectionLocation      string `validate:"required"`
+	ExtractorOutputLocation string
 }

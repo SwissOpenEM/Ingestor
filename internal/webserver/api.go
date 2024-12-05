@@ -9,7 +9,8 @@ import (
 	"fmt"
 
 	"github.com/SwissOpenEM/Ingestor/internal/core"
-	"github.com/SwissOpenEM/Ingestor/internal/webserver/wsauthconfig"
+	"github.com/SwissOpenEM/Ingestor/internal/metadataextractor"
+	"github.com/SwissOpenEM/Ingestor/internal/webserver/wsconfig"
 	"github.com/coreos/go-oidc/v3/oidc"
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/oauth2"
@@ -18,15 +19,17 @@ import (
 var _ StrictServerInterface = (*IngestorWebServerImplemenation)(nil)
 
 type IngestorWebServerImplemenation struct {
-	version         string
-	taskQueue       *core.TaskQueue
-	oauth2Config    *oauth2.Config
-	oidcProvider    *oidc.Provider
-	oidcVerifier    *oidc.IDTokenVerifier
-	jwtKeyfunc      jwt.Keyfunc
-	jwtSignMethods  []string
-	sessionDuration uint
-	scopeToRoleMap  map[string]string
+	version          string
+	taskQueue        *core.TaskQueue
+	extractorHandler *metadataextractor.ExtractorHandler
+	oauth2Config     *oauth2.Config
+	oidcProvider     *oidc.Provider
+	oidcVerifier     *oidc.IDTokenVerifier
+	jwtKeyfunc       jwt.Keyfunc
+	jwtSignMethods   []string
+	sessionDuration  uint
+	scopeToRoleMap   map[string]string
+	pathConfig       wsconfig.WebServerPathsConf
 }
 
 //	@contact.name	SwissOpenEM
@@ -36,7 +39,7 @@ type IngestorWebServerImplemenation struct {
 // @license.name	Apache 2.0
 // @license.url	http://www.apache.org/licenses/LICENSE-2.0.html
 
-func NewIngestorWebServer(version string, taskQueue *core.TaskQueue, authConf wsauthconfig.AuthConf) (*IngestorWebServerImplemenation, error) {
+func NewIngestorWebServer(version string, taskQueue *core.TaskQueue, extractorHander *metadataextractor.ExtractorHandler, authConf wsconfig.AuthConf, pathConf wsconfig.WebServerPathsConf) (*IngestorWebServerImplemenation, error) {
 	oidcProvider, err := oidc.NewProvider(context.Background(), authConf.IssuerURL)
 	if err != nil {
 		fmt.Println("Warning: OIDC discovery mechanism failed. Falling back to manual OIDC config")
@@ -77,14 +80,16 @@ func NewIngestorWebServer(version string, taskQueue *core.TaskQueue, authConf ws
 	}
 
 	return &IngestorWebServerImplemenation{
-		version:         version,
-		taskQueue:       taskQueue,
-		oauth2Config:    &oauthConf,
-		oidcProvider:    oidcProvider,
-		oidcVerifier:    oidcVerifier,
-		jwtKeyfunc:      keyfunc,
-		jwtSignMethods:  signMethods,
-		scopeToRoleMap:  scopeToRoleMap,
-		sessionDuration: authConf.SessionDuration,
+		version:          version,
+		taskQueue:        taskQueue,
+		extractorHandler: extractorHander,
+		oauth2Config:     &oauthConf,
+		oidcProvider:     oidcProvider,
+		oidcVerifier:     oidcVerifier,
+		jwtKeyfunc:       keyfunc,
+		jwtSignMethods:   signMethods,
+		scopeToRoleMap:   scopeToRoleMap,
+		sessionDuration:  authConf.SessionDuration,
+		pathConfig:       pathConf,
 	}, nil
 }
