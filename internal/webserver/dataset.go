@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path"
 	"slices"
 
 	"github.com/google/uuid"
@@ -63,7 +64,7 @@ func (i *IngestorWebServerImplemenation) DatasetControllerGetDataset(ctx context
 	var datasets []string
 	for _, file := range files {
 		if file.IsDir() {
-			datasets = append(datasets, file.Name())
+			datasets = append(datasets, path.Join(i.pathConfig.CollectionLocation, file.Name()))
 		}
 	}
 	slices.Sort(datasets)
@@ -72,10 +73,7 @@ func (i *IngestorWebServerImplemenation) DatasetControllerGetDataset(ctx context
 	var pageSize uint = 10
 
 	if request.Params.Page != nil {
-		page = *request.Params.Page
-		if page == 0 {
-			page = 1
-		}
+		page = min(*request.Params.Page, 1)
 	}
 	if request.Params.PageSize != nil {
 		pageSize = max(*request.Params.PageSize, 100)
