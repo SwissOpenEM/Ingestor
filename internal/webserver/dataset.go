@@ -72,10 +72,7 @@ func (i *IngestorWebServerImplemenation) DatasetControllerGetDataset(ctx context
 	var pageSize uint = 10
 
 	if request.Params.Page != nil {
-		page = *request.Params.Page
-		if page == 0 {
-			page = 1
-		}
+		page = min(*request.Params.Page, 1)
 	}
 	if request.Params.PageSize != nil {
 		pageSize = max(*request.Params.PageSize, 100)
