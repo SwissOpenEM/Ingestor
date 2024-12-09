@@ -7,7 +7,7 @@ import (
 )
 
 func (i *IngestorWebServerImplemenation) ExtractorControllerGetExtractors(ctx context.Context, request ExtractorControllerGetExtractorsRequestObject) (ExtractorControllerGetExtractorsResponseObject, error) {
-	methods := i.extractorHandler.AvailableMethods()
+	methods := i.mdExtTaskPool.GetHandler().AvailableMethods()
 	methodNames := make([]string, len(methods))
 	for i, method := range methods {
 		methodNames[i] = method.Name
@@ -30,10 +30,10 @@ func (i *IngestorWebServerImplemenation) ExtractorControllerGetExtractors(ctx co
 
 func (i *IngestorWebServerImplemenation) ExtractorControllerStartExtraction(ctx context.Context, request ExtractorControllerStartExtractionRequestObject) (ExtractorControllerStartExtractionResponseObject, error) {
 	metadataOutputFile := metadataextractor.MetadataFilePath(request.Body.FilePath)
-	a, err := i.extractorHandler.ExtractMetadata(i.taskQueue.AppContext, request.Body.MethodName, request.Body.FilePath, metadataOutputFile, nil, nil)
+	/*a, err := i.extractorHandler.ExtractMetadata(i.taskQueue.AppContext, request.Body.MethodName, request.Body.FilePath, metadataOutputFile, nil, nil)
 	if err != nil {
 		return nil, err
-	}
-	_ = a
+	} */
+	_ = metadataOutputFile
 	return nil, nil
 }

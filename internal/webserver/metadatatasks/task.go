@@ -8,35 +8,62 @@ import (
 )
 
 type ExtractionProgress struct {
-	ExtractorOutput string
-	ExtractorError  error
-	TaskStdOut      string
-	TaskStdErr      string
+	extractorOutput string
+	extractorError  error
+	taskStdOut      string
+	taskStdErr      string
+	finished        bool
 }
 
 type task struct {
-	handler      *metadataextractor.ExtractorHandler
 	ctx          context.Context
 	datasetPath  string
 	method       string
-	taskProgress chan ExtractionProgress
+	taskProgress chan *ExtractionProgress
 	taskFinish   chan bool
 }
 
-func (t *ExtractionProgress) stdOutCallback(output string) {
-	t.TaskStdOut = output
+func (t *ExtractionProgress) setExtractorOutputAndErr(out string, err error) {
+	if !t.finished {
+		t.extractorOutput = out
+		t.extractorError = err
+		t.finished = true
+	}
 }
 
-func (t *ExtractionProgress) stdErrCallback(output string) {
-	t.TaskStdErr = output
+func (t *ExtractionProgress) GetExtractorOutput() string {
+	return t.extractorOutput
 }
 
-func NewTask(handler *metadataextractor.ExtractorHandler, ctx context.Context, datasetPath string, method string, taskProgress chan ExtractionProgress, taskFinish chan bool) error {
+func (t *ExtractionProgress) GetExtractorError() error {
+	return t.extractorError
+}
+
+func (t *ExtractionProgress) setStdOut(output string) {
+	if !t.finished {
+		t.taskStdOut = output
+	}
+}
+
+func (t *ExtractionProgress) setStdErr(output string) {
+	if !t.finished {
+		t.taskStdErr = output
+	}
+}
+
+func (t *ExtractionProgress) GetStdOut() string {
+	return t.taskStdOut
+}
+
+func (t *ExtractionProgress) GetStdErr() string {
+	return t.taskStdErr
+}
+
+func NewTask(handler *metadataextractor.ExtractorHandler, ctx context.Context, datasetPath string, method string, taskProgress chan *ExtractionProgress, taskFinish chan bool) error {
 	if datasetPath == "" {
 		return errors.New("datasetPath can't be empty")
 	}
 	a := task{
-		handler:      handler,
 		ctx:          ctx,
 		datasetPath:  datasetPath,
 		method:       method,
