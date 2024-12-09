@@ -14,8 +14,6 @@ tags:
     description: Operations related to data transfers
   - name: extractor
     description: Operations related to metadata extraction
-  - name: schema
-    description: Operations related to schemas
   - name: other
     description: Further operations for general information
 
@@ -281,9 +279,12 @@ paths:
     get:
       tags:
         - extractor
-      summary: Get available extractors
-      description: "Retrieve the available extractors configured in the ingestor."
-      operationId: ExtractorController_getExtractors
+      summary: Get available extraction methods
+      security:
+        - cookieAuth:
+          - ingestor_read
+      description: "Retrieve the available extraction methods configured in the ingestor."
+      operationId: ExtractorController_getExtractorMethods
       parameters:
         - name: page
           in: query
@@ -306,17 +307,14 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/GetExtractorResponse"
-        "400":
-          description: Invalid request
-          content:
-            text/plain:
-              schema:
-                type: string
 
     post:
       tags:
         - extractor
       summary: Start a new metadata extraction
+      security:
+        - cookieAuth:
+          - ingestor_write
       description: Start a new metadata extraction on the specified data set with the selected method.
       operationId: ExtractorController_startExtraction
       requestBody:
@@ -331,36 +329,15 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/PostDatasetResponse"
+                $ref: "#/components/schemas/PostExtractionResponse"
         "400":
           description: Invalid request
           content:
             text/plain:
               schema:
                 type: string
-
-  /schema:
-    get:
-      tags:
-        - schema
-      summary: Get schema for selected method
-      description: "Retrieve the right schema for the selected extractor."
-      operationId: SchemaController_getSchema
-      parameters:
-        - name: methodName
-          in: query
-          required: true
-          schema:
-            type: string
-      responses:
-        "200":
-          description: Schema retrieved sucessfully
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/GetSchemaRequest"
-        "400":
-          description: Invalid request
+        "500":
+          description: Internal server error
           content:
             text/plain:
               schema:
@@ -478,17 +455,28 @@ components:
     GetExtractorResponse:
       type: object
       properties:
-        extractors:
+        methods:
           type: array
           items:
-            type: string
-          description: List of method names of the extractor configured in the ingestor
+            $ref: "#/components/schemas/MethodItem"
+          description: List of the metadata extraction method names configured in the ingestor
         total:
           type: integer
-          description: Total number of extractors.
+          description: Total number of methods
       required:
-        - extractors
+        - methods
         - total
+    MethodItem:
+      type: object
+      properties:
+        name:
+          type: string
+        schema:
+          type: string
+      required:
+        - name
+        - schema
+      description: a method item describes the method's name and schema
     PostExtractionRequest:
       type: object
       properties:
@@ -501,12 +489,22 @@ components:
       required:
         - filePath
         - methodName
-    GetSchemaRequest:
+    PostExtractionResponse:
       type: object
       properties:
-        schema:
+        result:
           type: string
-          description: Schema which belongs to an extractor method.
+          description: The result of the chosen extractor method
+        cmdStdOut:
+          type: string
+          description: The standard output of the chosen extractor method's command
+        cmdStdErr:
+          type: string
+          description: The standard error of the chosen extractor method's command
+      required:
+        - result
+        - cmdStdOut
+        - cmdStdErr
     GetDatasetResponse:
       type: object
       properties:
