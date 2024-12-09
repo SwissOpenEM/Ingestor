@@ -64,6 +64,21 @@ type ExtractorHandler struct {
 	timeout      time.Duration
 }
 
+type ExtractionRequestError struct {
+	Message string
+}
+
+func (e ExtractionRequestError) Error() string {
+	return e.Message
+}
+
+// creates a formatted ExtractionRequestError
+func reqErrorf(format string, args ...interface{}) ExtractionRequestError {
+	return ExtractionRequestError{
+		Message: fmt.Sprintf(format, args...),
+	}
+}
+
 func IsValidJSON(str string) bool {
 	var js json.RawMessage
 	return json.Unmarshal([]byte(str), &js) == nil
@@ -310,7 +325,7 @@ func buildCommandline(templ *template.Template, template_params ExtractorInvokat
 	string_builder := new(strings.Builder)
 	err := templ.Execute(string_builder, template_params)
 	if err != nil {
-		panic(err)
+		return "", nil, err
 	}
 	cmdline := strings.TrimSpace(string_builder.String())
 
@@ -333,8 +348,6 @@ func buildCommandline(templ *template.Template, template_params ExtractorInvokat
 type outputCallback func(string)
 
 func runExtractor(ctx context.Context, executable string, args []string, stdout_callback outputCallback, stderr_callback outputCallback) error {
-	slog.Info("Executing command", "command", executable, "args", args)
-
 	cmd := exec.CommandContext(ctx, executable, args...)
 
 	stdout, _ := cmd.StdoutPipe()
@@ -355,7 +368,6 @@ func runExtractor(ctx context.Context, executable string, args []string, stdout_
 	err := cmd.Start()
 
 	if err != nil {
-		slog.Error("Failed to run extractor", "executable", executable, "args", args, "error", err.Error())
 		return err
 	}
 
@@ -368,24 +380,29 @@ func (e *ExtractorHandler) ExtractMetadata(ctx context.Context, method_name stri
 	method, ok := e.methods[method_name]
 
 	if !ok {
-		slog.Error("Method not found.", "method", method_name)
-		return "", nil
+		return "", reqErrorf("method not found: '%s'", method_name)
+	}
+
+	if _, err := os.Stat(folder); err != nil {
+		return "", reqErrorf("dataset does not exist")
 	}
 
 	extractor, ok := e.extractors[method.Extractor]
 	if !ok {
 		slog.Error("Extractor not found.", "method", method_name)
-		return "", nil
+		return "", fmt.Errorf("extractor not found for the following method: '%s'", method_name)
 	}
 
 	err := os.MkdirAll(path.Dir(output_file), 0777)
 	if err != nil {
-		slog.Error("Failed to create folder", "folder", path.Dir(output_file))
 		return "", err
 	}
 
 	if _, err := os.Stat(output_file); err == nil {
-		os.Remove(output_file)
+		err := os.Remove(output_file)
+		if err != nil {
+			return "", err
+		}
 	}
 
 	params := ExtractorInvokationParameters{
@@ -401,26 +418,24 @@ func (e *ExtractorHandler) ExtractMetadata(ctx context.Context, method_name stri
 	}
 	ctx, cancel := context.WithTimeout(ctx, e.timeout)
 	defer cancel()
-	if err := runExtractor(ctx, binary_path, args, stdout_callback, stderr_callback); err == nil {
 
-		if ctx.Err() == context.DeadlineExceeded {
-			slog.Error("Extraction timed out")
-			return "", ctx.Err()
-		}
-
-		b, err := os.ReadFile(output_file)
-		if err != nil {
-			slog.Error("Failed to read file", "file", output_file)
-			return "", err
-		}
-		str := string(b)
-
-		if !IsValidJSON(str) {
-			slog.Error("Extractor did not produce valid json metadata", "file", output_file, "metadata", str)
-			return "", err
-		}
-		return str, nil
+	err = runExtractor(ctx, binary_path, args, stdout_callback, stderr_callback)
+	if err != nil {
+		return "", err // couldn't run extractor
 	}
-	slog.Error("Failed to run extractor", "error", err)
-	return "", err
+
+	if ctx.Err() == context.DeadlineExceeded {
+		return "", ctx.Err()
+	}
+
+	b, err := os.ReadFile(output_file)
+	if err != nil {
+		return "", err
+	}
+	str := string(b)
+
+	if !IsValidJSON(str) {
+		return "", errors.New("extractor returned non-valid JSON")
+	}
+	return str, nil
 }
