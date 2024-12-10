@@ -94,12 +94,8 @@ func safeSubslice[T any](s []T, start, end uint) []T {
 	if start >= sLen {
 		return []T{}
 	}
-	if end >= sLen {
-		if sLen != 0 {
-			end = sLen - 1
-		} else {
-			end = 0
-		}
+	if end > sLen {
+		end = sLen
 	}
 	return s[start:end]
 }
