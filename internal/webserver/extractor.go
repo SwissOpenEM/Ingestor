@@ -35,6 +35,7 @@ func (i *IngestorWebServerImplemenation) ExtractorControllerGetExtractorMethods(
 	// return result
 	return ExtractorControllerGetExtractorMethods200JSONResponse{
 		Methods: methodsDTO,
+		Total:   len(methods),
 	}, nil
 }
 
