@@ -30,16 +30,16 @@ func main() {
 
 	ctx := context.Background()
 
-	taskqueue := core.TaskQueue{
+	tq := core.TaskQueue{
 		Config:     config,
 		AppContext: ctx,
 		Notifier:   &core.LoggingNotifier{},
 	}
-	taskqueue.Startup()
+	tq.Startup()
 
-	extractorHander := metadataextractor.NewExtractorHandler(config.MetadataExtractors)
+	eh := metadataextractor.NewExtractorHandler(config.MetadataExtractors)
 
-	ingestor, err := webserver.NewIngestorWebServer(version, &taskqueue, extractorHander, config.WebServerAuth, config.WebServerPaths)
+	ingestor, err := webserver.NewIngestorWebServer(version, &tq, eh, config.WebServerAuth, config.WebServerPaths)
 	if err != nil {
 		log.Fatal(err)
 	}
