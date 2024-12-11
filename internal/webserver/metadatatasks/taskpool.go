@@ -7,17 +7,22 @@ import (
 )
 
 type MetadataExtractionTaskPool struct {
-	tasks chan task
-	wg    sync.WaitGroup
+	tasks   chan task
+	wg      sync.WaitGroup
+	handler *metadataextractor.ExtractorHandler
 }
 
-func NewTaskPool(numWorkers int) *MetadataExtractionTaskPool {
+func (p *MetadataExtractionTaskPool) GetHandler() *metadataextractor.ExtractorHandler {
+	return p.handler
+}
+
+func NewTaskPool(numWorkers uint) *MetadataExtractionTaskPool {
 	pool := MetadataExtractionTaskPool{
 		tasks: make(chan task, numWorkers),
 		wg:    sync.WaitGroup{},
 	}
 
-	for i := 0; i < numWorkers; i++ {
+	for i := uint(0); i < numWorkers; i++ {
 		go worker(&pool)
 	}
 
@@ -29,6 +34,9 @@ func worker(pool *MetadataExtractionTaskPool) {
 		task := <-pool.tasks
 		outputFolder := metadataextractor.MetadataFilePath(task.datasetPath)
 		progress := ExtractionProgress{}
-		task.handler.ExtractMetadata(task.ctx, task.method, task.datasetPath, outputFolder)
+		task.taskProgress <- &progress
+		out, err := pool.handler.ExtractMetadata(task.ctx, task.method, task.datasetPath, outputFolder, progress.setStdOut, progress.setStdErr)
+		progress.setExtractorOutputAndErr(out, err)
+		task.taskFinish <- true
 	}
 }
