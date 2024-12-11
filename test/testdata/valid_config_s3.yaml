@@ -71,3 +71,5 @@ WebServerAuth:
     AdminRole: "FACILITY-ingestor-admin"
     CreateModifyTasksRole: "FACILITY-ingestor-write"
     ViewTasksRole: "FACILITY-ingestor-read"
+WebServerPaths:
+  CollectionLocation: "/some/path"
