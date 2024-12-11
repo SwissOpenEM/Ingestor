@@ -131,12 +131,17 @@ func createExpectedValidConfig(transferConfig task.TransferConfig) Config {
 		Timeout:                   time.Minute * 4,
 	}
 
+	expected_wspath := wsconfig.WebServerPathsConf{
+		CollectionLocation: "/some/path",
+	}
+
 	expected_config := Config{
 		Misc:               expected_misc,
 		MetadataExtractors: expected_meta,
 		Scicat:             expected_scicat,
 		Transfer:           expected_tranfer,
 		WebServerAuth:      expected_wsauth,
+		WebServerPaths:     expected_wspath,
 	}
 	return expected_config
 }
