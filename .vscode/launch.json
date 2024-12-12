@@ -2,7 +2,7 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Wails: Debug Desktop App",
+      "name": "Debug Desktop App",
       "type": "go",
       "request": "launch",
       "mode": "exec",
@@ -12,7 +12,7 @@
       "env": {}
     },
     {
-      "name": "Wails: Debug Service",
+      "name": " Debug Service",
       "type": "go",
       "request": "launch",
       "mode": "exec",
