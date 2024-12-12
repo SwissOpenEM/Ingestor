@@ -18,6 +18,8 @@ jobs:
       - uses: actions/setup-go@v2
         with:
           go-version: '1.21'
+      - name: generate
+        run: go generate ./internal/webserver
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v6.1.0
         with:
@@ -111,6 +113,7 @@ jobs:
   
       - name: Test Internal Package
         run: |
+          go generate ./internal/webserver
           go test -json -v  ./internal/... 2>&1 | tee gotestinternal.log 
   
       - name: Upload Test Log
@@ -160,6 +163,7 @@ jobs:
       - name: Test Internal Package
         run: |
           set -euo pipefail
+          go generate ./internal/webserver
           go test -json -v  ./internal/... 2>&1 | tee gotestinternal.log | gotestfmt
   
       - name: Upload test log
