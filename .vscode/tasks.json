@@ -49,12 +49,26 @@
       ]
     },
     {
+      "label": "go generate",
+      "type": "shell",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "command": "go",
+      "args": [
+        "generate",
+        "./internal/*"
+      ]
+    },
+    {
       "label": "build app",
       "group": {
         "kind": "build",
         "isDefault": true
       },
+      "dependsOrder": "sequence",
       "dependsOn": [
+        "go generate",
         "build desktop app",
         // Enable this to use local config during debugging
         // "copy app config"
@@ -66,7 +80,9 @@
         "kind": "build",
         "isDefault": false
       },
+      "dependsOrder": "sequence",
       "dependsOn": [
+        "go generate",
         "build service app",
         // Enable this to use local config during debugging
         // "copy service config"
