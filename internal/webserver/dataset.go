@@ -10,17 +10,6 @@ import (
 	"github.com/google/uuid"
 )
 
-// DatasetControllerIngestDataset implements ServerInterface.
-//
-// @Description Ingest a new dataset
-// @Tags        datasets
-// @Accept      json
-// @Produce     json      text/plain
-// @Param       request   body     webserver.PostDatasetRequest                  true "the 'metaData' attribute should contain the full yaml formatted metadata of the ingested dataset"
-// @Success     200       {object} webserver.DatasetControllerIngestDataset200JSONResponse
-// @Failure     400       {string} string
-// @Failure     500       {string} string
-// @Router      /datasets [post]
 func (i *IngestorWebServerImplemenation) DatasetControllerIngestDataset(ctx context.Context, request DatasetControllerIngestDatasetRequestObject) (DatasetControllerIngestDatasetResponseObject, error) {
 	// get sourcefolder from metadata
 	metadataString := *request.Body.MetaData

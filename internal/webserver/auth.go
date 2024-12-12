@@ -14,13 +14,6 @@ import (
 	"golang.org/x/oauth2"
 )
 
-// GetLogin implements ServerInterface.
-//
-// @Description	    "Initiates the OIDC authorization flow."
-// @Tags			authentication
-// @Success         302
-// @Header          302       {string} Location "redirect link to IdP with query params"
-// @Router          /login    [get]
 func (i *IngestorWebServerImplemenation) GetLogin(ctx context.Context, request GetLoginRequestObject) (GetLoginResponseObject, error) {
 	// auth code flow
 
@@ -82,18 +75,6 @@ func (i *IngestorWebServerImplemenation) GetLogin(ctx context.Context, request G
 	}, nil
 }
 
-// GetCallback implements ServerInterface.
-//
-// @Description	    For handling the authorization code received from the OIDC provider
-// @Tags			authentication
-// @Produce         text/plain
-// @Param           code      query    string   true          "OAuth2 authorization code"
-// @Param           state     query    string   true          "OAuth2 state param"
-// @Success         302
-// @Header          302       {string} Location "goes to '/'"
-// @Failure         400       {string}   string "request error"
-// @Failure         500       {string}   string "server error"
-// @Router          /callback [get]
 func (i *IngestorWebServerImplemenation) GetCallback(ctx context.Context, request GetCallbackRequestObject) (GetCallbackResponseObject, error) {
 	// get sessions
 	ginCtx := ctx.(*gin.Context)
@@ -202,14 +183,6 @@ func (i *IngestorWebServerImplemenation) GetCallback(ctx context.Context, reques
 	}, nil
 }
 
-// GetLogout implements ServerInterface.
-//
-// @Description	    Ends user session by deleting the session cookie.
-// @Tags			authentication
-// @Success         302
-// @Header          302            {string} Location "goes to '/'"
-// @Failure         500            {string} string   "the cookie couldn't be deleted due to some error"
-// @Router			/logout [get]
 func (i *IngestorWebServerImplemenation) GetLogout(ctx context.Context, request GetLogoutRequestObject) (GetLogoutResponseObject, error) {
 	ginCtx, ok := ctx.(*gin.Context)
 	if !ok {
