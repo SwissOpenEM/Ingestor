@@ -1,7 +1,6 @@
 //go:build go1.22
 
 //go:generate go run github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen --config=cfg.yaml ../../api/openapi.yaml
-//go:generate go run github.com/swaggo/swag/cmd/swag init -g api.go -o ../../docs
 package webserver
 
 import (
