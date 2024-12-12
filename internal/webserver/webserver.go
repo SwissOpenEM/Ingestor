@@ -1,13 +1,13 @@
 package webserver
 
 import (
+	"embed"
 	"encoding/gob"
 	"fmt"
 	"net"
 	"net/http"
 	"os"
 
-	docs "github.com/SwissOpenEM/Ingestor/docs"
 	"github.com/SwissOpenEM/Ingestor/internal/webserver/randomfuncs"
 	"github.com/coreos/go-oidc/v3/oidc"
 	"github.com/getkin/kin-openapi/openapi3filter"
@@ -19,6 +19,12 @@ import (
 	swaggerfiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 )
+
+// Copy the openapi specs to local folder so it can be embedded in order to statically serve it
+//go:generate cp ../../api/openapi.yaml ./openapi.yaml
+
+//go:embed openapi.yaml
+var swaggerYAML embed.FS
 
 func NewIngesterServer(ingestor *IngestorWebServerImplemenation, port int) *http.Server {
 	swagger, err := GetSwagger()
@@ -40,9 +46,14 @@ func NewIngesterServer(ingestor *IngestorWebServerImplemenation, port int) *http
 		AllowHeaders:    []string{"Origin", "Content-Type", "Accept"},
 	}))
 
+	// The route here needs to match the embedded file.
+	// The openapi specs are serve statically so that the swagger ui can refer to it.
+	r.GET("/openapi.yaml", func(c *gin.Context) {
+		http.FileServer(http.FS(swaggerYAML)).ServeHTTP(c.Writer, c.Request)
+	})
+
 	// The swagger docs have to come before the default handlers
-	docs.SwaggerInfo.BasePath = r.BasePath()
-	r.GET("/docs/*any", ginSwagger.WrapHandler(swaggerfiles.Handler))
+	r.GET("/docs/*any", ginSwagger.WrapHandler(swaggerfiles.Handler, ginSwagger.URL("/openapi.yaml")))
 
 	// setup auth session store
 	authKey, err := randomfuncs.GenerateRandomByteSlice(64) // authentication key
