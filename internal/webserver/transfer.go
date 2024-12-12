@@ -8,16 +8,6 @@ import (
 	"github.com/google/uuid"
 )
 
-// TransferControllerDeleteTransfer implements ServerInterface.
-//
-// @Description	Cancel a data transfer
-// @Tags            transfer
-// @Accept          json
-// @Produce		    json
-// @Param           request   body     webserver.DeleteTransferRequest true "it contains the id to cancel"
-// @Success         200       {object} webserver.TransferControllerDeleteTransfer200JSONResponse "returns the status and id of the affected task"
-// @Failure         400       {string} string                                                    "invalid request"
-// @Router          /transfer [delete]
 func (i *IngestorWebServerImplemenation) TransferControllerDeleteTransfer(ctx context.Context, request TransferControllerDeleteTransferRequestObject) (TransferControllerDeleteTransferResponseObject, error) {
 	if request.Body.IngestId == nil {
 		return TransferControllerDeleteTransfer400TextResponse("Ingest ID was not specified in the request"), nil
@@ -41,17 +31,6 @@ func (i *IngestorWebServerImplemenation) TransferControllerDeleteTransfer(ctx co
 	}, nil
 }
 
-// TransferControllerGetTransfer implements ServerInterface.
-//
-// @Description	"Get list of transfers. Optional use the transferId parameter to only get one item."
-// @Tags	        transfer
-// @Produce         json
-// @Param           page       query    int                                            false                           "page of transfers"
-// @Param           pageSize   query    int                                            false                           "number of elements per page"
-// @Param           transferId query    int                                            false                           "get specific transfer by id"
-// @Success         200        {object} webserver.TransferControllerGetTransfer200JSONResponse   "returns the list of transfers"
-// @Failure         400        {string} string                                                   "the request is invalid"
-// @Router          /transfer  [get]
 func (i *IngestorWebServerImplemenation) TransferControllerGetTransfer(ctx context.Context, request TransferControllerGetTransferRequestObject) (TransferControllerGetTransferResponseObject, error) {
 	if request.Params.TransferId != nil {
 		id := *request.Params.TransferId
