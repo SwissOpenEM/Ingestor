@@ -31,13 +31,6 @@ type IngestorWebServerImplemenation struct {
 	pathConfig       wsconfig.WebServerPathsConf
 }
 
-//	@contact.name	SwissOpenEM
-//	@contact.url	https://swissopenem.github.io
-//	@contact.email	spencer.bliven@psi.ch
-
-// @license.name	Apache 2.0
-// @license.url	http://www.apache.org/licenses/LICENSE-2.0.html
-
 func NewIngestorWebServer(version string, taskQueue *core.TaskQueue, extractorHander *metadataextractor.ExtractorHandler, authConf wsconfig.AuthConf, pathConf wsconfig.WebServerPathsConf) (*IngestorWebServerImplemenation, error) {
 	oidcProvider, err := oidc.NewProvider(context.Background(), authConf.IssuerURL)
 	if err != nil {
