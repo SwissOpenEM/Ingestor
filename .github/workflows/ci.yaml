@@ -41,6 +41,7 @@ jobs:
     - name: Test Internal Package
       run: |
         set -euo pipefail
+        go generate ./internal/webserver
         go test -json -v  ./internal/... 2>&1 | tee gotestinternal.log | gotestfmt
 
     - name: Upload Test Log
