@@ -340,7 +340,49 @@ paths:
             text/plain:
               schema:
                 type: string
- 
+  /metadata:
+    get:
+      summary: get metadata of a dataset
+      description: |
+        Starts a metadata extraction task on the ingestor side, with live updates about the progress using Server Side Events (SSE).
+        It will close the connection with the final message containing the metadata json.
+      operationId: extractMetadata
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PostExtractionRequest"
+      responses:
+        '200':
+          description: |
+            A continuous stream of server-sent events.
+          content:
+            text/event-stream:
+              schema:
+                type: string
+              example: |
+                data: Render update at 2023-03-29T12:34:56Z
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+              description: No caching is allowed for this stream.
+            Connection:
+              schema:
+                type: string
+              description: Advises the client to keep the connection open.
+            Content-Type:
+              schema:
+                type: string
+              description: The MIME type of this stream is text/event-stream.
+        default:
+          description: Unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
 components:
   schemas:
     PostDatasetRequest:
@@ -516,6 +558,16 @@ components:
       required:
         - datasets
         - total
+    Error:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+      required:
+        - code
+        - message
   securitySchemes:
     cookieAuth:
       type: apiKey

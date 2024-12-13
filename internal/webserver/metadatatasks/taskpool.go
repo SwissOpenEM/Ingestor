@@ -1,6 +1,8 @@
 package metadatatasks
 
 import (
+	"context"
+	"fmt"
 	"sync"
 
 	"github.com/SwissOpenEM/Ingestor/internal/metadataextractor"
@@ -12,14 +14,29 @@ type MetadataExtractionTaskPool struct {
 	handler *metadataextractor.ExtractorHandler
 }
 
-func (p *MetadataExtractionTaskPool) GetHandler() *metadataextractor.ExtractorHandler {
-	return p.handler
+func (p *MetadataExtractionTaskPool) GetAvailableMethods() []metadataextractor.MethodAndSchema {
+	return p.handler.AvailableMethods()
 }
 
-func NewTaskPool(numWorkers uint) *MetadataExtractionTaskPool {
+func (p *MetadataExtractionTaskPool) NewTask(ctx context.Context, datasetPath string, method string) *ExtractionProgress {
+	epc := ExtractionProgress{
+		ProgressSignal: make(chan bool),
+	}
+	epc.setStdOut(fmt.Sprintf("waiting for a free worker, your number in the queue: %d", len(p.tasks)))
+	p.tasks <- task{
+		ctx:          ctx,
+		datasetPath:  datasetPath,
+		method:       method,
+		taskProgress: &epc,
+	}
+	return &epc
+}
+
+func NewTaskPool(numWorkers uint, handler *metadataextractor.ExtractorHandler) *MetadataExtractionTaskPool {
 	pool := MetadataExtractionTaskPool{
-		tasks: make(chan task, numWorkers),
-		wg:    sync.WaitGroup{},
+		tasks:   make(chan task, numWorkers),
+		wg:      sync.WaitGroup{},
+		handler: handler,
 	}
 
 	for i := uint(0); i < numWorkers; i++ {
@@ -33,10 +50,8 @@ func worker(pool *MetadataExtractionTaskPool) {
 	for {
 		task := <-pool.tasks
 		outputFolder := metadataextractor.MetadataFilePath(task.datasetPath)
-		progress := ExtractionProgress{}
-		task.taskProgress <- &progress
-		out, err := pool.handler.ExtractMetadata(task.ctx, task.method, task.datasetPath, outputFolder, progress.setStdOut, progress.setStdErr)
-		progress.setExtractorOutputAndErr(out, err)
-		task.taskFinish <- true
+		task.taskProgress = &ExtractionProgress{}
+		out, err := pool.handler.ExtractMetadata(task.ctx, task.method, task.datasetPath, outputFolder, task.taskProgress.setStdOut, task.taskProgress.setStdErr)
+		task.taskProgress.setExtractorOutputAndErr(out, err)
 	}
 }
