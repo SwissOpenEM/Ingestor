@@ -10,6 +10,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"path"
@@ -38,6 +39,12 @@ type DeleteTransferResponse struct {
 
 	// Status New status of the ingestion.
 	Status *string `json:"status,omitempty"`
+}
+
+// Error defines model for Error.
+type Error struct {
+	Code    string `json:"code"`
+	Message string `json:"message"`
 }
 
 // GetDatasetResponse defines model for GetDatasetResponse.
@@ -164,6 +171,9 @@ type DatasetControllerIngestDatasetJSONRequestBody = PostDatasetRequest
 // ExtractorControllerStartExtractionJSONRequestBody defines body for ExtractorControllerStartExtraction for application/json ContentType.
 type ExtractorControllerStartExtractionJSONRequestBody = PostExtractionRequest
 
+// ExtractMetadataJSONRequestBody defines body for ExtractMetadata for application/json ContentType.
+type ExtractMetadataJSONRequestBody = PostExtractionRequest
+
 // TransferControllerDeleteTransferJSONRequestBody defines body for TransferControllerDeleteTransfer for application/json ContentType.
 type TransferControllerDeleteTransferJSONRequestBody = DeleteTransferRequest
 
@@ -193,6 +203,9 @@ type ServerInterface interface {
 	// end user session
 	// (GET /logout)
 	GetLogout(c *gin.Context)
+	// get metadata of a dataset
+	// (GET /metadata)
+	ExtractMetadata(c *gin.Context)
 	// Cancel a data transfer
 	// (DELETE /transfer)
 	TransferControllerDeleteTransfer(c *gin.Context)
@@ -317,7 +330,7 @@ func (siw *ServerInterfaceWrapper) ExtractorControllerGetExtractorMethods(c *gin
 
 	var err error
 
-	c.Set(CookieAuthScopes, []string{"ingestor_read", "ingestor_write", "admin"})
+	c.Set(CookieAuthScopes, []string{"ingestor_read"})
 
 	// Parameter object where we will unmarshal all parameters from the context
 	var params ExtractorControllerGetExtractorMethodsParams
@@ -351,7 +364,7 @@ func (siw *ServerInterfaceWrapper) ExtractorControllerGetExtractorMethods(c *gin
 // ExtractorControllerStartExtraction operation middleware
 func (siw *ServerInterfaceWrapper) ExtractorControllerStartExtraction(c *gin.Context) {
 
-	c.Set(CookieAuthScopes, []string{"ingestor_read", "ingestor_write", "admin"})
+	c.Set(CookieAuthScopes, []string{"ingestor_write"})
 
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
@@ -402,6 +415,21 @@ func (siw *ServerInterfaceWrapper) GetLogout(c *gin.Context) {
 	}
 
 	siw.Handler.GetLogout(c)
+}
+
+// ExtractMetadata operation middleware
+func (siw *ServerInterfaceWrapper) ExtractMetadata(c *gin.Context) {
+
+	c.Set(CookieAuthScopes, []string{"ingestor_read", "ingestor_write", "admin"})
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.ExtractMetadata(c)
 }
 
 // TransferControllerDeleteTransfer operation middleware
@@ -511,6 +539,7 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 	router.GET(options.BaseURL+"/health", wrapper.OtherControllerGetHealth)
 	router.GET(options.BaseURL+"/login", wrapper.GetLogin)
 	router.GET(options.BaseURL+"/logout", wrapper.GetLogout)
+	router.GET(options.BaseURL+"/metadata", wrapper.ExtractMetadata)
 	router.DELETE(options.BaseURL+"/transfer", wrapper.TransferControllerDeleteTransfer)
 	router.GET(options.BaseURL+"/transfer", wrapper.TransferControllerGetTransfer)
 	router.GET(options.BaseURL+"/version", wrapper.OtherControllerGetVersion)
@@ -744,6 +773,55 @@ func (response GetLogout500TextResponse) VisitGetLogoutResponse(w http.ResponseW
 	return err
 }
 
+type ExtractMetadataRequestObject struct {
+	Body *ExtractMetadataJSONRequestBody
+}
+
+type ExtractMetadataResponseObject interface {
+	VisitExtractMetadataResponse(w http.ResponseWriter) error
+}
+
+type ExtractMetadata200ResponseHeaders struct {
+	CacheControl string
+	Connection   string
+	ContentType  string
+}
+
+type ExtractMetadata200TexteventStreamResponse struct {
+	Body          io.Reader
+	Headers       ExtractMetadata200ResponseHeaders
+	ContentLength int64
+}
+
+func (response ExtractMetadata200TexteventStreamResponse) VisitExtractMetadataResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "text/event-stream")
+	if response.ContentLength != 0 {
+		w.Header().Set("Content-Length", fmt.Sprint(response.ContentLength))
+	}
+	w.Header().Set("Cache-Control", fmt.Sprint(response.Headers.CacheControl))
+	w.Header().Set("Connection", fmt.Sprint(response.Headers.Connection))
+	w.Header().Set("Content-Type", fmt.Sprint(response.Headers.ContentType))
+	w.WriteHeader(200)
+
+	if closer, ok := response.Body.(io.ReadCloser); ok {
+		defer closer.Close()
+	}
+	_, err := io.Copy(w, response.Body)
+	return err
+}
+
+type ExtractMetadatadefaultJSONResponse struct {
+	Body       Error
+	StatusCode int
+}
+
+func (response ExtractMetadatadefaultJSONResponse) VisitExtractMetadataResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(response.StatusCode)
+
+	return json.NewEncoder(w).Encode(response.Body)
+}
+
 type TransferControllerDeleteTransferRequestObject struct {
 	Body *TransferControllerDeleteTransferJSONRequestBody
 }
@@ -850,6 +928,9 @@ type StrictServerInterface interface {
 	// end user session
 	// (GET /logout)
 	GetLogout(ctx context.Context, request GetLogoutRequestObject) (GetLogoutResponseObject, error)
+	// get metadata of a dataset
+	// (GET /metadata)
+	ExtractMetadata(ctx context.Context, request ExtractMetadataRequestObject) (ExtractMetadataResponseObject, error)
 	// Cancel a data transfer
 	// (DELETE /transfer)
 	TransferControllerDeleteTransfer(ctx context.Context, request TransferControllerDeleteTransferRequestObject) (TransferControllerDeleteTransferResponseObject, error)
@@ -1095,6 +1176,39 @@ func (sh *strictHandler) GetLogout(ctx *gin.Context) {
 	}
 }
 
+// ExtractMetadata operation middleware
+func (sh *strictHandler) ExtractMetadata(ctx *gin.Context) {
+	var request ExtractMetadataRequestObject
+
+	var body ExtractMetadataJSONRequestBody
+	if err := ctx.ShouldBindJSON(&body); err != nil {
+		ctx.Status(http.StatusBadRequest)
+		ctx.Error(err)
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.ExtractMetadata(ctx, request.(ExtractMetadataRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ExtractMetadata")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		ctx.Error(err)
+		ctx.Status(http.StatusInternalServerError)
+	} else if validResponse, ok := response.(ExtractMetadataResponseObject); ok {
+		if err := validResponse.VisitExtractMetadataResponse(ctx.Writer); err != nil {
+			ctx.Error(err)
+		}
+	} else if response != nil {
+		ctx.Error(fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // TransferControllerDeleteTransfer operation middleware
 func (sh *strictHandler) TransferControllerDeleteTransfer(ctx *gin.Context) {
 	var request TransferControllerDeleteTransferRequestObject
@@ -1183,41 +1297,46 @@ func (sh *strictHandler) OtherControllerGetVersion(ctx *gin.Context) {
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
-	"pt3d7r8BAAD//59MJJ/gJwAA",
+	"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",
+	"oMBwORyq9Pt5u69uVv8PAAD//5s8Dr3YLAAA",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

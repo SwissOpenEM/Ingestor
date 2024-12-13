@@ -2,9 +2,6 @@ package metadatatasks
 
 import (
 	"context"
-	"errors"
-
-	"github.com/SwissOpenEM/Ingestor/internal/metadataextractor"
 )
 
 type ExtractionProgress struct {
@@ -13,14 +10,14 @@ type ExtractionProgress struct {
 	taskStdOut      string
 	taskStdErr      string
 	finished        bool
+	ProgressSignal  chan bool
 }
 
 type task struct {
 	ctx          context.Context
 	datasetPath  string
 	method       string
-	taskProgress chan *ExtractionProgress
-	taskFinish   chan bool
+	taskProgress *ExtractionProgress
 }
 
 func (t *ExtractionProgress) setExtractorOutputAndErr(out string, err error) {
@@ -42,12 +39,14 @@ func (t *ExtractionProgress) GetExtractorError() error {
 func (t *ExtractionProgress) setStdOut(output string) {
 	if !t.finished {
 		t.taskStdOut = output
+		t.ProgressSignal <- true
 	}
 }
 
 func (t *ExtractionProgress) setStdErr(output string) {
 	if !t.finished {
 		t.taskStdErr = output
+		t.ProgressSignal <- true
 	}
 }
 
@@ -57,19 +56,4 @@ func (t *ExtractionProgress) GetStdOut() string {
 
 func (t *ExtractionProgress) GetStdErr() string {
 	return t.taskStdErr
-}
-
-func NewTask(handler *metadataextractor.ExtractorHandler, ctx context.Context, datasetPath string, method string, taskProgress chan *ExtractionProgress, taskFinish chan bool) error {
-	if datasetPath == "" {
-		return errors.New("datasetPath can't be empty")
-	}
-	a := task{
-		ctx:          ctx,
-		datasetPath:  datasetPath,
-		method:       method,
-		taskProgress: taskProgress,
-		taskFinish:   taskFinish,
-	}
-	_ = a
-	return nil
 }
