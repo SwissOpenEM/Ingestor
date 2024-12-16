@@ -73,7 +73,7 @@ func NewIngestorWebServer(version string, tq *core.TaskQueue, eh *metadataextrac
 		return nil, err
 	}
 
-	metp := metadatatasks.NewTaskPool(10, eh)
+	metp := metadatatasks.NewTaskPool(100, 10, eh)
 
 	return &IngestorWebServerImplemenation{
 		version:          version,
