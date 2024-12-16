@@ -2,7 +2,7 @@ package metadatatasks
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"sync"
 
 	"github.com/SwissOpenEM/Ingestor/internal/metadataextractor"
@@ -18,23 +18,28 @@ func (p *MetadataExtractionTaskPool) GetAvailableMethods() []metadataextractor.M
 	return p.handler.AvailableMethods()
 }
 
-func (p *MetadataExtractionTaskPool) NewTask(ctx context.Context, datasetPath string, method string) *ExtractionProgress {
+func (p *MetadataExtractionTaskPool) NewTask(ctx context.Context, datasetPath string, method string) (*ExtractionProgress, error) {
 	epc := ExtractionProgress{
-		ProgressSignal: make(chan bool),
+		ProgressSignal: make(chan bool, 1),
 	}
-	epc.setStdOut(fmt.Sprintf("waiting for a free worker, your number in the queue: %d", len(p.tasks)))
-	p.tasks <- task{
+
+	select {
+	case p.tasks <- task{
 		ctx:          ctx,
 		datasetPath:  datasetPath,
 		method:       method,
 		taskProgress: &epc,
+	}:
+		return &epc, nil
+	default:
+		return nil, errors.New("task queue is full")
 	}
-	return &epc
+
 }
 
-func NewTaskPool(numWorkers uint, handler *metadataextractor.ExtractorHandler) *MetadataExtractionTaskPool {
+func NewTaskPool(queueSize uint, numWorkers uint, handler *metadataextractor.ExtractorHandler) *MetadataExtractionTaskPool {
 	pool := MetadataExtractionTaskPool{
-		tasks:   make(chan task, numWorkers),
+		tasks:   make(chan task, queueSize),
 		wg:      sync.WaitGroup{},
 		handler: handler,
 	}
@@ -50,7 +55,6 @@ func worker(pool *MetadataExtractionTaskPool) {
 	for {
 		task := <-pool.tasks
 		outputFolder := metadataextractor.MetadataFilePath(task.datasetPath)
-		task.taskProgress = &ExtractionProgress{}
 		out, err := pool.handler.ExtractMetadata(task.ctx, task.method, task.datasetPath, outputFolder, task.taskProgress.setStdOut, task.taskProgress.setStdErr)
 		task.taskProgress.setExtractorOutputAndErr(out, err)
 	}
