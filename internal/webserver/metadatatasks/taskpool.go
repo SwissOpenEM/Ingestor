@@ -54,6 +54,7 @@ func NewTaskPool(queueSize uint, numWorkers uint, handler *metadataextractor.Ext
 func worker(pool *MetadataExtractionTaskPool) {
 	for {
 		task := <-pool.tasks
+		task.taskProgress.setProgress()
 		outputFolder := metadataextractor.MetadataFilePath(task.datasetPath)
 		out, err := pool.handler.ExtractMetadata(task.ctx, task.method, task.datasetPath, outputFolder, task.taskProgress.setStdOut, task.taskProgress.setStdErr)
 		task.taskProgress.setExtractorOutputAndErr(out, err)

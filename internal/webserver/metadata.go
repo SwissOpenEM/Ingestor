@@ -33,22 +33,41 @@ func (r ResponseWriter) VisitExtractMetadataResponse(writer http.ResponseWriter)
 	cancelCtx, cancel := context.WithCancel(r.ctx)
 	defer cancel() // cancel ongoing job if client drops connection (TODO: test whether solution works)
 	var progress *metadatatasks.ExtractionProgress
-	var sleep, toQueue bool = false, true
+	var sleep, queueing, waitForWorker bool = false, true, true
+	var workerWaitingTimer <-chan time.Time
 	g.Stream(func(w io.Writer) bool {
-		// queue task
-		if toQueue {
+		// queue the task
+		if queueing {
 			if sleep {
 				time.Sleep(1 * time.Minute)
 			}
 			var err error
 			progress, err = r.metp.NewTask(cancelCtx, fullPath, r.req.Body.MethodName)
 			if err == nil {
-				g.SSEvent("message", []byte("Your metadata extraction request is in the queue."))
-				toQueue = false
+				g.SSEvent("message", "Your metadata extraction request is in the queue.")
+				queueing = false
+				workerWaitingTimer = time.After(1 * time.Minute)
 				return true
 			} else {
-				g.SSEvent("message", []byte("task pool is full. Retrying in 1 minute..."))
+				g.SSEvent("message", "Task pool is full. Retrying in 1 minute...")
 				sleep = true
+				return true
+			}
+		}
+
+		// wait for worker
+		if waitForWorker {
+			select {
+			case <-progress.ProgressSignal:
+				g.SSEvent("message", "Extraction started.")
+				waitForWorker = false
+				select { // resetting progress signal to print out initial state in next block
+				case progress.ProgressSignal <- true:
+				default:
+				}
+			case <-workerWaitingTimer:
+				g.SSEvent("message", "Still waiting for a free worker...`")
+				workerWaitingTimer = time.After(1 * time.Minute)
 				return true
 			}
 		}
@@ -58,7 +77,7 @@ func (r ResponseWriter) VisitExtractMetadataResponse(writer http.ResponseWriter)
 		case _, ok := <-progress.ProgressSignal:
 			json, err := json.Marshal(progressToDto(progress))
 			if err != nil {
-				g.SSEvent("error", "couldn't marshal the progress json")
+				g.SSEvent("error", "Couldn't marshal the progress json.")
 				return false
 			}
 			g.SSEvent("progress", json)
