@@ -362,7 +362,8 @@ paths:
               schema:
                 type: string
               example: |
-                data: Render update at 2023-03-29T12:34:56Z
+                event: message
+                data: Your metadata extraction request is in the queue.
           headers:
             Cache-Control:
               schema:
