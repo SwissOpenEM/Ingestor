@@ -2,51 +2,80 @@ package webserver
 
 import (
 	"context"
-	"encoding/base64"
 	"encoding/json"
+	"io"
 	"net/http"
 	"path"
+	"time"
 
 	"github.com/SwissOpenEM/Ingestor/internal/webserver/metadatatasks"
+	"github.com/gin-gonic/gin"
 )
 
 type ResponseWriter struct {
-	ctx        context.Context
-	ep         *metadatatasks.ExtractionProgress
-	cancelTask context.CancelFunc
+	ctx                context.Context
+	req                ExtractMetadataRequestObject
+	metp               *metadatatasks.MetadataExtractionTaskPool
+	collectionLocation string
 }
 
 func (r ResponseWriter) VisitExtractMetadataResponse(writer http.ResponseWriter) error {
-	defer r.cancelTask()
-	writer.Header().Add("Content-Type", "text/event-stream")
-	writer.Header().Add("Cache-Control", "no-cache")
-	writer.Header().Add("Connection", "keep-alive")
-	for {
-		select {
-		case _, ok := <-r.ep.ProgressSignal:
-			json, err := json.Marshal(progressToDto(r.ep))
-			if err != nil {
-				return err
+	// kind of hackish, but only the pure gin way seems to work for SSE
+	g := r.ctx.(*gin.Context)
+	g.Writer.Header().Add("Content-Type", "text/event-stream")
+	g.Writer.Header().Add("Cache-Control", "no-cache")
+	g.Writer.Header().Add("Connection", "keep-alive")
+
+	// append collection path to input and generate extractor output filepath
+	fullPath := path.Join(r.collectionLocation, r.req.Body.FilePath)
+
+	// extract metadata
+	cancelCtx, cancel := context.WithCancel(r.ctx)
+	defer cancel() // cancel ongoing job if client drops connection (TODO: test whether solution works)
+	var progress *metadatatasks.ExtractionProgress
+	var sleep, toQueue bool = false, true
+	g.Stream(func(w io.Writer) bool {
+		// queue task
+		if toQueue {
+			if sleep {
+				time.Sleep(1 * time.Minute)
 			}
-			writer.Write([]byte("data: " + base64.StdEncoding.EncodeToString(json)))
-			if !ok {
-				return nil
+			var err error
+			progress, err = r.metp.NewTask(cancelCtx, fullPath, r.req.Body.MethodName)
+			if err == nil {
+				g.SSEvent("message", []byte("Your metadata extraction request is in the queue."))
+				toQueue = false
+				return true
+			} else {
+				g.SSEvent("message", []byte("task pool is full. Retrying in 1 minute..."))
+				sleep = true
+				return true
 			}
-		case <-r.ctx.Done():
-			return nil
 		}
-	}
+
+		// follow task progress
+		select {
+		case _, ok := <-progress.ProgressSignal:
+			json, err := json.Marshal(progressToDto(progress))
+			if err != nil {
+				g.SSEvent("error", "couldn't marshal the progress json")
+				return false
+			}
+			g.SSEvent("progress", json)
+			g.Writer.Flush()
+			if !ok {
+				return false
+			}
+			return true
+		case <-r.ctx.Done():
+			return false // we get here if the client drops the connection
+		}
+	})
+	return nil
 }
 
 func (i *IngestorWebServerImplemenation) ExtractMetadata(ctx context.Context, request ExtractMetadataRequestObject) (ExtractMetadataResponseObject, error) {
-	// append collection path to input and generate extractor output filepath
-	fullPath := path.Join(i.pathConfig.CollectionLocation, request.Body.FilePath)
-
-	// extract metadata
-	cancelCtx, cancel := context.WithCancel(ctx)
-	progress := i.metp.NewTask(cancelCtx, fullPath, request.Body.MethodName)
-
-	return ResponseWriter{ctx: ctx, ep: progress, cancelTask: cancel}, nil
+	return ResponseWriter{ctx: ctx, metp: i.metp, req: request, collectionLocation: i.pathConfig.CollectionLocation}, nil
 }
 
 type progressDto struct {
