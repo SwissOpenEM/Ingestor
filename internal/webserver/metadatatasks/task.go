@@ -25,6 +25,7 @@ func (t *ExtractionProgress) setExtractorOutputAndErr(out string, err error) {
 		t.extractorOutput = out
 		t.extractorError = err
 		t.finished = true
+		close(t.ProgressSignal)
 	}
 }
 
@@ -39,14 +40,21 @@ func (t *ExtractionProgress) GetExtractorError() error {
 func (t *ExtractionProgress) setStdOut(output string) {
 	if !t.finished {
 		t.taskStdOut = output
-		t.ProgressSignal <- true
+		t.setProgress()
 	}
 }
 
 func (t *ExtractionProgress) setStdErr(output string) {
 	if !t.finished {
 		t.taskStdErr = output
-		t.ProgressSignal <- true
+		t.setProgress()
+	}
+}
+
+func (t *ExtractionProgress) setProgress() {
+	select {
+	case t.ProgressSignal <- true:
+	default:
 	}
 }
 
