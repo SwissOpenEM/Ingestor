@@ -4,7 +4,7 @@
 
 The configuration file `openem-ingestor.config.yaml` can be put into two locations:
 
-1. Next to the executable (taking precedene)
+1. Next to the executable (taking precedence)
 2. Into `$USERCONFIGDIR/openem-ingestor` where `$USERCONFIGDIR` is resolved like this:
 
    - Unix: `$XDG_CONFIG_HOME/openem-ingestor/openem-ingestor-config.yaml` if non-empty, else `$HOME/.config/openem-ingestor/openem-ingestor-config.yaml`
