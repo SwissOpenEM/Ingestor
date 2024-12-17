@@ -28,7 +28,7 @@ builds:
         - cmd: mkdir {{dir .Path}}
         post:
         - dir: cmd/openem-ingestor-app
-          cmd: wails build -platform {{ .Os }} -clean -ldflags "-s -w  -X 'main.version={{.Version}}'" -trimpath -o {{base .Path}}
+          cmd: "wails build -platform {{ .Os }} -clean -ldflags \"-s -w  -X 'main.version={{.Version}}'\" -trimpath -o {{base .Path}}"
           output: true
         - dir: cmd/openem-ingestor-app
           cmd: cp build/bin/openem-ingestor-app.app/Contents/MacOS/{{base .Path}} {{dir .Path}}/
@@ -42,7 +42,7 @@ builds:
       - amd64
     main: .
     binary: openem-ingestor-app
-    gobinary: echo 
+    tool: echo 
 
 archives:
   - id: "openem-ingestor-app"
@@ -72,6 +72,7 @@ changelog:
     exclude:
       - "^docs:"
       - "^test:"
-
+checksum:
+  name_template: "{{ .ProjectName }}_Darwin_checksums.txt"
 release:
   prerelease: auto
