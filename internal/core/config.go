@@ -26,8 +26,7 @@ type MiscConfig struct {
 type Config struct {
 	Scicat             ScicatConfig                       `mapstructure:"Scicat"`
 	Transfer           task.TransferConfig                `mapstructure:"Transfer"`
-	WebServerAuth      wsconfig.AuthConf                  `mapstructure:"WebServerAuth"`
-	WebServerPaths     wsconfig.WebServerPathsConf        `mapstrucuture:"WebServerPaths"`
+	WebServer          wsconfig.WebServerConfig           `mapstructure:"WebServer"`
 	Misc               MiscConfig                         `mapstructure:"Misc"`
 	MetadataExtractors metadataextractor.ExtractorsConfig `mapstructure:"MetadataExtractors"`
 }
