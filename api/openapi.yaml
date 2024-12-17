@@ -318,7 +318,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/PostExtractionRequest"
+              $ref: "#/components/schemas/GetMetadataRequest"
       responses:
         '200':
           description: |
@@ -484,7 +484,7 @@ components:
         - name
         - schema
       description: a method item describes the method's name and schema
-    PostExtractionRequest:
+    GetMetadataRequest:
       type: object
       properties:
         filePath:
@@ -496,22 +496,6 @@ components:
       required:
         - filePath
         - methodName
-    PostExtractionResponse:
-      type: object
-      properties:
-        result:
-          type: string
-          description: The result of the chosen extractor method
-        cmdStdOut:
-          type: string
-          description: The standard output of the chosen extractor method's command
-        cmdStdErr:
-          type: string
-          description: The standard error of the chosen extractor method's command
-      required:
-        - result
-        - cmdStdOut
-        - cmdStdErr
     GetDatasetResponse:
       type: object
       properties:
