@@ -72,6 +72,7 @@ changelog:
     exclude:
       - "^docs:"
       - "^test:"
-
+checksum:
+  name_template: "{{ .ProjectName }}_Darwin_checksums.txt"
 release:
   prerelease: auto
