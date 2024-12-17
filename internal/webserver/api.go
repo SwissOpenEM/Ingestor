@@ -30,50 +30,50 @@ type IngestorWebServerImplemenation struct {
 	jwtSignMethods   []string
 	sessionDuration  uint
 	scopeToRoleMap   map[string]string
-	pathConfig       wsconfig.WebServerPathsConf
+	pathConfig       wsconfig.PathsConf
 }
 
-func NewIngestorWebServer(version string, tq *core.TaskQueue, eh *metadataextractor.ExtractorHandler, ac wsconfig.AuthConf, pc wsconfig.WebServerPathsConf) (*IngestorWebServerImplemenation, error) {
-	oidcProvider, err := oidc.NewProvider(context.Background(), ac.IssuerURL)
+func NewIngestorWebServer(version string, tq *core.TaskQueue, eh *metadataextractor.ExtractorHandler, ws wsconfig.WebServerConfig) (*IngestorWebServerImplemenation, error) {
+	oidcProvider, err := oidc.NewProvider(context.Background(), ws.IssuerURL)
 	if err != nil {
 		fmt.Println("Warning: OIDC discovery mechanism failed. Falling back to manual OIDC config")
 		// fallback provider (this could also be replaced with an error)
 		a := &oidc.ProviderConfig{
-			IssuerURL:   ac.IssuerURL,
-			AuthURL:     ac.AuthURL,
-			TokenURL:    ac.TokenURL,
-			UserInfoURL: ac.UserInfoURL,
-			Algorithms:  ac.Algorithms,
+			IssuerURL:   ws.IssuerURL,
+			AuthURL:     ws.AuthURL,
+			TokenURL:    ws.TokenURL,
+			UserInfoURL: ws.UserInfoURL,
+			Algorithms:  ws.Algorithms,
 		}
 		oidcProvider = a.NewProvider(context.Background())
 	}
-	oidcVerifier := oidcProvider.Verifier(&oidc.Config{ClientID: ac.OAuth2Conf.ClientID})
+	oidcVerifier := oidcProvider.Verifier(&oidc.Config{ClientID: ws.OAuth2Conf.ClientID})
 	oauthConf := oauth2.Config{
-		ClientID:     ac.OAuth2Conf.ClientID,
-		ClientSecret: ac.ClientSecret,
+		ClientID:     ws.OAuth2Conf.ClientID,
+		ClientSecret: ws.ClientSecret,
 		Endpoint:     oidcProvider.Endpoint(),
-		RedirectURL:  ac.RedirectURL,
-		Scopes:       append([]string{oidc.ScopeOpenID}, ac.Scopes...),
+		RedirectURL:  ws.RedirectURL,
+		Scopes:       append([]string{oidc.ScopeOpenID}, ws.Scopes...),
 	}
 
-	keyfunc, err := initKeyfunc(ac.JWTConf)
+	keyfunc, err := initKeyfunc(ws.JWTConf)
 	if err != nil {
 		return nil, err
 	}
 
 	var signMethods []string
-	if ac.UseJWKS {
-		signMethods = ac.JwksSignatureMethods
+	if ws.UseJWKS {
+		signMethods = ws.JwksSignatureMethods
 	} else {
-		signMethods = []string{ac.JWTConf.KeySignMethod}
+		signMethods = []string{ws.JWTConf.KeySignMethod}
 	}
 
-	scopeToRoleMap, err := createScopeToRoleMap(ac.RBACConf)
+	scopeToRoleMap, err := createScopeToRoleMap(ws.RBACConf)
 	if err != nil {
 		return nil, err
 	}
 
-	metp := metadatatasks.NewTaskPool(100, 10, eh)
+	metp := metadatatasks.NewTaskPool(ws.QueueSize, ws.NoWorkers, eh)
 
 	return &IngestorWebServerImplemenation{
 		version:          version,
@@ -85,8 +85,8 @@ func NewIngestorWebServer(version string, tq *core.TaskQueue, eh *metadataextrac
 		jwtKeyfunc:       keyfunc,
 		jwtSignMethods:   signMethods,
 		scopeToRoleMap:   scopeToRoleMap,
-		sessionDuration:  ac.SessionDuration,
-		pathConfig:       pc,
+		sessionDuration:  ws.SessionDuration,
+		pathConfig:       ws.PathsConf,
 		metp:             metp,
 	}, nil
 }

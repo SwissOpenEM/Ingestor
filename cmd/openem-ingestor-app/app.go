@@ -91,7 +91,7 @@ func (a *App) startup(ctx context.Context) {
 	a.taskqueue.Startup()
 
 	go func(port int) {
-		ingestor, err := webserver.NewIngestorWebServer(a.version, &a.taskqueue, a.extractorHandler, a.config.WebServerAuth, a.config.WebServerPaths)
+		ingestor, err := webserver.NewIngestorWebServer(a.version, &a.taskqueue, a.extractorHandler, a.config.WebServer)
 		if err != nil {
 			panic(err)
 		}
