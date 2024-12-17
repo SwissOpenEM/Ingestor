@@ -306,40 +306,6 @@ paths:
               schema:
                 $ref: "#/components/schemas/GetExtractorResponse"
 
-    post:
-      tags:
-        - extractor
-      summary: Start a new metadata extraction
-      security:
-        - cookieAuth:
-          - ingestor_write
-      description: Start a new metadata extraction on the specified data set with the selected method.
-      operationId: ExtractorController_startExtraction
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/PostExtractionRequest"
-      responses:
-        "200":
-          description: Dataset ingestion successful
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/PostExtractionResponse"
-        "400":
-          description: Invalid request
-          content:
-            text/plain:
-              schema:
-                type: string
-        "500":
-          description: Internal server error
-          content:
-            text/plain:
-              schema:
-                type: string
   /metadata:
     get:
       summary: get metadata of a dataset
