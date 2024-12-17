@@ -119,18 +119,6 @@ type PostExtractionRequest struct {
 	MethodName string `json:"methodName"`
 }
 
-// PostExtractionResponse defines model for PostExtractionResponse.
-type PostExtractionResponse struct {
-	// CmdStdErr The standard error of the chosen extractor method's command
-	CmdStdErr string `json:"cmdStdErr"`
-
-	// CmdStdOut The standard output of the chosen extractor method's command
-	CmdStdOut string `json:"cmdStdOut"`
-
-	// Result The result of the chosen extractor method
-	Result string `json:"result"`
-}
-
 // TransferItem defines model for TransferItem.
 type TransferItem struct {
 	Status     *string `json:"status,omitempty"`
@@ -168,9 +156,6 @@ type TransferControllerGetTransferParams struct {
 // DatasetControllerIngestDatasetJSONRequestBody defines body for DatasetControllerIngestDataset for application/json ContentType.
 type DatasetControllerIngestDatasetJSONRequestBody = PostDatasetRequest
 
-// ExtractorControllerStartExtractionJSONRequestBody defines body for ExtractorControllerStartExtraction for application/json ContentType.
-type ExtractorControllerStartExtractionJSONRequestBody = PostExtractionRequest
-
 // ExtractMetadataJSONRequestBody defines body for ExtractMetadata for application/json ContentType.
 type ExtractMetadataJSONRequestBody = PostExtractionRequest
 
@@ -191,9 +176,6 @@ type ServerInterface interface {
 	// Get available extraction methods
 	// (GET /extractor)
 	ExtractorControllerGetExtractorMethods(c *gin.Context, params ExtractorControllerGetExtractorMethodsParams)
-	// Start a new metadata extraction
-	// (POST /extractor)
-	ExtractorControllerStartExtraction(c *gin.Context)
 	// Get the health status.
 	// (GET /health)
 	OtherControllerGetHealth(c *gin.Context)
@@ -361,21 +343,6 @@ func (siw *ServerInterfaceWrapper) ExtractorControllerGetExtractorMethods(c *gin
 	siw.Handler.ExtractorControllerGetExtractorMethods(c, params)
 }
 
-// ExtractorControllerStartExtraction operation middleware
-func (siw *ServerInterfaceWrapper) ExtractorControllerStartExtraction(c *gin.Context) {
-
-	c.Set(CookieAuthScopes, []string{"ingestor_write"})
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		middleware(c)
-		if c.IsAborted() {
-			return
-		}
-	}
-
-	siw.Handler.ExtractorControllerStartExtraction(c)
-}
-
 // OtherControllerGetHealth operation middleware
 func (siw *ServerInterfaceWrapper) OtherControllerGetHealth(c *gin.Context) {
 
@@ -535,7 +502,6 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 	router.GET(options.BaseURL+"/dataset", wrapper.DatasetControllerGetDataset)
 	router.POST(options.BaseURL+"/dataset", wrapper.DatasetControllerIngestDataset)
 	router.GET(options.BaseURL+"/extractor", wrapper.ExtractorControllerGetExtractorMethods)
-	router.POST(options.BaseURL+"/extractor", wrapper.ExtractorControllerStartExtraction)
 	router.GET(options.BaseURL+"/health", wrapper.OtherControllerGetHealth)
 	router.GET(options.BaseURL+"/login", wrapper.GetLogin)
 	router.GET(options.BaseURL+"/logout", wrapper.GetLogout)
@@ -656,43 +622,6 @@ func (response ExtractorControllerGetExtractorMethods200JSONResponse) VisitExtra
 	w.WriteHeader(200)
 
 	return json.NewEncoder(w).Encode(response)
-}
-
-type ExtractorControllerStartExtractionRequestObject struct {
-	Body *ExtractorControllerStartExtractionJSONRequestBody
-}
-
-type ExtractorControllerStartExtractionResponseObject interface {
-	VisitExtractorControllerStartExtractionResponse(w http.ResponseWriter) error
-}
-
-type ExtractorControllerStartExtraction200JSONResponse PostExtractionResponse
-
-func (response ExtractorControllerStartExtraction200JSONResponse) VisitExtractorControllerStartExtractionResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
-
-	return json.NewEncoder(w).Encode(response)
-}
-
-type ExtractorControllerStartExtraction400TextResponse string
-
-func (response ExtractorControllerStartExtraction400TextResponse) VisitExtractorControllerStartExtractionResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "text/plain")
-	w.WriteHeader(400)
-
-	_, err := w.Write([]byte(response))
-	return err
-}
-
-type ExtractorControllerStartExtraction500TextResponse string
-
-func (response ExtractorControllerStartExtraction500TextResponse) VisitExtractorControllerStartExtractionResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "text/plain")
-	w.WriteHeader(500)
-
-	_, err := w.Write([]byte(response))
-	return err
 }
 
 type OtherControllerGetHealthRequestObject struct {
@@ -916,9 +845,6 @@ type StrictServerInterface interface {
 	// Get available extraction methods
 	// (GET /extractor)
 	ExtractorControllerGetExtractorMethods(ctx context.Context, request ExtractorControllerGetExtractorMethodsRequestObject) (ExtractorControllerGetExtractorMethodsResponseObject, error)
-	// Start a new metadata extraction
-	// (POST /extractor)
-	ExtractorControllerStartExtraction(ctx context.Context, request ExtractorControllerStartExtractionRequestObject) (ExtractorControllerStartExtractionResponseObject, error)
 	// Get the health status.
 	// (GET /health)
 	OtherControllerGetHealth(ctx context.Context, request OtherControllerGetHealthRequestObject) (OtherControllerGetHealthResponseObject, error)
@@ -1061,39 +987,6 @@ func (sh *strictHandler) ExtractorControllerGetExtractorMethods(ctx *gin.Context
 		ctx.Status(http.StatusInternalServerError)
 	} else if validResponse, ok := response.(ExtractorControllerGetExtractorMethodsResponseObject); ok {
 		if err := validResponse.VisitExtractorControllerGetExtractorMethodsResponse(ctx.Writer); err != nil {
-			ctx.Error(err)
-		}
-	} else if response != nil {
-		ctx.Error(fmt.Errorf("unexpected response type: %T", response))
-	}
-}
-
-// ExtractorControllerStartExtraction operation middleware
-func (sh *strictHandler) ExtractorControllerStartExtraction(ctx *gin.Context) {
-	var request ExtractorControllerStartExtractionRequestObject
-
-	var body ExtractorControllerStartExtractionJSONRequestBody
-	if err := ctx.ShouldBindJSON(&body); err != nil {
-		ctx.Status(http.StatusBadRequest)
-		ctx.Error(err)
-		return
-	}
-	request.Body = &body
-
-	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
-		return sh.ssi.ExtractorControllerStartExtraction(ctx, request.(ExtractorControllerStartExtractionRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "ExtractorControllerStartExtraction")
-	}
-
-	response, err := handler(ctx, request)
-
-	if err != nil {
-		ctx.Error(err)
-		ctx.Status(http.StatusInternalServerError)
-	} else if validResponse, ok := response.(ExtractorControllerStartExtractionResponseObject); ok {
-		if err := validResponse.VisitExtractorControllerStartExtractionResponse(ctx.Writer); err != nil {
 			ctx.Error(err)
 		}
 	} else if response != nil {
@@ -1297,46 +1190,44 @@ func (sh *strictHandler) OtherControllerGetVersion(ctx *gin.Context) {
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
-	"2fwvAAD//xocnAv0LAAA",
+	"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",
+	"KAAA",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file
