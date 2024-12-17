@@ -39,7 +39,7 @@ func main() {
 
 	eh := metadataextractor.NewExtractorHandler(config.MetadataExtractors)
 
-	ingestor, err := webserver.NewIngestorWebServer(version, &tq, eh, config.WebServerAuth, config.WebServerPaths)
+	ingestor, err := webserver.NewIngestorWebServer(version, &tq, eh, config.WebServer)
 	if err != nil {
 		log.Fatal(err)
 	}

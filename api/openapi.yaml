@@ -306,41 +306,50 @@ paths:
               schema:
                 $ref: "#/components/schemas/GetExtractorResponse"
 
-    post:
-      tags:
-        - extractor
-      summary: Start a new metadata extraction
-      security:
-        - cookieAuth:
-          - ingestor_write
-      description: Start a new metadata extraction on the specified data set with the selected method.
-      operationId: ExtractorController_startExtraction
+  /metadata:
+    get:
+      summary: get metadata of a dataset
+      description: |
+        Starts a metadata extraction task on the ingestor side, with live updates about the progress using Server Side Events (SSE).
+        It will close the connection with the final message containing the metadata json.
+      operationId: extractMetadata
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/PostExtractionRequest"
+              $ref: "#/components/schemas/GetMetadataRequest"
       responses:
-        "200":
-          description: Dataset ingestion successful
+        '200':
+          description: |
+            A continuous stream of server-sent events.
+          content:
+            text/event-stream:
+              schema:
+                type: string
+              example: |
+                event: message
+                data: Your metadata extraction request is in the queue.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+              description: No caching is allowed for this stream.
+            Connection:
+              schema:
+                type: string
+              description: Advises the client to keep the connection open.
+            Content-Type:
+              schema:
+                type: string
+              description: The MIME type of this stream is text/event-stream.
+        default:
+          description: Unexpected error
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/PostExtractionResponse"
-        "400":
-          description: Invalid request
-          content:
-            text/plain:
-              schema:
-                type: string
-        "500":
-          description: Internal server error
-          content:
-            text/plain:
-              schema:
-                type: string
- 
+                $ref: "#/components/schemas/Error"
+
 components:
   schemas:
     PostDatasetRequest:
@@ -475,7 +484,7 @@ components:
         - name
         - schema
       description: a method item describes the method's name and schema
-    PostExtractionRequest:
+    GetMetadataRequest:
       type: object
       properties:
         filePath:
@@ -487,22 +496,6 @@ components:
       required:
         - filePath
         - methodName
-    PostExtractionResponse:
-      type: object
-      properties:
-        result:
-          type: string
-          description: The result of the chosen extractor method
-        cmdStdOut:
-          type: string
-          description: The standard output of the chosen extractor method's command
-        cmdStdErr:
-          type: string
-          description: The standard error of the chosen extractor method's command
-      required:
-        - result
-        - cmdStdOut
-        - cmdStdErr
     GetDatasetResponse:
       type: object
       properties:
@@ -516,6 +509,16 @@ components:
       required:
         - datasets
         - total
+    Error:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+      required:
+        - code
+        - message
   securitySchemes:
     cookieAuth:
       type: apiKey

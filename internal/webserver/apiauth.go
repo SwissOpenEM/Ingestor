@@ -49,7 +49,7 @@ func initKeyfunc(jwtConf wsconfig.JWTConf) (jwt.Keyfunc, error) {
 
 func (i *IngestorWebServerImplemenation) apiAuthFunc(ctx context.Context, input *openapi3filter.AuthenticationInput) error {
 	// if auth is disabled, return immediately
-	if i.taskQueue.Config.WebServerAuth.Disable {
+	if i.taskQueue.Config.WebServer.AuthConf.Disable {
 		return nil
 	}
 

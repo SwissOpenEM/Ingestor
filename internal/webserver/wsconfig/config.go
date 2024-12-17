@@ -45,7 +45,18 @@ type AuthConf struct {
 	RBACConf        `mapstructure:"RBAC" validate:"required_if=Disable false,omitempty"`
 }
 
-type WebServerPathsConf struct {
+type PathsConf struct {
 	CollectionLocation      string `validate:"required"`
 	ExtractorOutputLocation string
+}
+
+type MetadataExtJobsConf struct {
+	NoWorkers uint `validate:"required,min=1"`
+	QueueSize uint `validate:"required,min=1"`
+}
+
+type WebServerConfig struct {
+	AuthConf            `mapstructure:"Auth"`
+	PathsConf           `mapstructure:"Paths"`
+	MetadataExtJobsConf `mapstructure:"MetadataExtJobs"`
 }

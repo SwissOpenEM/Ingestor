@@ -53,25 +53,34 @@ func createExpectedValidConfig(transferConfig task.TransferConfig) Config {
 
 	expected_tranfer := transferConfig
 
-	expected_wsauth := wsconfig.AuthConf{
-		SessionDuration: 28800,
-		OAuth2Conf: wsconfig.OAuth2Conf{
-			ClientID:    "ingestor",
-			RedirectURL: "http://localhost:8888/callback",
-			Scopes:      []string{"email"},
+	expected_ws := wsconfig.WebServerConfig{
+		AuthConf: wsconfig.AuthConf{
+			SessionDuration: 28800,
+			OAuth2Conf: wsconfig.OAuth2Conf{
+				ClientID:    "ingestor",
+				RedirectURL: "http://localhost:8888/callback",
+				Scopes:      []string{"email"},
+			},
+			OIDCConf: wsconfig.OIDCConf{
+				IssuerURL: "http://keycloak.localhost/realms/facility",
+			},
+			JWTConf: wsconfig.JWTConf{
+				UseJWKS:              true,
+				JwksURL:              "http://keycloak.localhost/realms/facility/protocol/openid-connect/certs",
+				JwksSignatureMethods: []string{"RS256"},
+			},
+			RBACConf: wsconfig.RBACConf{
+				AdminRole:             "FACILITY-ingestor-admin",
+				CreateModifyTasksRole: "FACILITY-ingestor-write",
+				ViewTasksRole:         "FACILITY-ingestor-read",
+			},
 		},
-		OIDCConf: wsconfig.OIDCConf{
-			IssuerURL: "http://keycloak.localhost/realms/facility",
+		PathsConf: wsconfig.PathsConf{
+			CollectionLocation: "/some/path",
 		},
-		JWTConf: wsconfig.JWTConf{
-			UseJWKS:              true,
-			JwksURL:              "http://keycloak.localhost/realms/facility/protocol/openid-connect/certs",
-			JwksSignatureMethods: []string{"RS256"},
-		},
-		RBACConf: wsconfig.RBACConf{
-			AdminRole:             "FACILITY-ingestor-admin",
-			CreateModifyTasksRole: "FACILITY-ingestor-write",
-			ViewTasksRole:         "FACILITY-ingestor-read",
+		MetadataExtJobsConf: wsconfig.MetadataExtJobsConf{
+			NoWorkers: 100,
+			QueueSize: 200,
 		},
 	}
 
@@ -131,17 +140,12 @@ func createExpectedValidConfig(transferConfig task.TransferConfig) Config {
 		Timeout:                   time.Minute * 4,
 	}
 
-	expected_wspath := wsconfig.WebServerPathsConf{
-		CollectionLocation: "/some/path",
-	}
-
 	expected_config := Config{
 		Misc:               expected_misc,
 		MetadataExtractors: expected_meta,
 		Scicat:             expected_scicat,
 		Transfer:           expected_tranfer,
-		WebServerAuth:      expected_wsauth,
-		WebServerPaths:     expected_wspath,
+		WebServer:          expected_ws,
 	}
 	return expected_config
 }
