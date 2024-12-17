@@ -61,6 +61,8 @@ archives:
       {{- if .Arm }}v{{ .Arm }}{{ end }}
     # use zip for windows archives
     files:
+    - src: configs/ReadMe.md
+      dst: ./ReadMe.md
     - src: configs/*.yaml
       dst: ./
     - src: configs/schemas/*.json
