@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/tls"
 	"errors"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -13,11 +14,13 @@ import (
 	"time"
 
 	"github.com/SwissOpenEM/Ingestor/internal/metadataextractor"
-	"github.com/SwissOpenEM/Ingestor/internal/scicat"
 	"github.com/SwissOpenEM/Ingestor/internal/task"
 	"github.com/fatih/color"
 	"github.com/paulscherrerinstitute/scicat-cli/v3/datasetIngestor"
+	"github.com/paulscherrerinstitute/scicat-cli/v3/datasetUtils"
 )
+
+const MAX_FILES = 400000
 
 func createLocalSymlinkCallbackForFileLister(skipSymlinks *string, skippedLinks *uint) func(symlinkPath string, sourceFolder string) (bool, error) {
 	scanner := bufio.NewScanner(os.Stdin)
@@ -129,10 +132,6 @@ func IngestDataset(
 	user := map[string]string{
 		"accessToken": config.Scicat.AccessToken,
 	}
-	_, accessGroups, err := scicat.ExtractUserInfo(http_client, SCICAT_API_URL, user["accessToken"])
-	if err != nil {
-		return "", err
-	}
 
 	datasetFolder := ingestionTask.DatasetFolder.FolderPath
 
@@ -152,8 +151,13 @@ func IngestDataset(
 		}
 	}
 
+	fullUser, accessGroups, err := datasetUtils.GetUserInfoFromToken(http_client, SCICAT_API_URL, config.Scicat.AccessToken)
+	if err != nil {
+		return "", err
+	}
+
 	// check if dataset already exists (identified by source folder)
-	_, _, err = scicat.CheckMetadata(http_client, SCICAT_API_URL, metaDataMap, user, accessGroups)
+	_, _, err = datasetIngestor.CheckMetadata(http_client, SCICAT_API_URL, metaDataMap, fullUser, accessGroups)
 	if err != nil {
 		return "", err
 	}
@@ -165,16 +169,19 @@ func IngestDataset(
 
 	// collect (local) files
 	fullFileArray, startTime, endTime, owner, numFiles, totalSize, err := datasetIngestor.GetLocalFileList(datasetFolder, DATASETFILELISTTXT, localSymlinkCallback, localFilepathFilterCallback)
-	_ = numFiles
-	_ = totalSize
-	_ = startTime
-	_ = endTime
-	_ = owner
-	_ = fullFileArray
 	if err != nil {
 		log.Printf("")
 		return "", err
 	}
+
+	// size & filecount checks
+	if totalSize == 0 {
+		return "", errors.New("can't ingest: the total size of the dataset is 0")
+	}
+	if numFiles > MAX_FILES {
+		return "", fmt.Errorf("can't ingest: the number of files (%d) exceeds the max. allowed (%d)", numFiles, MAX_FILES)
+	}
+
 	originalMetaDataMap := map[string]string{}
 	datasetIngestor.UpdateMetaData(http_client, SCICAT_API_URL, user, originalMetaDataMap, metaDataMap, startTime, endTime, owner, TAPECOPIES)
 
@@ -188,14 +195,9 @@ func IngestDataset(
 	metaDataMap["datasetlifecycle"].(map[string]interface{})["archiveStatusMessage"] = "filesNotYetAvailable"
 	metaDataMap["datasetlifecycle"].(map[string]interface{})["archivable"] = false
 
-	datasetId, err := scicat.CreateDataset(http_client, SCICAT_API_URL, metaDataMap, user)
-	if err != nil {
-		return "", err
-	}
-	err = scicat.CreateOrigDatablocks(http_client, SCICAT_API_URL, fullFileArray, datasetId, user)
-	if err != nil {
-		return "", err
-	}
+	datasetId, err := datasetIngestor.IngestDataset(http_client, SCICAT_API_URL, metaDataMap, fullFileArray, user)
+
+	// TODO: add attachments here if it's going to be needed
 
 	switch ingestionTask.TransferMethod {
 	case task.TransferS3:
