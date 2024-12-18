@@ -19,7 +19,7 @@ require (
 	github.com/oapi-codegen/gin-middleware v1.0.2
 	github.com/oapi-codegen/oapi-codegen/v2 v2.3.0
 	github.com/oapi-codegen/runtime v1.1.1
-	github.com/paulscherrerinstitute/scicat-cli/v3 v3.0.0-alpha3.0.20240923114554-40b0ae5da12e
+	github.com/paulscherrerinstitute/scicat-cli/v3 v3.0.0-alpha3.0.20241104135519-ff8966010bde
 	github.com/spf13/viper v1.19.0
 	github.com/swaggo/files v1.0.1
 	github.com/swaggo/gin-swagger v1.6.0

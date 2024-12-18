@@ -266,6 +266,8 @@ github.com/oapi-codegen/runtime v1.1.1 h1:EXLHh0DXIJnWhdRPN2w4MXAzFyE4CskzhNLUmt
 github.com/oapi-codegen/runtime v1.1.1/go.mod h1:SK9X900oXmPWilYR5/WKPzt3Kqxn/uS/+lbpREv+eCg=
 github.com/paulscherrerinstitute/scicat-cli/v3 v3.0.0-alpha3.0.20240923114554-40b0ae5da12e h1:11aZpGkmjsANwEr3LG3fAhIvySK7rwOyve1IDOH/MhI=
 github.com/paulscherrerinstitute/scicat-cli/v3 v3.0.0-alpha3.0.20240923114554-40b0ae5da12e/go.mod h1:MXUPH5xJe/5ZydWzB+UaTwyfNDCxVAG10hXgrTlkRLw=
+github.com/paulscherrerinstitute/scicat-cli/v3 v3.0.0-alpha3.0.20241104135519-ff8966010bde h1:zdM+5QFYrp+tnRqPxjJ929U0RbBqWT9AnQCc1dBiciY=
+github.com/paulscherrerinstitute/scicat-cli/v3 v3.0.0-alpha3.0.20241104135519-ff8966010bde/go.mod h1:MXUPH5xJe/5ZydWzB+UaTwyfNDCxVAG10hXgrTlkRLw=
 github.com/pelletier/go-toml/v2 v2.2.3 h1:YmeHyLY8mFWbdkNWwpr+qIL2bEqT0o95WSdkNHvL12M=
 github.com/pelletier/go-toml/v2 v2.2.3/go.mod h1:MfCQTFTvCcUyyvvwm1+G6H/jORL20Xlb6rzQu9GuUkc=
 github.com/perimeterx/marshmallow v1.1.5 h1:a2LALqQ1BlHM8PZblsDdidgv1mWi1DgC2UmX50IvK2s=

@@ -358,6 +358,8 @@ components:
         metaData:
           type: string
           description: The metadata of the dataset.
+      required:
+        - metaData
     PostDatasetResponse:
       type: object
       properties:
