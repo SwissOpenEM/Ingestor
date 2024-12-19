@@ -3,19 +3,19 @@ package core
 import (
 	"bufio"
 	"context"
-	"crypto/tls"
 	"errors"
+	"fmt"
 	"log"
-	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/SwissOpenEM/Ingestor/internal/metadataextractor"
+	"github.com/SwissOpenEM/Ingestor/internal/s3upload"
 	"github.com/SwissOpenEM/Ingestor/internal/scicat"
 	"github.com/SwissOpenEM/Ingestor/internal/task"
 	"github.com/fatih/color"
+	"github.com/hashicorp/go-retryablehttp"
 	"github.com/paulscherrerinstitute/scicat-cli/v3/datasetIngestor"
 )
 
@@ -113,11 +113,9 @@ func IngestDataset(
 	task_context context.Context,
 	ingestionTask task.IngestionTask,
 	config Config,
-	notifier ProgressNotifier,
+	notifier task.ProgressNotifier,
 ) (string, error) {
-	var http_client = &http.Client{
-		Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}},
-		Timeout:   120 * time.Second}
+	var http_client = retryablehttp.NewClient().StandardClient()
 
 	SCICAT_API_URL := config.Scicat.Host
 
@@ -190,19 +188,31 @@ func IngestDataset(
 
 	datasetId, err := scicat.CreateDataset(http_client, SCICAT_API_URL, metaDataMap, user)
 	if err != nil {
-		return "", err
+		return datasetId, err
 	}
 	err = scicat.CreateOrigDatablocks(http_client, SCICAT_API_URL, fullFileArray, datasetId, user)
 	if err != nil {
-		return "", err
+		return datasetId, err
 	}
 
 	switch ingestionTask.TransferMethod {
 	case task.TransferS3:
-		_, err = UploadS3(task_context, datasetId, datasetFolder, ingestionTask.DatasetFolder.Id, config.Transfer.S3, notifier)
+		fileList := []string{}
+		for _, f := range fullFileArray {
+			fileList = append(fileList, f.Path)
+		}
+		err = s3upload.UploadS3(task_context, datasetId, datasetFolder, fileList, ingestionTask.DatasetFolder.Id, config.Transfer.S3, notifier)
+		if err != nil {
+			return datasetId, err
+		}
+
 	case task.TransferGlobus:
 		err = GlobusTransfer(config.Transfer.Globus, ingestionTask, task_context, ingestionTask.DatasetFolder.Id, datasetFolder, fullFileArray, notifier)
+		if err != nil {
+			return datasetId, err
+		}
 	_:
+		return datasetId, fmt.Errorf("unknown transfer method: %d", ingestionTask.TransferMethod)
 	}
 
 	if err != nil {
