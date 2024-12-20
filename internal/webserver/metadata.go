@@ -39,7 +39,11 @@ func (r ResponseWriter) VisitExtractMetadataResponse(writer http.ResponseWriter)
 		// queue the task
 		if queueing {
 			if sleep {
-				time.Sleep(1 * time.Minute)
+				select {
+				case <-time.After(1 * time.Minute):
+				case <-g.Request.Context().Done():
+					return false // client drops connection
+				}
 			}
 			var err error
 			progress, err = r.metp.NewTask(cancelCtx, fullPath, r.req.Body.MethodName)
@@ -69,6 +73,8 @@ func (r ResponseWriter) VisitExtractMetadataResponse(writer http.ResponseWriter)
 				g.SSEvent("message", "Still waiting for a free worker...`")
 				workerWaitingTimer = time.After(1 * time.Minute)
 				return true
+			case <-g.Request.Context().Done():
+				return false // client drops connection
 			}
 		}
 
@@ -87,7 +93,7 @@ func (r ResponseWriter) VisitExtractMetadataResponse(writer http.ResponseWriter)
 			}
 			return true
 		case <-r.ctx.Done():
-			return false // we get here if the client drops the connection
+			return false // client drops connection
 		}
 	})
 	return nil
