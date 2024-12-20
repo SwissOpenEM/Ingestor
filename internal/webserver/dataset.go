@@ -12,9 +12,8 @@ import (
 
 func (i *IngestorWebServerImplemenation) DatasetControllerIngestDataset(ctx context.Context, request DatasetControllerIngestDatasetRequestObject) (DatasetControllerIngestDatasetResponseObject, error) {
 	// get sourcefolder from metadata
-	metadataString := *request.Body.MetaData
 	var metadata map[string]interface{}
-	err := json.Unmarshal([]byte(metadataString), &metadata)
+	err := json.Unmarshal([]byte(request.Body.MetaData), &metadata)
 	if err != nil {
 		return DatasetControllerIngestDataset400TextResponse(err.Error()), nil
 	}
