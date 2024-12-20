@@ -322,7 +322,22 @@ paths:
       responses:
         '200':
           description: |
-            A continuous stream of server-sent events.
+            A continuous stream of server-sent events. Each event will contain two elements: an `event` tag and a `data` tag.
+            The `event` tag describes the type of event that was sent by the server. The `data`` tag will contain the actual data
+            of the response. The data itself will be always encoded in base64, and its format depends on the the event type.
+            Here's a list of possible event types and the corresponding data formats:
+             - event: message
+               data: a string of the message sent by the server. It's most often used for communicating server status (not 
+               related to the extractor itself)
+             - event: error
+               data: a string that describes the error encountered. This event also normally means that the stream will be closed as
+                 it describes a fatal error.
+             - event: progress
+               data: a json that contains the following fields: "std_out", "std_err", "result" (optional), "err" (optional)
+                  - std_out and std_err are the extractor executable's standard out and standard error streams respectively.
+                  - result and err are added when the extractor finishes, where result should contain the metadata json, and
+                    err should contain any fatal errors returned by the extractor (if there was any). If these two fields are
+                    included, then that means the extractor finished and this will be the last event of the stream.
           content:
             text/event-stream:
               schema:
