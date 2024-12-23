@@ -56,6 +56,7 @@ WebServer:
   Auth:
     Disable: false
     SessionDuration: 28800
+    CallbackRedirect: "http://scicat.localhost/ingest"
     OAuth2:
       ClientID: "ingestor"
       RedirectURL: "http://localhost:8888/callback"
