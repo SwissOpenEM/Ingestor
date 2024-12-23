@@ -37,12 +37,13 @@ type RBACConf struct {
 
 // full authentication config
 type AuthConf struct {
-	Disable         bool `bool:"Disable"`
-	SessionDuration uint // duration of a user session before it expires (by default never)
-	OAuth2Conf      `mapstructure:"OAuth2" validate:"required_if=Disable false,omitempty"`
-	OIDCConf        `mapstructure:"OIDC" validate:"required_if=Disable false,omitempty"`
-	JWTConf         `mapstructure:"JWT" validate:"required_if=Disable false,omitempty"`
-	RBACConf        `mapstructure:"RBAC" validate:"required_if=Disable false,omitempty"`
+	Disable          bool   `bool:"Disable"`
+	SessionDuration  uint   // duration of a user session before it expires (by default never)
+	CallbackRedirect string `validate:"required_if=Disable false,omitempty"`
+	OAuth2Conf       `mapstructure:"OAuth2" validate:"required_if=Disable false,omitempty"`
+	OIDCConf         `mapstructure:"OIDC" validate:"required_if=Disable false,omitempty"`
+	JWTConf          `mapstructure:"JWT" validate:"required_if=Disable false,omitempty"`
+	RBACConf         `mapstructure:"RBAC" validate:"required_if=Disable false,omitempty"`
 }
 
 type PathsConf struct {
