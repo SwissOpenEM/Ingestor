@@ -55,8 +55,8 @@ func createExpectedValidConfig(transferConfig task.TransferConfig) Config {
 
 	expected_ws := wsconfig.WebServerConfig{
 		AuthConf: wsconfig.AuthConf{
-			SessionDuration:  28800,
-			CallbackRedirect: "http://scicat.localhost/ingest",
+			SessionDuration: 28800,
+			FrontendUrl:     "http://scicat.localhost/ingest",
 			OAuth2Conf: wsconfig.OAuth2Conf{
 				ClientID:    "ingestor",
 				RedirectURL: "http://localhost:8888/callback",

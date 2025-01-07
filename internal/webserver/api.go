@@ -31,7 +31,7 @@ type IngestorWebServerImplemenation struct {
 	sessionDuration  uint
 	scopeToRoleMap   map[string]string
 	pathConfig       wsconfig.PathsConf
-	callbackRedirect string
+	frontendUrl      string
 }
 
 func NewIngestorWebServer(version string, tq *core.TaskQueue, eh *metadataextractor.ExtractorHandler, ws wsconfig.WebServerConfig) (*IngestorWebServerImplemenation, error) {
@@ -89,6 +89,6 @@ func NewIngestorWebServer(version string, tq *core.TaskQueue, eh *metadataextrac
 		sessionDuration:  ws.SessionDuration,
 		pathConfig:       ws.PathsConf,
 		metp:             metp,
-		callbackRedirect: ws.CallbackRedirect,
+		frontendUrl:      ws.FrontendUrl,
 	}, nil
 }

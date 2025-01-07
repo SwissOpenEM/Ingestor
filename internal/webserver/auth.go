@@ -202,6 +202,6 @@ func (i *IngestorWebServerImplemenation) GetLogout(ctx context.Context, request 
 	}
 
 	return GetLogout302Response{GetLogout302ResponseHeaders{
-		Location: i.callbackRedirect,
+		Location: i.frontendUrl,
 	}}, nil
 }
