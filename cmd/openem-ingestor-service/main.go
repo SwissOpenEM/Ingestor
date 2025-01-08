@@ -30,6 +30,11 @@ func main() {
 
 	ctx := context.Background()
 
+	// setup globus if we have a refresh token
+	if config.Transfer.Globus.RefreshToken != "" {
+		core.GlobusLoginWithRefreshToken(config.Transfer.Globus)
+	}
+
 	tq := core.TaskQueue{
 		Config:     config,
 		AppContext: ctx,

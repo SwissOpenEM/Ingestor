@@ -468,17 +468,15 @@ components:
     OtherHealthResponse:
       type: object
       properties:
-        ingestorStatus:
+        status:
           type: string
           description: Status of the ingestor.
-        scicatStatus:
-          type: string
-          description: Status of SciCat.
-        globusStatus:
-          type: string
-          description: Status of Globus.
+        errors:
+          type: object
+          additionalProperties:
+            type: string
       required:
-        - ingestorStatus
+        - status
         - scicatStatus
         - globusStatus
     GetExtractorResponse:
