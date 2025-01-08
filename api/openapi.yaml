@@ -159,6 +159,7 @@ paths:
       tags:
         - other
       summary: Get the health status.
+      security: []
       description: Retrieve information about the status of openEm components.
       operationId: OtherController_getHealth
       responses:
@@ -476,6 +477,10 @@ components:
         globusStatus:
           type: string
           description: Status of Globus.
+      required:
+        - ingestorStatus
+        - scicatStatus
+        - globusStatus
     GetExtractorResponse:
       type: object
       properties:

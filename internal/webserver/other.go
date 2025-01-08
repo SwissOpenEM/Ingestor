@@ -1,6 +1,8 @@
 package webserver
 
-import "context"
+import (
+	"context"
+)
 
 func (i *IngestorWebServerImplemenation) OtherControllerGetVersion(ctx context.Context, request OtherControllerGetVersionRequestObject) (OtherControllerGetVersionResponseObject, error) {
 	return OtherControllerGetVersion200JSONResponse{
@@ -9,5 +11,9 @@ func (i *IngestorWebServerImplemenation) OtherControllerGetVersion(ctx context.C
 }
 
 func (i *IngestorWebServerImplemenation) OtherControllerGetHealth(ctx context.Context, request OtherControllerGetHealthRequestObject) (OtherControllerGetHealthResponseObject, error) {
-	return nil, nil
+	return OtherControllerGetHealth200JSONResponse{
+		IngestorStatus: "placeholder",
+		ScicatStatus:   "placeholder",
+		GlobusStatus:   "placeholder",
+	}, nil
 }
