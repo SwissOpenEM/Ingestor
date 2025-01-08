@@ -67,6 +67,12 @@ func GlobusIsClientReady() bool {
 	return globusClient.IsClientSet()
 }
 
+/*func GlobusHealthCheck() error {
+	// NOTE: this is not a proper health check and takes a long time to finish (~900ms)
+	_, err := globusClient.TransferGetTaskList(0, 1)
+	return err
+}*/
+
 func GlobusSetHttpClient(client *http.Client) {
 	globusClient = globus.HttpClientToGlobusClient(client)
 }
@@ -99,14 +105,6 @@ func globusCheckTransfer(globusTaskId string) (bytesTransferred int, filesTransf
 }
 
 func GlobusTransfer(globusConf task.GlobusTransferConfig, task task.IngestionTask, taskCtx context.Context, localTaskId uuid.UUID, datasetFolder string, fileList []datasetIngestor.Datafile, notifier ProgressNotifier) error {
-	// check if globus client is properly set up, use refresh token if available
-	if !globusClient.IsClientSet() {
-		if globusConf.RefreshToken == "" {
-			return fmt.Errorf("globus: not logged into globus")
-		}
-		GlobusLoginWithRefreshToken(globusConf)
-	}
-
 	// transfer given filelist
 	var filePathList []string
 	var fileIsSymlinkList []bool
