@@ -39,24 +39,28 @@ MetadataExtractors:
         Schema: oscem_tomo.json
       - Name: EnvironmentalTomography
         Schema: oscem_env_tomo.json
-WebServerAuth:
-  Disable: false
-  SessionDuration: 28800
-  OAuth2:
-    ClientID: "ingestor"
-    RedirectURL: "http://localhost:8888/callback"
-    Scopes:
-      - email
-  OIDC:
-    IssuerURL: "http://keycloak.localhost/realms/facility"
-  JWT:
-    UseJWKS: true
-    JwksURL: "http://keycloak.localhost/realms/facility/protocol/openid-connect/certs"
-    JwksSignatureMethods:
-      - RS256
-  RBAC:
-    AdminRole: "FACILITY-ingestor-admin"
-    CreateModifyTasksRole: "FACILITY-ingestor-write"
-    ViewTasksRole: "FACILITY-ingestor-read"
-WebServerPaths:
-  CollectionLocation: "/some/path"
+WebServer:
+  Auth:
+    Disable: false
+    SessionDuration: 28800
+    OAuth2:
+      ClientID: "ingestor"
+      RedirectURL: "http://localhost:8888/callback"
+      Scopes:
+        - email
+    OIDC:
+      IssuerURL: "http://keycloak.localhost/realms/facility"
+    JWT:
+      UseJWKS: true
+      JwksURL: "http://keycloak.localhost/realms/facility/protocol/openid-connect/certs"
+      JwksSignatureMethods:
+        - RS256
+    RBAC:
+      AdminRole: "FACILITY-ingestor-admin"
+      CreateModifyTasksRole: "FACILITY-ingestor-write"
+      ViewTasksRole: "FACILITY-ingestor-read"
+  Paths:
+    CollectionLocation: "/some/paths"
+  MetadataExtJobs:
+    NoWorkers: 4
+    QueueSize: 200
