@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path"
 	"slices"
 
 	"github.com/google/uuid"
@@ -18,6 +19,13 @@ func (i *IngestorWebServerImplemenation) DatasetControllerIngestDataset(ctx cont
 		return DatasetControllerIngestDataset400TextResponse(err.Error()), nil
 	}
 
+	// add collection location
+	dsPath, ok := metadata["sourceFolder"].(string)
+	if !ok {
+		return DatasetControllerIngestDataset400TextResponse("datasetFolder is not a string"), nil
+	}
+	metadata["sourceFolder"] = path.Join(i.pathConfig.CollectionLocation, dsPath)
+
 	// create and start task
 	id := uuid.New()
 	err = i.taskQueue.CreateTaskFromMetadata(id, metadata)
@@ -25,7 +33,7 @@ func (i *IngestorWebServerImplemenation) DatasetControllerIngestDataset(ctx cont
 		if _, ok := err.(*os.PathError); ok {
 			return nil, fmt.Errorf("could not create the task due to a path error: %s", err.Error())
 		} else {
-			return DatasetControllerIngestDataset400TextResponse("You don't have the right to create the task"), nil
+			return DatasetControllerIngestDataset400TextResponse("You don't have the right to access the dataset folder or it doesn't exist"), nil
 		}
 	}
 	i.taskQueue.ScheduleTask(id)
