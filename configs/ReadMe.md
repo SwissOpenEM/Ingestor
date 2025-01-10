@@ -18,29 +18,32 @@ The configuration file `openem-ingestor.config.yaml` can be put into two locatio
 The following section in the config file describes the necessary setup for authentication.
 
 ```yaml
-WebServerAuth:
-  Disable: false
-  SessionDuration: 28800
-  OAuth2:
-    ClientID: "ingestor"
-    RedirectURL: "http://localhost:8888/callback"
-    Scopes:
-      - email
-  OIDC:
-    IssuerURL: "http://[KEYCLOAK_URL]/realms/facility"
-  JWT:
-    UseJWKS: true
-    JwksURL: "http://[KEYCLOAK_URL]/realms/facility/protocol/openid-connect/certs"
-    JwksSignatureMethods:
-      - RS256
-  RBAC:
-    AdminRole: "FACILITY-ingestor-admin"
-    CreateModifyTasksRole: "FACILITY-ingestor-write"
-    ViewTasksRole: "FACILITY-ingestor-read"
+WebServer:
+  Auth:
+    Disable: false
+    SessionDuration: 28800
+    FrontendUrl: "http://scicat.example/ingestor"
+    OAuth2:
+      ClientID: "ingestor"
+      RedirectURL: "http://localhost:8888/callback"
+      Scopes:
+        - email
+    OIDC:
+      IssuerURL: "http://[KEYCLOAK_URL]/realms/facility"
+    JWT:
+      UseJWKS: true
+      JwksURL: "http://[KEYCLOAK_URL]/realms/facility/protocol/openid-connect/certs"
+      JwksSignatureMethods:
+        - RS256
+    RBAC:
+      AdminRole: "FACILITY-ingestor-admin"
+      CreateModifyTasksRole: "FACILITY-ingestor-write"
+      ViewTasksRole: "FACILITY-ingestor-read"
 ```
 
 The necessary fields to adapt are
 
+- `FrontendUrl`: The url of the frontend should be put here, so that after login the backend can redirect there.
 - `OAuth2.RedirectURL`: Host (localhost if running on desktop or host name when running as service) and port (same as Misc.Port) of the ingestor instance.
 - `OIDC.IssuerURL`: replace `[KEYCLOAK_URL]` with URL of keycloak instance to be used
 - `JwksURL`: replace `[KEYCLOAK_URL]` with URL of keycloak instance to be used
