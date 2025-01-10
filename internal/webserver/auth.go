@@ -178,7 +178,7 @@ func (i *IngestorWebServerImplemenation) GetCallback(ctx context.Context, reques
 	// reply
 	return GetCallback302Response{
 		Headers: GetCallback302ResponseHeaders{
-			Location: "/",
+			Location: i.frontendUrl,
 		},
 	}, nil
 }
