@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"path"
 	"slices"
 
 	"github.com/google/uuid"
@@ -20,11 +19,11 @@ func (i *IngestorWebServerImplemenation) DatasetControllerIngestDataset(ctx cont
 	}
 
 	// add collection location
-	dsPath, ok := metadata["sourceFolder"].(string)
+	/*dsPath, ok := metadata["sourceFolder"].(string)
 	if !ok {
 		return DatasetControllerIngestDataset400TextResponse("datasetFolder is not a string"), nil
 	}
-	metadata["sourceFolder"] = path.Join(i.pathConfig.CollectionLocation, dsPath)
+	metadata["sourceFolder"] = path.Join(i.pathConfig.CollectionLocation, dsPath)*/
 
 	// create and start task
 	id := uuid.New()
