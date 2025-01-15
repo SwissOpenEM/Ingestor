@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -67,7 +69,8 @@ func (w *TaskQueue) CreateTaskFromMetadata(id uuid.UUID, metadataMap map[string]
 	}
 	switch v := metadataMap["sourceFolder"].(type) {
 	case string:
-		task.DatasetFolder.FolderPath = v
+		// the collection location has to be added to get the absolute path of the dataset
+		task.DatasetFolder.FolderPath = path.Join(w.Config.WebServer.CollectionLocation, filepath.FromSlash(v))
 	default:
 		return errors.New("sourceFolder in metadata isn't a string")
 	}
