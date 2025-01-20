@@ -26,6 +26,9 @@ paths:
       tags:
         - dataset
       summary: Get the available datasets.
+      security:
+        - cookieAuth:
+          - ingestor_read
       description: Retrieve the folder structure of the available datasets.
       operationId: DatasetController_getDataset
       parameters:
