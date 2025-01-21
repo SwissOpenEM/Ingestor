@@ -35,11 +35,16 @@ type RBACConf struct {
 	ViewTasksRole         string `validate:"required"`
 }
 
+type FrontendConf struct {
+	Origin       string `validate:"required"`
+	RedirectPath string
+}
+
 // full authentication config
 type AuthConf struct {
-	Disable         bool   `bool:"Disable"`
-	SessionDuration uint   // duration of a user session before it expires (by default never)
-	FrontendUrl     string `validate:"required_if=Disable false,omitempty"` // used for redirecting the user back to the frontend after login
+	Disable         bool `bool:"Disable"`
+	SessionDuration uint // duration of a user session before it expires (by default never)
+	FrontendConf    `mapstructure:"Frontend" validate:"required_if=Disable false,omitempty"`
 	OAuth2Conf      `mapstructure:"OAuth2" validate:"required_if=Disable false,omitempty"`
 	OIDCConf        `mapstructure:"OIDC" validate:"required_if=Disable false,omitempty"`
 	JWTConf         `mapstructure:"JWT" validate:"required_if=Disable false,omitempty"`

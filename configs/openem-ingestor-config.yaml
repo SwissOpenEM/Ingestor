@@ -43,7 +43,9 @@ WebServer:
   Auth:
     Disable: false
     SessionDuration: 28800
-    FrontendUrl: "http://localhost"
+    Frontend:
+      Origin: "http://localhost"
+      RedirectPath: "/ingestor"
     OAuth2:
       ClientID: "ingestor"
       RedirectURL: "http://localhost:8888/callback"
