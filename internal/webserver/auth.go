@@ -155,10 +155,6 @@ func (i *IngestorWebServerImplemenation) GetCallback(ctx context.Context, reques
 	}
 
 	// set user session cookie
-	userSession.Options(sessions.Options{
-		HttpOnly: true,
-		MaxAge:   int(i.sessionDuration),
-	})
 	userSession.Set("expires_at", time.Now().Add(time.Second*time.Duration(i.sessionDuration)).Format(time.RFC3339Nano))
 	userSession.Set("email", userInfo.Email)
 	userSession.Set("profile", userInfo.Profile)
@@ -178,7 +174,7 @@ func (i *IngestorWebServerImplemenation) GetCallback(ctx context.Context, reques
 	// reply
 	return GetCallback302Response{
 		Headers: GetCallback302ResponseHeaders{
-			Location: i.frontendUrl,
+			Location: i.frontendOrigin + i.frontendRedirectPath,
 		},
 	}, nil
 }
@@ -202,6 +198,6 @@ func (i *IngestorWebServerImplemenation) GetLogout(ctx context.Context, request 
 	}
 
 	return GetLogout302Response{GetLogout302ResponseHeaders{
-		Location: i.frontendUrl,
+		Location: i.frontendOrigin + i.frontendRedirectPath,
 	}}, nil
 }

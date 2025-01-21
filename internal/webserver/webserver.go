@@ -41,9 +41,10 @@ func NewIngesterServer(ingestor *IngestorWebServerImplemenation, port int) *http
 	r := gin.Default()
 
 	r.Use(cors.New(cors.Config{
-		AllowAllOrigins: true,
-		AllowMethods:    []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowHeaders:    []string{"Origin", "Content-Type", "Accept"},
+		AllowOrigins:     []string{ingestor.frontendOrigin},
+		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Accept"},
+		AllowCredentials: true,
 	}))
 
 	// The route here needs to match the embedded file.
@@ -67,6 +68,7 @@ func NewIngesterServer(ingestor *IngestorWebServerImplemenation, port int) *http
 	store := cookie.NewStore(authKey, encKey)
 	store.Options(sessions.Options{
 		HttpOnly: true,
+		SameSite: http.SameSiteNoneMode,
 	})
 
 	// register types to be stored in cookies
