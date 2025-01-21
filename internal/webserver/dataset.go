@@ -18,13 +18,6 @@ func (i *IngestorWebServerImplemenation) DatasetControllerIngestDataset(ctx cont
 		return DatasetControllerIngestDataset400TextResponse(err.Error()), nil
 	}
 
-	// add collection location
-	/*dsPath, ok := metadata["sourceFolder"].(string)
-	if !ok {
-		return DatasetControllerIngestDataset400TextResponse("datasetFolder is not a string"), nil
-	}
-	metadata["sourceFolder"] = path.Join(i.pathConfig.CollectionLocation, dsPath)*/
-
 	// create and start task
 	id := uuid.New()
 	err = i.taskQueue.CreateTaskFromMetadata(id, metadata)
