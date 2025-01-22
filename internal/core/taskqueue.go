@@ -24,6 +24,7 @@ type TaskQueue struct {
 	AppContext         context.Context
 	Config             Config
 	Notifier           ProgressNotifier
+	ServiceUser        *UserCreds
 }
 
 func (w *TaskQueue) Startup() {
@@ -249,7 +250,7 @@ func TestIngestionFunction(task_context context.Context, task task.IngestionTask
 
 func (w *TaskQueue) IngestDataset(task_context context.Context, ingestionTask task.IngestionTask) task.Result {
 	start := time.Now()
-	datasetPID, err := IngestDataset(task_context, ingestionTask, w.Config, w.Notifier)
+	datasetPID, err := IngestDataset(task_context, ingestionTask, w.Config, w.ServiceUser, w.Notifier)
 	end := time.Now()
 	elapsed := end.Sub(start)
 	return task.Result{Dataset_PID: datasetPID, Elapsed_seconds: int(elapsed.Seconds()), Error: err}

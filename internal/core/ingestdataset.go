@@ -116,6 +116,7 @@ func IngestDataset(
 	task_context context.Context,
 	ingestionTask task.IngestionTask,
 	config Config,
+	serviceUser *UserCreds,
 	notifier ProgressNotifier,
 ) (string, error) {
 	var http_client = &http.Client{
@@ -214,6 +215,15 @@ func IngestDataset(
 	}
 
 	// mark dataset archivable
+
+	// if serviceUser is set, use that for markign files as ready
+	if serviceUser != nil {
+		su, _, err := datasetUtils.AuthenticateUser(http_client, SCICAT_API_URL, serviceUser.Username, serviceUser.Password)
+		if err == nil {
+			user = su
+		}
+	}
+
 	err = datasetIngestor.MarkFilesReady(http_client, SCICAT_API_URL, datasetId, user)
 	return datasetId, err
 }
