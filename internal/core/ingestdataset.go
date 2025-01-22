@@ -207,10 +207,9 @@ func IngestDataset(
 		}
 
 	case task.TransferGlobus:
-		err = GlobusTransfer(config.Transfer.Globus, ingestionTask, task_context, ingestionTask.DatasetFolder.Id, datasetFolder, fullFileArray, notifier)
-		if err != nil {
-			return datasetId, err
-		}
+		// globus doesn't work with absolute folders, this library uses sourcePrefix to adapt the path to the globus' own path from a relative path
+		relativeDatasetFolder := strings.TrimPrefix(datasetFolder, config.WebServerPaths.CollectionLocation)
+		err = GlobusTransfer(config.Transfer.Globus, ingestionTask, task_context, ingestionTask.DatasetFolder.Id, relativeDatasetFolder, fullFileArray, notifier)
 	_:
 		return datasetId, fmt.Errorf("unknown transfer method: %d", ingestionTask.TransferMethod)
 	}
