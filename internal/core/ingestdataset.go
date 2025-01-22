@@ -131,7 +131,7 @@ func IngestDataset(
 	var skipSymlinks string = "dA" // skip all simlinks
 
 	user := map[string]string{
-		"accessToken": config.Scicat.AccessToken,
+		"accessToken": ingestionTask.UserToken,
 	}
 
 	datasetFolder := ingestionTask.DatasetFolder.FolderPath
@@ -152,7 +152,7 @@ func IngestDataset(
 		}
 	}
 
-	fullUser, accessGroups, err := datasetUtils.GetUserInfoFromToken(http_client, SCICAT_API_URL, config.Scicat.AccessToken)
+	fullUser, accessGroups, err := datasetUtils.GetUserInfoFromToken(http_client, SCICAT_API_URL, ingestionTask.UserToken)
 	if err != nil {
 		return "", err
 	}

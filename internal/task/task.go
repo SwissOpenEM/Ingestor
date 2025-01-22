@@ -40,6 +40,7 @@ type IngestionTask struct {
 	DatasetMetadata map[string]interface{}
 	TransferMethod  TransferMethod
 	Cancel          context.CancelFunc
+	UserToken       string
 	status          *TaskStatus
 	statusLock      *sync.RWMutex
 }
@@ -50,7 +51,7 @@ type Result struct {
 	Error           error
 }
 
-func CreateIngestionTask(datasetFolder DatasetFolder, metadata map[string]interface{}, transferMethod TransferMethod, cancel context.CancelFunc) IngestionTask {
+func CreateIngestionTask(userToken string, datasetFolder DatasetFolder, metadata map[string]interface{}, transferMethod TransferMethod, cancel context.CancelFunc) IngestionTask {
 	return IngestionTask{
 		DatasetFolder:   datasetFolder,
 		DatasetMetadata: metadata,
@@ -58,6 +59,7 @@ func CreateIngestionTask(datasetFolder DatasetFolder, metadata map[string]interf
 		Cancel:          cancel,
 		status:          &TaskStatus{},
 		statusLock:      &sync.RWMutex{},
+		UserToken:       userToken,
 	}
 }
 

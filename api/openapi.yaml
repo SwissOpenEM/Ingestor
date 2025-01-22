@@ -377,8 +377,12 @@ components:
         metaData:
           type: string
           description: The metadata of the dataset.
+        userToken:
+          type: string
+          description: the scicat token for acting on behalf of the user
       required:
         - metaData
+        - userToken
     PostDatasetResponse:
       type: object
       properties:

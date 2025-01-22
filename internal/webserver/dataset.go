@@ -20,7 +20,7 @@ func (i *IngestorWebServerImplemenation) DatasetControllerIngestDataset(ctx cont
 
 	// create and start task
 	id := uuid.New()
-	err = i.taskQueue.CreateTaskFromMetadata(id, metadata)
+	err = i.taskQueue.CreateTaskFromMetadata(request.Body.UserToken, id, metadata)
 	if err != nil {
 		if _, ok := err.(*os.PathError); ok {
 			return nil, fmt.Errorf("could not create the task due to a path error: %s", err.Error())

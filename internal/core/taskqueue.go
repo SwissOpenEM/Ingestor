@@ -38,14 +38,14 @@ func (w *TaskQueue) Startup() {
 	}
 }
 
-func (w *TaskQueue) CreateTaskFromDatasetFolder(folder task.DatasetFolder) error {
+func (w *TaskQueue) CreateTaskFromDatasetFolder(userToken string, folder task.DatasetFolder) error {
 	transferMethod := w.getTransferMethod()
 
 	var unlockOnce sync.Once
 	w.taskListLock.Lock()
 	defer unlockOnce.Do(w.taskListLock.Unlock)
 
-	task := task.CreateIngestionTask(folder, map[string]interface{}{}, transferMethod, nil)
+	task := task.CreateIngestionTask(userToken, folder, map[string]interface{}{}, transferMethod, nil)
 	_, found := w.datasetUploadTasks.Get(task.DatasetFolder.Id)
 	if found {
 		return errors.New("key exists")
@@ -58,9 +58,9 @@ func (w *TaskQueue) CreateTaskFromDatasetFolder(folder task.DatasetFolder) error
 	return nil
 }
 
-func (w *TaskQueue) CreateTaskFromMetadata(id uuid.UUID, metadataMap map[string]interface{}) error {
+func (w *TaskQueue) CreateTaskFromMetadata(userToken string, id uuid.UUID, metadataMap map[string]interface{}) error {
 	transferMethod := w.getTransferMethod()
-	task := task.CreateIngestionTask(task.DatasetFolder{Id: id}, metadataMap, transferMethod, nil)
+	task := task.CreateIngestionTask(userToken, task.DatasetFolder{Id: id}, metadataMap, transferMethod, nil)
 
 	// extract dataset folder path (sourceFolder)
 	var ok bool
