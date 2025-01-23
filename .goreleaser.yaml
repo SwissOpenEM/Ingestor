@@ -76,6 +76,7 @@ builds:
     dir: ./cmd/openem-ingestor-service
     goos:
       - linux
+      - windows
     goarch:
       - amd64
     binary: openem-ingestor-service
@@ -110,7 +111,9 @@ archives:
     builds: 
       - openem-ingestor-service
     format: tar.gz
-
+    format_overrides:
+      - goos: windows
+        format: zip
     wrap_in_directory: true
     name_template: >-
       {{ .ProjectName }}_service_
