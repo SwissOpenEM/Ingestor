@@ -110,7 +110,10 @@ jobs:
         with:
           # Optional: pass GITHUB_TOKEN to avoid rate limiting.
           token: ${{ secrets.GITHUB_TOKEN }}
-  
+
+      - name: Build Service
+        run: go build -C ./cmd/openem-ingestor-service/ -v 
+
       - name: Test Internal Package
         run: |
           go generate ./internal/webserver
