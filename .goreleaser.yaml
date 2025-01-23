@@ -21,50 +21,51 @@ before:
     - go generate ./...
 
 builds:
-  # The app build is invoked via wails and binary copied manually to the expected output folder
-  - id: openem-ingestor-app-linux
-    hooks:
-        pre:
-        - cmd: mkdir {{dir .Path}}
-        post:
-        - dir: cmd/openem-ingestor-app
-          cmd: wails build -platform {{ .Os }} -clean -ldflags "-s -w  -X 'main.version={{.Version}}'" -trimpath -o {{base .Path}}
-          output: true
-        - dir: cmd/openem-ingestor-app
-          cmd: cp build/bin/{{base .Path}} {{dir .Path}}/
-          output: true
-    env:
-      - CGO_ENABLED=0
-    dir: ./cmd/openem-ingestor-app
-    goos:
-      - linux
-    goarch:
-      - amd64
-    main: .
-    binary: openem-ingestor-app
-    tool: echo 
+  # Disable app release for now
+  # # The app build is invoked via wails and binary copied manually to the expected output folder
+  # - id: openem-ingestor-app-linux
+  #   hooks:
+  #       pre:
+  #       - cmd: mkdir -p {{dir .Path}}
+  #       post:
+  #       - dir: cmd/openem-ingestor-app
+  #         cmd: wails build -platform {{ .Os }} -clean -ldflags "-s -w  -X 'main.version={{.Version}}'" -trimpath -o {{base .Path}}
+  #         output: true
+  #       - dir: cmd/openem-ingestor-app
+  #         cmd: cp build/bin/{{base .Path}} {{dir .Path}}/
+  #         output: true
+  #   env:
+  #     - CGO_ENABLED=0
+  #   dir: ./cmd/openem-ingestor-app
+  #   goos:
+  #     - linux
+  #   goarch:
+  #     - amd64
+  #   main: .
+  #   binary: openem-ingestor-app
+  #   tool: echo 
     
-  - id: openem-ingestor-app-win
-    hooks:
-        pre:
-        - cmd: mkdir {{dir .Path}}
-        post:
-        - dir: cmd/openem-ingestor-app
-          cmd: wails build -platform {{ .Os }} -clean -windowsconsole -ldflags "-s -w  -X 'main.version={{.Version}}'" -trimpath -o {{base .Path}}
-          output: true
-        - dir: cmd/openem-ingestor-app
-          cmd: cp build/bin/{{base .Path}} {{dir .Path}}/
-          output: true
-    env:
-      - CGO_ENABLED=0
-    dir: ./cmd/openem-ingestor-app
-    goos:
-      - windows
-    goarch:
-      - amd64
-    main: .
-    binary: openem-ingestor-app
-    tool: echo 
+  # - id: openem-ingestor-app-win
+  #   hooks:
+  #       pre:
+  #       - cmd: mkdir -p {{dir .Path}}
+  #       post:
+  #       - dir: cmd/openem-ingestor-app
+  #         cmd: wails build -platform {{ .Os }} -clean -windowsconsole -ldflags "-s -w  -X 'main.version={{.Version}}'" -trimpath -o {{base .Path}}
+  #         output: true
+  #       - dir: cmd/openem-ingestor-app
+  #         cmd: cp build/bin/{{base .Path}} {{dir .Path}}/
+  #         output: true
+  #   env:
+  #     - CGO_ENABLED=0
+  #   dir: ./cmd/openem-ingestor-app
+  #   goos:
+  #     - windows
+  #   goarch:
+  #     - amd64
+  #   main: .
+  #   binary: openem-ingestor-app
+  #   tool: echo 
 
   - id: "openem-ingestor-service"
     flags:
@@ -76,41 +77,45 @@ builds:
     dir: ./cmd/openem-ingestor-service
     goos:
       - linux
+      - windows
     goarch:
       - amd64
     binary: openem-ingestor-service
 
 archives:
-  - id: "openem-ingestor-app"
-    builds: 
-      - openem-ingestor-app-linux
-      - openem-ingestor-app-win
-    format: tar.gz
+  # Disable app build
+  # - id: "openem-ingestor-app"
+  #   builds: 
+  #     - openem-ingestor-app-linux
+  #     - openem-ingestor-app-win
+  #   format: tar.gz
 
-    wrap_in_directory: true
-    name_template: >-
-      {{ .ProjectName }}_app_
-      {{- .Version }}_
-      {{- title .Os }}_
-      {{- if eq .Arch "amd64" }}x86_64
-      {{- else if eq .Arch "386" }}i386
-      {{- else }}{{ .Arch }}{{ end }}
-      {{- if .Arm }}v{{ .Arm }}{{ end }}
-    # use zip for windows archives
-    format_overrides:
-      - goos: windows
-        format: zip
-    files:
-    - src: configs/*.yaml
-      dst: ./
-    - src: configs/schemas/*.json
-      dst: schemas
+  #   wrap_in_directory: true
+  #   name_template: >-
+  #     {{ .ProjectName }}_app_
+  #     {{- .Version }}_
+  #     {{- title .Os }}_
+  #     {{- if eq .Arch "amd64" }}x86_64
+  #     {{- else if eq .Arch "386" }}i386
+  #     {{- else }}{{ .Arch }}{{ end }}
+  #     {{- if .Arm }}v{{ .Arm }}{{ end }}
+  #   # use zip for windows archives
+  #   format_overrides:
+  #     - goos: windows
+  #       format: zip
+  #   files:
+  #   - src: configs/*.yaml
+  #     dst: ./
+  #   - src: configs/schemas/*.json
+  #     dst: schemas
 
   - id: "openem-ingestor-service"
     builds: 
       - openem-ingestor-service
     format: tar.gz
-
+    format_overrides:
+      - goos: windows
+        format: zip
     wrap_in_directory: true
     name_template: >-
       {{ .ProjectName }}_service_
