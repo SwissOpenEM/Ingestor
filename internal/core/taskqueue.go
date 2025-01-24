@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
 	"path"
 	"path/filepath"
 	"strings"
@@ -14,23 +13,25 @@ import (
 	task "github.com/SwissOpenEM/Ingestor/internal/task"
 	"github.com/elliotchance/orderedmap/v2"
 	"github.com/google/uuid"
+	"github.com/paulscherrerinstitute/scicat-cli/v3/datasetIngestor"
 )
 
 type TaskQueue struct {
 	taskListLock       sync.RWMutex                                          // locking mechanism for uploadIds and datasetUploadTasks
-	datasetUploadTasks *orderedmap.OrderedMap[uuid.UUID, task.IngestionTask] // For storing requests, mapped to the id's above
-	inputChannel       chan task.IngestionTask                               // Requests to upload data are put into this channel
+	datasetUploadTasks *orderedmap.OrderedMap[uuid.UUID, *task.TransferTask] // For storing requests, mapped to the id's above
+	inputChannel       chan *task.TransferTask                               // Requests to upload data are put into this channel
 	resultChannel      chan task.Result                                      // The result of the upload is put into this channel
-	AppContext         context.Context
-	Config             Config
-	Notifier           ProgressNotifier
-	ServiceUser        *UserCreds
+
+	AppContext  context.Context
+	Config      Config
+	Notifier    ProgressNotifier
+	ServiceUser *UserCreds
 }
 
 func (w *TaskQueue) Startup() {
-	w.inputChannel = make(chan task.IngestionTask)
+	w.inputChannel = make(chan *task.TransferTask)
 	w.resultChannel = make(chan task.Result)
-	w.datasetUploadTasks = orderedmap.NewOrderedMap[uuid.UUID, task.IngestionTask]()
+	w.datasetUploadTasks = orderedmap.NewOrderedMap[uuid.UUID, *task.TransferTask]()
 
 	// start multiple go routines/workers that will listen on the input channel
 	for worker := 1; worker <= w.Config.Misc.ConcurrencyLimit; worker++ {
@@ -38,36 +39,10 @@ func (w *TaskQueue) Startup() {
 	}
 }
 
-func (w *TaskQueue) CreateTaskFromDatasetFolder(userToken string, folder task.DatasetFolder) error {
+func (w *TaskQueue) AddTransferTask(datasetId string, fileList []datasetIngestor.Datafile, metadataMap map[string]interface{}, taskId uuid.UUID) error {
 	transferMethod := w.getTransferMethod()
+	task := task.CreateTransferTask(datasetId, fileList, task.DatasetFolder{Id: taskId}, metadataMap, transferMethod, nil)
 
-	var unlockOnce sync.Once
-	w.taskListLock.Lock()
-	defer unlockOnce.Do(w.taskListLock.Unlock)
-
-	task := task.CreateIngestionTask(userToken, folder, map[string]interface{}{}, transferMethod, nil)
-	_, found := w.datasetUploadTasks.Get(task.DatasetFolder.Id)
-	if found {
-		return errors.New("key exists")
-	}
-
-	w.datasetUploadTasks.Set(task.DatasetFolder.Id, task)
-	unlockOnce.Do(w.taskListLock.Unlock)
-	w.Notifier.OnTaskAdded(task.DatasetFolder.Id, task.DatasetFolder.FolderPath)
-
-	return nil
-}
-
-func (w *TaskQueue) CreateTaskFromMetadata(userToken string, id uuid.UUID, metadataMap map[string]interface{}) error {
-	transferMethod := w.getTransferMethod()
-	task := task.CreateIngestionTask(userToken, task.DatasetFolder{Id: id}, metadataMap, transferMethod, nil)
-
-	// extract dataset folder path (sourceFolder)
-	var ok bool
-	_, ok = metadataMap["sourceFolder"]
-	if !ok {
-		return errors.New("no sourceFolder specified in metadata")
-	}
 	switch v := metadataMap["sourceFolder"].(type) {
 	case string:
 		// the collection location has to be added to get the absolute path of the dataset
@@ -76,19 +51,9 @@ func (w *TaskQueue) CreateTaskFromMetadata(userToken string, id uuid.UUID, metad
 		return errors.New("sourceFolder in metadata isn't a string")
 	}
 
-	// check if the folder exists
-	fileInfo, err := os.Stat(task.DatasetFolder.FolderPath)
-	if err != nil {
-		return err
-	}
-	if !fileInfo.IsDir() {
-		return errors.New("'sourceFolder' is not a directory")
-	}
-
-	// add to task list
 	w.taskListLock.Lock()
 	defer w.taskListLock.Unlock()
-	w.datasetUploadTasks.Set(id, task)
+	w.datasetUploadTasks.Set(taskId, &task)
 
 	return nil
 }
@@ -100,7 +65,7 @@ func (w *TaskQueue) startWorker() {
 
 		ingestionTask.Cancel = cancel
 
-		result := w.IngestDataset(task_context, ingestionTask)
+		result := w.TransferDataset(task_context, ingestionTask)
 		if result.Error == nil {
 			falseVal := false
 			trueVal := true
@@ -235,7 +200,7 @@ func (w *TaskQueue) GetTaskFolder(id uuid.UUID) string {
 	return ""
 }
 
-func TestIngestionFunction(task_context context.Context, task task.IngestionTask, config Config, notifier ProgressNotifier) (string, error) {
+func TestIngestionFunction(task_context context.Context, task task.TransferTask, config Config, notifier ProgressNotifier) (string, error) {
 	start := time.Now()
 
 	for i := 0; i < 10; i++ {
@@ -248,12 +213,12 @@ func TestIngestionFunction(task_context context.Context, task task.IngestionTask
 
 }
 
-func (w *TaskQueue) IngestDataset(task_context context.Context, ingestionTask task.IngestionTask) task.Result {
+func (w *TaskQueue) TransferDataset(taskCtx context.Context, it *task.TransferTask) task.Result {
 	start := time.Now()
-	datasetPID, err := IngestDataset(task_context, ingestionTask, w.Config, w.ServiceUser, w.Notifier)
+	err := TransferDataset(taskCtx, it, *w.ServiceUser, w.Config, w.Notifier)
 	end := time.Now()
 	elapsed := end.Sub(start)
-	return task.Result{Dataset_PID: datasetPID, Elapsed_seconds: int(elapsed.Seconds()), Error: err}
+	return task.Result{Elapsed_seconds: int(elapsed.Seconds()), Error: err}
 }
 
 func (w *TaskQueue) getTransferMethod() (transferMethod task.TransferMethod) {

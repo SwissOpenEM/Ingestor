@@ -107,7 +107,7 @@ func (a *App) SelectFolder() {
 		return
 	}
 
-	err = a.taskqueue.CreateTaskFromDatasetFolder(a.config.Scicat.AccessToken, folder)
+	//err = a.taskqueue.CreateTaskFromDatasetFolder(a.config.Scicat.AccessToken, folder)
 	if err != nil {
 		return
 	}

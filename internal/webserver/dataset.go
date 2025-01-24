@@ -5,8 +5,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path"
 	"slices"
 
+	"github.com/SwissOpenEM/Ingestor/internal/core"
 	"github.com/google/uuid"
 )
 
@@ -18,9 +20,32 @@ func (i *IngestorWebServerImplemenation) DatasetControllerIngestDataset(ctx cont
 		return DatasetControllerIngestDataset400TextResponse(err.Error()), nil
 	}
 
-	// create and start task
-	id := uuid.New()
-	err = i.taskQueue.CreateTaskFromMetadata(request.Body.UserToken, id, metadata)
+	fp, ok := metadata["datasetFolder"]
+	if !ok {
+		return DatasetControllerIngestDataset400TextResponse("datasetFolder is not present in the metadata"), nil
+	}
+	folderPath, ok := fp.(string)
+	if !ok {
+		return DatasetControllerIngestDataset400TextResponse("datasetFolder is not a string"), nil
+	}
+	folderPath = path.Join(i.pathConfig.CollectionLocation, folderPath)
+
+	// check if folder exists
+	err = core.CheckIfFolderExists(folderPath)
+	if err != nil {
+		return DatasetControllerIngestDataset400TextResponse(fmt.Sprintf("dataset location lookup error: %s", err.Error())), nil
+	}
+
+	// do catalogue insertion
+	datasetId, totalSize, fileList, err := core.AddDatasetToScicat(metadata, folderPath, request.Body.UserToken, i.taskQueue.Config.Scicat.Host)
+	_ = totalSize
+	if err != nil {
+		return DatasetControllerIngestDataset400TextResponse(err.Error()), nil
+	}
+
+	// create and start transfer task
+	taskId := uuid.New()
+	err = i.taskQueue.AddTransferTask(datasetId, fileList, metadata, taskId)
 	if err != nil {
 		if _, ok := err.(*os.PathError); ok {
 			return nil, fmt.Errorf("could not create the task due to a path error: %s", err.Error())
@@ -28,17 +53,17 @@ func (i *IngestorWebServerImplemenation) DatasetControllerIngestDataset(ctx cont
 			return DatasetControllerIngestDataset400TextResponse("You don't have the right to access the dataset folder or it doesn't exist"), nil
 		}
 	}
-	i.taskQueue.ScheduleTask(id)
+	i.taskQueue.ScheduleTask(taskId)
 
 	// NOTE: because of the way the tasks are created, right now it'll search for a metadata.json
 	//   in the dataset folder to get the metadata, we can't pass on the one we got through this
 	//   request
 	// TODO: change this so that a task will accept a struct containing the dataset
 	status := "started"
-	idString := id.String()
+	idString := taskId.String()
 	return DatasetControllerIngestDataset200JSONResponse{
-		IngestId: &idString,
-		Status:   &status,
+		TransferId: idString,
+		Status:     &status,
 	}, nil
 }
 

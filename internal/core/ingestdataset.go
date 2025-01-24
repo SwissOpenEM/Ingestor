@@ -13,7 +13,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/SwissOpenEM/Ingestor/internal/metadataextractor"
 	"github.com/SwissOpenEM/Ingestor/internal/task"
 	"github.com/fatih/color"
 	"github.com/paulscherrerinstitute/scicat-cli/v3/datasetIngestor"
@@ -112,18 +111,29 @@ func createLocalFilenameFilterCallback(illegalFileNamesCounter *uint) func(filep
 	}
 }
 
-func IngestDataset(
-	task_context context.Context,
-	ingestionTask task.IngestionTask,
-	config Config,
-	serviceUser *UserCreds,
-	notifier ProgressNotifier,
-) (string, error) {
+func CheckIfFolderExists(path string) error {
+	// check if the folder exists
+	fileInfo, err := os.Stat(path)
+	if err != nil {
+		return err
+	}
+	if !fileInfo.IsDir() {
+		return errors.New("'sourceFolder' is not a directory")
+	}
+	return nil
+}
+
+func AddDatasetToScicat(
+	metaDataMap map[string]interface{},
+	folderPath string,
+	userToken string,
+	scicatUrl string,
+) (datasetId string, totalSize int64, fileList []datasetIngestor.Datafile, err error) {
 	var http_client = &http.Client{
 		Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}},
 		Timeout:   120 * time.Second}
 
-	SCICAT_API_URL := config.Scicat.Host
+	SCICAT_API_URL := scicatUrl
 
 	const TAPECOPIES = 2 // dummy value, unused
 	const DATASETFILELISTTXT = ""
@@ -131,36 +141,20 @@ func IngestDataset(
 	var skipSymlinks string = "dA" // skip all simlinks
 
 	user := map[string]string{
-		"accessToken": ingestionTask.UserToken,
+		"accessToken": userToken,
 	}
 
-	datasetFolder := ingestionTask.DatasetFolder.FolderPath
+	datasetFolder := folderPath
 
-	var metaDataMap map[string]interface{}
-	if len(ingestionTask.DatasetMetadata) > 0 {
-		metaDataMap = ingestionTask.DatasetMetadata
-	} else {
-		var err error
-		metadatafile := metadataextractor.MetadataFilePath(datasetFolder)
-		if _, err = os.Stat(metadatafile); errors.Is(err, os.ErrNotExist) {
-			return "", err
-		}
-
-		metaDataMap, err = datasetIngestor.ReadMetadataFromFile(metadatafile)
-		if err != nil {
-			return "", err
-		}
-	}
-
-	fullUser, accessGroups, err := datasetUtils.GetUserInfoFromToken(http_client, SCICAT_API_URL, ingestionTask.UserToken)
+	fullUser, accessGroups, err := datasetUtils.GetUserInfoFromToken(http_client, SCICAT_API_URL, userToken)
 	if err != nil {
-		return "", err
+		return datasetId, totalSize, fileList, err
 	}
 
 	// check if dataset already exists (identified by source folder)
 	_, _, err = datasetIngestor.CheckMetadata(http_client, SCICAT_API_URL, metaDataMap, fullUser, accessGroups)
 	if err != nil {
-		return "", err
+		return datasetId, totalSize, fileList, err
 	}
 
 	var skippedLinks uint = 0
@@ -169,61 +163,71 @@ func IngestDataset(
 	localFilepathFilterCallback := createLocalFilenameFilterCallback(&illegalFileNames)
 
 	// collect (local) files
-	fullFileArray, startTime, endTime, owner, numFiles, totalSize, err := datasetIngestor.GetLocalFileList(datasetFolder, DATASETFILELISTTXT, localSymlinkCallback, localFilepathFilterCallback)
+	fileList, startTime, endTime, owner, numFiles, totalSize, err := datasetIngestor.GetLocalFileList(datasetFolder, DATASETFILELISTTXT, localSymlinkCallback, localFilepathFilterCallback)
 	if err != nil {
 		log.Printf("")
-		return "", err
+		return datasetId, totalSize, fileList, err
 	}
 
 	// size & filecount checks
 	if totalSize == 0 {
-		return "", errors.New("can't ingest: the total size of the dataset is 0")
+		return datasetId, totalSize, fileList, errors.New("can't ingest: the total size of the dataset is 0")
 	}
 	if numFiles > MAX_FILES {
-		return "", fmt.Errorf("can't ingest: the number of files (%d) exceeds the max. allowed (%d)", numFiles, MAX_FILES)
+		return datasetId, totalSize, fileList, fmt.Errorf("can't ingest: the number of files (%d) exceeds the max. allowed (%d)", numFiles, MAX_FILES)
 	}
 
 	originalMetaDataMap := map[string]string{}
 	datasetIngestor.UpdateMetaData(http_client, SCICAT_API_URL, user, originalMetaDataMap, metaDataMap, startTime, endTime, owner, TAPECOPIES)
-
-	intTotalSize := int(totalSize)
-	totalFiles := len(fullFileArray)
-	trueVal := true
-	ingestionTask.SetStatus(nil, &intTotalSize, nil, &totalFiles, nil, &trueVal, nil, nil)
 
 	metaDataMap["datasetlifecycle"] = map[string]interface{}{}
 	metaDataMap["datasetlifecycle"].(map[string]interface{})["isOnCentralDisk"] = false
 	metaDataMap["datasetlifecycle"].(map[string]interface{})["archiveStatusMessage"] = "filesNotYetAvailable"
 	metaDataMap["datasetlifecycle"].(map[string]interface{})["archivable"] = false
 
-	datasetId, err := datasetIngestor.IngestDataset(http_client, SCICAT_API_URL, metaDataMap, fullFileArray, user)
+	// NOTE: scicat-cli considers "ingestion" as just inserting the dataset into scicat and adding the orig datablocks
+	datasetId, err = datasetIngestor.IngestDataset(http_client, SCICAT_API_URL, metaDataMap, fileList, user)
 
 	// TODO: add attachments here if it's going to be needed
 
-	switch ingestionTask.TransferMethod {
+	return datasetId, totalSize, fileList, err
+}
+
+func TransferDataset(
+	task_context context.Context,
+	it *task.TransferTask,
+	serviceUser UserCreds,
+	config Config,
+	notifier ProgressNotifier,
+) error {
+	datasetId := it.GetDatasetId()
+	datasetFolder := it.DatasetFolder.FolderPath
+	fileList := it.GetFileList()
+	var err error
+	var http_client = &http.Client{
+		Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}},
+		Timeout:   120 * time.Second}
+
+	switch it.TransferMethod {
 	case task.TransferS3:
-		_, err = UploadS3(task_context, datasetId, datasetFolder, ingestionTask.DatasetFolder.Id, config.Transfer.S3, notifier)
+		_, err = UploadS3(task_context, datasetId, datasetFolder, it.DatasetFolder.Id, config.Transfer.S3, notifier)
 	case task.TransferGlobus:
 		// globus doesn't work with absolute folders, this library uses sourcePrefix to adapt the path to the globus' own path from a relative path
 		relativeDatasetFolder := strings.TrimPrefix(datasetFolder, config.WebServer.CollectionLocation)
-		err = GlobusTransfer(config.Transfer.Globus, ingestionTask, task_context, ingestionTask.DatasetFolder.Id, relativeDatasetFolder, fullFileArray, notifier)
+		err = GlobusTransfer(config.Transfer.Globus, it, task_context, it.DatasetFolder.Id, relativeDatasetFolder, fileList, notifier)
 	_:
 	}
 
 	if err != nil {
-		return datasetId, err
+		return err
 	}
 
 	// mark dataset archivable
-
-	// if serviceUser is set, use that for markign files as ready
-	if serviceUser != nil {
-		su, _, err := datasetUtils.AuthenticateUser(http_client, SCICAT_API_URL, serviceUser.Username, serviceUser.Password)
-		if err == nil {
-			user = su
-		}
+	user, _, err := datasetUtils.AuthenticateUser(http_client, config.Scicat.Host, serviceUser.Username, serviceUser.Password)
+	if err != nil {
+		return err
 	}
 
-	err = datasetIngestor.MarkFilesReady(http_client, SCICAT_API_URL, datasetId, user)
-	return datasetId, err
+	err = datasetIngestor.MarkFilesReady(http_client, config.Scicat.Host, datasetId, user)
+	return err
 }

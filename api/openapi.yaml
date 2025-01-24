@@ -386,12 +386,14 @@ components:
     PostDatasetResponse:
       type: object
       properties:
-        ingestId:
+        transferId:
           type: string
-          description: The unique ingestion id of the dataset.
+          description: The unique transfer id of the dataset transfer job.
         status:
           type: string
-          description: The status of the ingestion. Can be used to send a message back to the ui.
+          description: The status of the transfer. Can be used to send a message back to the ui.
+      required:
+        - transferId
     TransferItem:
       type: object
       properties:
@@ -399,6 +401,8 @@ components:
           type: string
         status:
           type: string
+      required:
+        - transerId
     GetTransferResponse:
       type: object
       properties:
@@ -412,18 +416,22 @@ components:
     DeleteTransferRequest:
       type: object
       properties:
-        ingestId:
+        transferId:
           type: string
-          description: Ingestion id to abort the ingestion
+          description: id of the transfer that should be cancelled
+      required:
+        - transferId
     DeleteTransferResponse:
       type: object
       properties:
-        ingestId:
+        transferId:
           type: string
-          description: Ingestion id to abort the ingestion
+          description: Transfer id affected
         status:
           type: string
-          description: New status of the ingestion.
+          description: New status of the transfer.
+      required:
+        - transferId
     OtherVersionResponse:
       type: object
       properties:
