@@ -20,13 +20,13 @@ func (i *IngestorWebServerImplemenation) DatasetControllerIngestDataset(ctx cont
 		return DatasetControllerIngestDataset400TextResponse(err.Error()), nil
 	}
 
-	fp, ok := metadata["datasetFolder"]
+	fp, ok := metadata["sourceFolder"]
 	if !ok {
-		return DatasetControllerIngestDataset400TextResponse("datasetFolder is not present in the metadata"), nil
+		return DatasetControllerIngestDataset400TextResponse("sourceFolder is not present in the metadata"), nil
 	}
 	folderPath, ok := fp.(string)
 	if !ok {
-		return DatasetControllerIngestDataset400TextResponse("datasetFolder is not a string"), nil
+		return DatasetControllerIngestDataset400TextResponse("sourceFolder is not a string"), nil
 	}
 	folderPath = path.Join(i.pathConfig.CollectionLocation, folderPath)
 

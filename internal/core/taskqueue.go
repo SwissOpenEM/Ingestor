@@ -60,21 +60,21 @@ func (w *TaskQueue) AddTransferTask(datasetId string, fileList []datasetIngestor
 
 // Go routine that listens on the channel continously for upload requests and executes uploads.
 func (w *TaskQueue) startWorker() {
-	for ingestionTask := range w.inputChannel {
+	for transferTask := range w.inputChannel {
 		task_context, cancel := context.WithCancel(w.AppContext)
 
-		ingestionTask.Cancel = cancel
+		transferTask.Cancel = cancel
 
-		result := w.TransferDataset(task_context, ingestionTask)
+		result := w.TransferDataset(task_context, transferTask)
 		if result.Error == nil {
 			falseVal := false
 			trueVal := true
 			message := "finished"
-			ingestionTask.SetStatus(nil, nil, nil, nil, &falseVal, nil, &trueVal, &message)
+			transferTask.SetStatus(nil, nil, nil, nil, &falseVal, nil, &trueVal, &message)
 		} else {
 			trueVal := true
 			message := fmt.Sprintf("failed - error: %s", result.Error.Error())
-			ingestionTask.SetStatus(nil, nil, nil, nil, &trueVal, nil, &trueVal, &message)
+			transferTask.SetStatus(nil, nil, nil, nil, &trueVal, nil, &trueVal, &message)
 		}
 		w.resultChannel <- result
 	}
@@ -215,7 +215,7 @@ func TestIngestionFunction(task_context context.Context, task task.TransferTask,
 
 func (w *TaskQueue) TransferDataset(taskCtx context.Context, it *task.TransferTask) task.Result {
 	start := time.Now()
-	err := TransferDataset(taskCtx, it, *w.ServiceUser, w.Config, w.Notifier)
+	err := TransferDataset(taskCtx, it, w.ServiceUser, w.Config, w.Notifier)
 	end := time.Now()
 	elapsed := end.Sub(start)
 	return task.Result{Elapsed_seconds: int(elapsed.Seconds()), Error: err}

@@ -196,7 +196,7 @@ func AddDatasetToScicat(
 func TransferDataset(
 	task_context context.Context,
 	it *task.TransferTask,
-	serviceUser UserCreds,
+	serviceUser *UserCreds,
 	config Config,
 	notifier ProgressNotifier,
 ) error {
@@ -223,11 +223,13 @@ func TransferDataset(
 	}
 
 	// mark dataset archivable
+	if serviceUser == nil {
+		return fmt.Errorf("no service user was set, can't mark dataset as archivable")
+	}
 	user, _, err := datasetUtils.AuthenticateUser(http_client, config.Scicat.Host, serviceUser.Username, serviceUser.Password)
 	if err != nil {
 		return err
 	}
-
 	err = datasetIngestor.MarkFilesReady(http_client, config.Scicat.Host, datasetId, user)
 	return err
 }
