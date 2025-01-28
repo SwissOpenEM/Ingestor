@@ -317,12 +317,19 @@ paths:
         Starts a metadata extraction task on the ingestor side, with live updates about the progress using Server Side Events (SSE).
         It will close the connection with the final message containing the metadata json.
       operationId: extractMetadata
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/GetMetadataRequest"
+      parameters:
+        - name: filePath
+          in: query
+          required: true
+          schema:
+            type: string
+            description: The file path of the selected data record.
+        - name: methodName
+          in: query
+          required: true
+          schema:
+            type: string
+            description: The selected methodName for data extraction.
       responses:
         '200':
           description: |
@@ -507,18 +514,6 @@ components:
         - name
         - schema
       description: a method item describes the method's name and schema
-    GetMetadataRequest:
-      type: object
-      properties:
-        filePath:
-          type: string
-          description: The file path of the selected data record.
-        methodName:
-          type: string
-          description: The selected methodName for data extraction.
-      required:
-        - filePath
-        - methodName
     GetDatasetResponse:
       type: object
       properties:
