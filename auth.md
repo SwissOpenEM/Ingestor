@@ -1,3 +1,5 @@
+
+
 ```mermaid
 sequenceDiagram
   autonumber
@@ -14,17 +16,18 @@ sequenceDiagram
   opt Option A
     B --) I: Login with Scicat-JWT
     I --) B: Ingestor-JWT
-    B --> I: ingest (Ingestor-JWT) passing Scicat-JWT
-    I --> B: POST /dataset (Scicat-JWT)
-    I --> G: Transfer (??)
-    I --> S: PATH /dataset (Service User)
+    B --) I: ingest (Ingestor-JWT) passing Scicat-JWT
+    I --) B: POST /dataset (Scicat-JWT)
+    I --) G: Transfer (??)
+    I --) S: PATH /dataset (Service User)
   end
 
   opt Option B
     B --) I: Ingest (Scicat-JWT)
     I --) B: Validate Scicat-JWT (/api/v3/users/{id}/userIdentity)
-    I --> B: POST /dataset (Scicat-JWT)
-    I --> G: Transfer (??)
+    I --) B: POST /dataset (Scicat-JWT)
+    I --) G: Transfer (??)
+    S --) S: PATCH /dataset (service account)
   end
 
   opt ETHZ
@@ -34,8 +37,8 @@ sequenceDiagram
     I --) A: POST presigned URL (transfer-JWT)
     A --) I: presigned URLs
     I --) A: Transfer data (presigned URLs)
-    I --> A: Complete upload (transfer-JWT)
-    A --> S: PATCH /dataset (service account)
+    I --) A: Complete upload (transfer-JWT)
+    A --) S: PATCH /dataset (service account)
   end
 
 ```
