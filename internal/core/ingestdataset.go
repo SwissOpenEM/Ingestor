@@ -226,7 +226,7 @@ func TransferDataset(
 	if serviceUser == nil {
 		return fmt.Errorf("no service user was set, can't mark dataset as archivable")
 	}
-	user, _, err := datasetUtils.AuthenticateUser(http_client, config.Scicat.Host, serviceUser.Username, serviceUser.Password)
+	user, _, err := datasetUtils.AuthenticateUser(http_client, config.Scicat.Host, serviceUser.Username, serviceUser.Password, false)
 	if err != nil {
 		return err
 	}
