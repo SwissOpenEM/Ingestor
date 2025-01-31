@@ -290,6 +290,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/UserInfo"
+        "400":
+          description: "when auth is disabled, an error 400 is sent with a message"
+          content:
+            text/plain:
+              schema:
+                type: string
         "500":
           description: "internal server error"
           content:
