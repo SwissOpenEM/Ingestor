@@ -12,8 +12,12 @@ type idTokenClaims struct {
 }
 
 type keycloakClaims struct {
-	RealmAccess    rolesList            `json:"realm_access,omitempty"`
-	ResourceAccess map[string]rolesList `json:"resource_access,omitempty"`
+	RealmAccess       rolesList            `json:"realm_access,omitempty"`
+	ResourceAccess    map[string]rolesList `json:"resource_access,omitempty"`
+	Name              string               `json:"name,omitempty"`               // "name": "OIDC User"
+	PreferredUsername string               `json:"preferred_username,omitempty"` // "preferred_username": "oidc-user"
+	GivenName         string               `json:"given_name,omitempty"`         // "given_name": "OIDC"
+	FamilyName        string               `json:"family_name,omitempty"`        // "family_name": "User"
 	idTokenClaims
 	jwt.RegisteredClaims
 }
