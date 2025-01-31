@@ -207,9 +207,13 @@ func (i *IngestorWebServerImplemenation) GetLogout(ctx context.Context, request 
 }
 
 func (i *IngestorWebServerImplemenation) GetUserinfo(ctx context.Context, request GetUserinfoRequestObject) (GetUserinfoResponseObject, error) {
+	if i.taskQueue.Config.WebServer.AuthConf.Disable {
+		return GetUserinfo500TextResponse("auth is disabled"), nil
+	}
+
 	ginCtx, ok := ctx.(*gin.Context)
 	if !ok {
-		return GetUserinfo500TextResponse("can't access context"), nil
+		return GetUserinfo400TextResponse("can't access context"), nil
 	}
 
 	userSession := sessions.DefaultMany(ginCtx, "user")
