@@ -27,7 +27,7 @@ func (r ResponseWriter) VisitExtractMetadataResponse(writer http.ResponseWriter)
 	g.Writer.Header().Add("Connection", "keep-alive")
 
 	// append collection path to input and generate extractor output filepath
-	fullPath := path.Join(r.collectionLocation, r.req.Body.FilePath)
+	fullPath := path.Join(r.collectionLocation, r.req.Params.FilePath)
 
 	// extract metadata
 	cancelCtx, cancel := context.WithCancel(r.ctx)
@@ -46,7 +46,7 @@ func (r ResponseWriter) VisitExtractMetadataResponse(writer http.ResponseWriter)
 				}
 			}
 			var err error
-			progress, err = r.metp.NewTask(cancelCtx, fullPath, r.req.Body.MethodName)
+			progress, err = r.metp.NewTask(cancelCtx, fullPath, r.req.Params.MethodName)
 			if err == nil {
 				g.SSEvent("message", "Your metadata extraction request is in the queue.")
 				queueing = false
