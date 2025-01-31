@@ -104,7 +104,7 @@ func globusCheckTransfer(globusTaskId string) (bytesTransferred int, filesTransf
 	}
 }
 
-func GlobusTransfer(globusConf task.GlobusTransferConfig, task task.IngestionTask, taskCtx context.Context, localTaskId uuid.UUID, datasetFolder string, fileList []datasetIngestor.Datafile, notifier ProgressNotifier) error {
+func GlobusTransfer(globusConf task.GlobusTransferConfig, task *task.TransferTask, taskCtx context.Context, localTaskId uuid.UUID, datasetFolder string, fileList []datasetIngestor.Datafile, notifier ProgressNotifier) error {
 	// transfer given filelist
 	var filePathList []string
 	var fileIsSymlinkList []bool

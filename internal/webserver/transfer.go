@@ -9,11 +9,7 @@ import (
 )
 
 func (i *IngestorWebServerImplemenation) TransferControllerDeleteTransfer(ctx context.Context, request TransferControllerDeleteTransferRequestObject) (TransferControllerDeleteTransferResponseObject, error) {
-	if request.Body.IngestId == nil {
-		return TransferControllerDeleteTransfer400TextResponse("Ingest ID was not specified in the request"), nil
-	}
-
-	id := *request.Body.IngestId
+	id := request.Body.TransferId
 	uuid, err := uuid.Parse(id)
 	if err != nil {
 		return TransferControllerDeleteTransfer400TextResponse(fmt.Sprintf("Ingest ID '%s' could not be parsed as uuid: %s", id, err.Error())), nil
@@ -26,8 +22,8 @@ func (i *IngestorWebServerImplemenation) TransferControllerDeleteTransfer(ctx co
 
 	status := "gone"
 	return TransferControllerDeleteTransfer200JSONResponse{
-		IngestId: &id,
-		Status:   &status,
+		TransferId: id,
+		Status:     &status,
 	}, nil
 }
 

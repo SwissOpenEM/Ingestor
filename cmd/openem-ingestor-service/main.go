@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"log/slog"
+	"os"
 
 	core "github.com/SwissOpenEM/Ingestor/internal/core"
 	"github.com/SwissOpenEM/Ingestor/internal/metadataextractor"
@@ -35,10 +36,21 @@ func main() {
 		core.GlobusLoginWithRefreshToken(config.Transfer.Globus)
 	}
 
+	var serviceUser *core.UserCreds = nil
+	u, foundName := os.LookupEnv("INGESTOR_SERVICE_USER_NAME")
+	p, foundPass := os.LookupEnv("INGESTOR_SERVICE_USER_PASS")
+	if foundName && foundPass {
+		serviceUser = &core.UserCreds{
+			Username: u,
+			Password: p,
+		}
+	}
+
 	tq := core.TaskQueue{
-		Config:     config,
-		AppContext: ctx,
-		Notifier:   &core.LoggingNotifier{},
+		Config:      config,
+		AppContext:  ctx,
+		Notifier:    &core.LoggingNotifier{},
+		ServiceUser: serviceUser,
 	}
 	tq.Startup()
 

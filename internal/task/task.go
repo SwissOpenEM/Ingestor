@@ -3,6 +3,8 @@ package task
 import (
 	"context"
 	"sync"
+
+	"github.com/paulscherrerinstitute/scicat-cli/v3/datasetIngestor"
 )
 
 type TransferMethod int
@@ -34,9 +36,11 @@ type TaskStatus struct {
 	StatusMessage    string
 }
 
-type IngestionTask struct {
+type TransferTask struct {
 	// DatasetFolderId   uuid.UUID
 	DatasetFolder
+	datasetId       string
+	fileList        []datasetIngestor.Datafile
 	DatasetMetadata map[string]interface{}
 	TransferMethod  TransferMethod
 	Cancel          context.CancelFunc
@@ -50,8 +54,10 @@ type Result struct {
 	Error           error
 }
 
-func CreateIngestionTask(datasetFolder DatasetFolder, metadata map[string]interface{}, transferMethod TransferMethod, cancel context.CancelFunc) IngestionTask {
-	return IngestionTask{
+func CreateTransferTask(datasetId string, fileList []datasetIngestor.Datafile, datasetFolder DatasetFolder, metadata map[string]interface{}, transferMethod TransferMethod, cancel context.CancelFunc) TransferTask {
+	return TransferTask{
+		datasetId:       datasetId,
+		fileList:        fileList,
 		DatasetFolder:   datasetFolder,
 		DatasetMetadata: metadata,
 		TransferMethod:  transferMethod,
@@ -61,14 +67,14 @@ func CreateIngestionTask(datasetFolder DatasetFolder, metadata map[string]interf
 	}
 }
 
-func (t *IngestionTask) GetStatus() TaskStatus {
+func (t *TransferTask) GetStatus() TaskStatus {
 	t.statusLock.RLock()
 	defer t.statusLock.RUnlock()
 	copy := *t.status
 	return copy
 }
 
-func (t *IngestionTask) SetStatus(
+func (t *TransferTask) SetStatus(
 	bytesTransferred *int,
 	bytesTotal *int,
 	filesTransferred *int,
@@ -104,4 +110,12 @@ func (t *IngestionTask) SetStatus(
 	if statusMessage != nil {
 		t.status.StatusMessage = *statusMessage
 	}
+}
+
+func (t *TransferTask) GetDatasetId() string {
+	return t.datasetId
+}
+
+func (t *TransferTask) GetFileList() []datasetIngestor.Datafile {
+	return t.fileList
 }
