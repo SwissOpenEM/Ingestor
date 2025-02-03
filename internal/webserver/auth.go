@@ -173,7 +173,6 @@ func (i *IngestorWebServerImplemenation) GetCallback(ctx context.Context, reques
 	if err != nil {
 		return GetCallback500TextResponse(fmt.Sprintf("can't set user session: %s", err.Error())), nil
 	}
-	fmt.Printf("access token: \"%s\"\n", oauthToken.AccessToken)
 
 	// reply
 	return GetCallback302Response{
