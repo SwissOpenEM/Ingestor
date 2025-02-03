@@ -277,6 +277,32 @@ paths:
               schema:
                 type: string
 
+  /userinfo:
+    get:
+      tags:
+        - authentication
+      security: []
+      summary: "returns user info to caller"
+      responses:
+        "200":
+          description: "user is logged in and a JSON is returned with the userinfo"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserInfo"
+        "400":
+          description: "when auth is disabled, an error 400 is sent with a message"
+          content:
+            text/plain:
+              schema:
+                type: string
+        "500":
+          description: "internal server error"
+          content:
+            text/plain:
+              schema:
+                type: string
+
   /extractor:
     get:
       tags:
@@ -539,6 +565,34 @@ components:
       required:
         - datasets
         - total
+    UserInfo:
+      type: object
+      properties:
+        logged_in:
+          type: boolean
+        subject:
+          type: string
+        profile:
+          type: string
+        email:
+          type: string
+        roles:
+          type: array
+          items:
+            type: string
+        preferred_username:
+          type: string
+        name:
+          type: string
+        family_name:
+          type: string
+        given_name:
+          type: string
+        expires_at:
+          type: string
+          format: date-time
+      required:
+        - logged_in
     Error:
       type: object
       properties:

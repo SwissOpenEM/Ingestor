@@ -160,6 +160,10 @@ func (i *IngestorWebServerImplemenation) GetCallback(ctx context.Context, reques
 	userSession.Set("profile", userInfo.Profile)
 	userSession.Set("subject", userInfo.Subject)
 	userSession.Set("roles", claims.GetResourceRolesByKey(i.oauth2Config.ClientID))
+	userSession.Set("preferred_username", claims.PreferredUsername)
+	userSession.Set("name", claims.Name)
+	userSession.Set("family_name", claims.FamilyName)
+	userSession.Set("given_name", claims.GivenName)
 	userSession.Options(sessions.Options{
 		HttpOnly: true,
 		MaxAge:   int(i.sessionDuration),
@@ -200,4 +204,63 @@ func (i *IngestorWebServerImplemenation) GetLogout(ctx context.Context, request 
 	return GetLogout302Response{GetLogout302ResponseHeaders{
 		Location: i.frontendOrigin + i.frontendRedirectPath,
 	}}, nil
+}
+
+func (i *IngestorWebServerImplemenation) GetUserinfo(ctx context.Context, request GetUserinfoRequestObject) (GetUserinfoResponseObject, error) {
+	if i.taskQueue.Config.WebServer.AuthConf.Disable {
+		return GetUserinfo500TextResponse("auth is disabled"), nil
+	}
+
+	ginCtx, ok := ctx.(*gin.Context)
+	if !ok {
+		return GetUserinfo400TextResponse("can't access context"), nil
+	}
+
+	userSession := sessions.DefaultMany(ginCtx, "user")
+	expiresAtString, ok1 := userSession.Get("expires_at").(string)
+	email, ok2 := userSession.Get("email").(string)
+	profile, ok3 := userSession.Get("profile").(string)
+	subject, ok4 := userSession.Get("subject").(string)
+	roles, ok5 := userSession.Get("roles").([]string)
+	preferredUsername, ok6 := userSession.Get("preferred_username").(string)
+	name, ok7 := userSession.Get("name").(string)
+	familyName, ok8 := userSession.Get("family_name").(string)
+	givenName, ok9 := userSession.Get("given_name").(string)
+
+	if !(ok1 && ok2 && ok3 && ok4 && ok5 && ok6 && ok7 && ok8 && ok9) {
+		return GetUserinfo200JSONResponse{LoggedIn: false}, nil
+	}
+
+	expiresAt, err := time.Parse(time.RFC3339Nano, expiresAtString)
+	if err != nil {
+		return GetUserinfo500TextResponse("can't parse expiry"), nil
+	}
+
+	if expiresAt.Before(time.Now()) {
+		return GetUserinfo200JSONResponse{LoggedIn: false}, nil
+	}
+
+	strPointerOrNil := func(str *string) *string {
+		if str == nil {
+			return str
+		}
+		if *str == "" {
+			return nil
+		} else {
+			return str
+		}
+	}
+
+	return GetUserinfo200JSONResponse{
+		LoggedIn:          true,
+		Email:             strPointerOrNil(&email),
+		Profile:           strPointerOrNil(&profile),
+		Subject:           strPointerOrNil(&subject),
+		Roles:             &roles,
+		PreferredUsername: strPointerOrNil(&preferredUsername),
+		Name:              strPointerOrNil(&name),
+		FamilyName:        strPointerOrNil(&familyName),
+		GivenName:         strPointerOrNil(&givenName),
+		ExpiresAt:         &expiresAt,
+	}, nil
 }
