@@ -40,7 +40,7 @@ func (w *TaskQueue) Startup() {
 }
 
 func (w *TaskQueue) AddTransferTask(datasetId string, fileList []datasetIngestor.Datafile, totalSize int64, metadataMap map[string]interface{}, taskId uuid.UUID) error {
-	transferMethod := w.getTransferMethod()
+	transferMethod := w.GetTransferMethod()
 	task := task.CreateTransferTask(datasetId, fileList, task.DatasetFolder{Id: taskId}, metadataMap, transferMethod, nil)
 
 	switch v := metadataMap["sourceFolder"].(type) {
@@ -218,7 +218,7 @@ func (w *TaskQueue) TransferDataset(taskCtx context.Context, it *task.TransferTa
 	return task.Result{Elapsed_seconds: int(elapsed.Seconds()), Error: err}
 }
 
-func (w *TaskQueue) getTransferMethod() (transferMethod task.TransferMethod) {
+func (w *TaskQueue) GetTransferMethod() (transferMethod task.TransferMethod) {
 	switch strings.ToLower(w.Config.Transfer.Method) {
 	case "globus":
 		transferMethod = task.TransferGlobus

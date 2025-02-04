@@ -243,7 +243,7 @@ paths:
           description: "OIDC callback successful"
           headers:
             location:
-              description: "redirect"
+              description: "redirect URL"
               schema:
                 type: string
         "400":
@@ -258,6 +258,46 @@ paths:
             text/plain:
               schema:
                 type: string
+  /globus-callback:
+    get:
+      tags:
+        - authentication
+      security: []
+      summary: "callback for globus"
+      parameters:
+        - name: code
+          in: query
+          required: true
+          schema:
+            type: string
+          description: "For handling the authorization code received from Globus"
+        - name: state
+          in: query
+          required: true
+          schema:
+            type: string
+          description: "parameter for CSRF protection"
+      responses:
+        "302":
+          description: "Globus callback successful"
+          headers:
+            location:
+              description: "redirect URL"
+              schema:
+                type: string
+        "400":
+          description: "Globus callback failed due to invalid code or state"
+          content:
+            text/plain:
+              schema:
+                type: string
+        "500":
+          description: "Internal Server Error"
+          content:
+            text/plain:
+              schema:
+                type: string
+
   /logout:
     get:
       tags:
