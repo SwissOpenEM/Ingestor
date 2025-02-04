@@ -7,6 +7,7 @@ import (
 	"slices"
 	"time"
 
+	"github.com/SwissOpenEM/Ingestor/internal/task"
 	"github.com/SwissOpenEM/Ingestor/internal/webserver/randomfuncs"
 	"github.com/coreos/go-oidc/v3/oidc"
 	"github.com/gin-contrib/sessions"
@@ -31,7 +32,7 @@ func (i *IngestorWebServerImplemenation) GetLogin(ctx context.Context, request G
 		if time.Now().Before(expiry) {
 			return GetLogin302Response{
 				Headers: GetLogin302ResponseHeaders{
-					Location: "/",
+					Location: i.frontend.origin + i.frontend.redirectPath,
 				},
 			}, nil
 		}
@@ -77,7 +78,10 @@ func (i *IngestorWebServerImplemenation) GetLogin(ctx context.Context, request G
 
 func (i *IngestorWebServerImplemenation) GetCallback(ctx context.Context, request GetCallbackRequestObject) (GetCallbackResponseObject, error) {
 	// get sessions
-	ginCtx := ctx.(*gin.Context)
+	ginCtx, ok := ctx.(*gin.Context)
+	if !ok {
+		return GetCallback500TextResponse("can't access context"), nil
+	}
 	authSession := sessions.DefaultMany(ginCtx, "auth")
 	userSession := sessions.DefaultMany(ginCtx, "user")
 
@@ -112,7 +116,6 @@ func (i *IngestorWebServerImplemenation) GetCallback(ctx context.Context, reques
 	oauthToken, err := i.oauth2Config.Exchange(
 		ctx,
 		request.Params.Code,
-		oauth2.AccessTypeOffline,
 		oauth2.VerifierOption(verifier),
 	)
 	if err != nil {
@@ -173,12 +176,16 @@ func (i *IngestorWebServerImplemenation) GetCallback(ctx context.Context, reques
 	if err != nil {
 		return GetCallback500TextResponse(fmt.Sprintf("can't set user session: %s", err.Error())), nil
 	}
-	fmt.Printf("access token: \"%s\"\n", oauthToken.AccessToken)
+
+	// globus login (if using globus)
+	/*if i.taskQueue.GetTransferMethod() == task.TransferGlobus {
+		return globusLoginRedirect(ctx, i.globusAuthConf)
+	}*/
 
 	// reply
 	return GetCallback302Response{
 		Headers: GetCallback302ResponseHeaders{
-			Location: i.frontendOrigin + i.frontendRedirectPath,
+			Location: i.frontend.origin + i.frontend.redirectPath,
 		},
 	}, nil
 }
@@ -201,8 +208,12 @@ func (i *IngestorWebServerImplemenation) GetLogout(ctx context.Context, request 
 		return GetLogout500TextResponse(err.Error()), nil
 	}
 
+	if i.taskQueue.GetTransferMethod() == task.TransferGlobus {
+		//
+	}
+
 	return GetLogout302Response{GetLogout302ResponseHeaders{
-		Location: i.frontendOrigin + i.frontendRedirectPath,
+		Location: i.frontend.origin + i.frontend.redirectPath,
 	}}, nil
 }
 
@@ -264,3 +275,26 @@ func (i *IngestorWebServerImplemenation) GetUserinfo(ctx context.Context, reques
 		ExpiresAt:         &expiresAt,
 	}, nil
 }
+
+/*func getGlobusClientFromSession(ctx *gin.Context, conf *oauth2.Config) (globus.GlobusClient, error) {
+	globusSession := sessions.DefaultMany(ctx, "globus")
+	refreshToken, ok := globusSession.Get("refresh_token").(string)
+	if !ok {
+		return globus.GlobusClient{}, fmt.Errorf("globus session has expired")
+	}
+
+	newToken, err := conf.TokenSource(ctx, &oauth2.Token{RefreshToken: refreshToken}).Token()
+	if err != nil {
+		return globus.GlobusClient{}, fmt.Errorf("can't refresh token: %s", err.Error())
+	}
+
+	globusSession.Set("refresh_token", newToken.RefreshToken)
+	globusSession.Save()
+
+	return globus.HttpClientToGlobusClient(conf.Client(ctx, &oauth2.Token{
+		TokenType:   newToken.TokenType,
+		AccessToken: newToken.AccessToken,
+		Expiry:      newToken.Expiry,
+		ExpiresIn:   newToken.ExpiresIn,
+	})), nil
+}*/
