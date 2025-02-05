@@ -2,6 +2,7 @@ package webserver
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -9,7 +10,9 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/SwissOpenEM/Ingestor/internal/refreshfunctoken"
 	"github.com/SwissOpenEM/Ingestor/internal/webserver/randomfuncs"
+	"github.com/SwissOpenEM/globus"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"golang.org/x/oauth2"
@@ -131,11 +134,12 @@ func globusLogout(ctx *gin.Context, globusConf oauth2.Config) error {
 	_ = expiry
 
 	// attempt to invalidate both before returning any errors
-	client := globusConf.Client(ctx, nil)
+	var revokeErrs [2]error
 
-	var errs [2]error
-	errs[0] = globusInvalidateToken(client, accessToken)
-	errs[1] = globusInvalidateToken(client, refreshToken)
+	if globusConf.ClientSecret != "" {
+		revokeErrs[0] = globusRevokeToken(globusConf.ClientID, globusConf.ClientSecret, accessToken)
+		revokeErrs[1] = globusRevokeToken(globusConf.ClientID, globusConf.ClientSecret, refreshToken)
+	}
 
 	globusSession.Delete("access_token")
 	globusSession.Delete("refresh_token")
@@ -147,17 +151,22 @@ func globusLogout(ctx *gin.Context, globusConf oauth2.Config) error {
 	})
 	globusSession.Save()
 
-	return errors.Join(errs[0], errs[1]) // return potential revocation errors
+	return errors.Join(revokeErrs[0], revokeErrs[1]) // return potential revocation errors
 }
 
-func globusInvalidateToken(client *http.Client, token string) error {
-	// note: the client given to this function must have the client id (and secret if exists) set
-	//   according to the OAuth config of Globus, but the client must not have a token source set up
+func globusRevokeToken(clientId string, clientSecret string, token string) error {
+	// warning: this only works with confidential clients, clientSecret *cannot* be empty
+	if clientSecret == "" {
+		return fmt.Errorf("client secret was not set")
+	}
 
+	client := http.DefaultClient
 	req, err := http.NewRequest("POST", "https://auth.globus.org/v2/oauth2/token/revoke", nil)
 	if err != nil {
 		return err
 	}
+
+	req.Header.Add("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte(clientId+":"+clientSecret)))
 
 	q := req.URL.Query()
 	q.Set("token", token)
@@ -189,7 +198,6 @@ func (i *IngestorWebServerImplemenation) globusRefreshToken(ctx *gin.Context, re
 		TokenType    string `json:"token_type"`
 	}
 
-	globusSession := sessions.DefaultMany(ctx, "globus")
 	client := i.globusAuthConf.Client(context.Background(), nil)
 
 	req, err := http.NewRequest("POST", "https://auth.globus.org/v2/oauth2/token", nil)
@@ -225,10 +233,36 @@ func (i *IngestorWebServerImplemenation) globusRefreshToken(ctx *gin.Context, re
 
 	expiry := timeAtRequest.Add(time.Duration(t.ExpiresIn) * time.Second)
 
-	globusSession.Set("refresh_token", t.RefreshToken)
-	globusSession.Set("access_token", t.AccessToken)
-	globusSession.Set("expiry", expiry.Format(time.RFC3339Nano))
-	globusSession.Save()
+	// update context cookies if context still exists
+	if ctx.Err() == nil {
+		globusSession := sessions.DefaultMany(ctx, "globus")
+		globusSession.Set("refresh_token", t.RefreshToken)
+		globusSession.Set("access_token", t.AccessToken)
+		globusSession.Set("expiry", expiry.Format(time.RFC3339Nano))
+		globusSession.Save()
+	}
 
 	return t.AccessToken, t.RefreshToken, expiry, nil
+}
+
+func (i *IngestorWebServerImplemenation) globusGetClientFromSession(ctx context.Context) (*globus.GlobusClient, error) {
+	ginCtx := ctx.(*gin.Context)
+	globusSession := sessions.DefaultMany(ginCtx, "globus")
+	refreshToken, ok1 := globusSession.Get("refresh_token").(string)
+	accessToken, ok2 := globusSession.Get("access_token").(string)
+	expiryStr, ok3 := globusSession.Get("expiry").(string)
+
+	if !(ok1 && ok2 && ok3) {
+		return nil, fmt.Errorf("globus session has expired")
+	}
+
+	expiry, err := time.Parse(time.RFC3339Nano, expiryStr)
+	if err != nil {
+		return nil, err
+	}
+
+	ts := refreshfunctoken.NewTokenSource(ginCtx, accessToken, refreshToken, expiry, i.globusRefreshToken)
+
+	client := globus.HttpClientToGlobusClient(oauth2.NewClient(ctx, ts))
+	return &client, nil
 }

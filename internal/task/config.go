@@ -18,7 +18,6 @@ type GlobusTransferConfig struct {
 	SourcePrefixPath      string   `yaml:"sourcePrefixPath,omitempty"`
 	DestinationCollection string   `yaml:"destinationCollection"`
 	DestinationPrefixPath string   `yaml:"destinationPrefixPath,omitempty"`
-	RefreshToken          string   `yaml:"refreshToken,omitempty"`
 }
 
 type TransferConfig struct {

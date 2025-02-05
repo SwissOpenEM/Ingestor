@@ -178,9 +178,9 @@ func (i *IngestorWebServerImplemenation) GetCallback(ctx context.Context, reques
 	}
 
 	// globus login (if using globus)
-	/*if i.taskQueue.GetTransferMethod() == task.TransferGlobus {
+	if i.taskQueue.GetTransferMethod() == task.TransferGlobus {
 		return globusLoginRedirect(ctx, i.globusAuthConf)
-	}*/
+	}
 
 	// reply
 	return GetCallback302Response{
@@ -209,7 +209,10 @@ func (i *IngestorWebServerImplemenation) GetLogout(ctx context.Context, request 
 	}
 
 	if i.taskQueue.GetTransferMethod() == task.TransferGlobus {
-		//
+		err = globusLogout(ginCtx, *i.globusAuthConf)
+		if err != nil {
+			return GetLogout500TextResponse(err.Error()), nil
+		}
 	}
 
 	return GetLogout302Response{GetLogout302ResponseHeaders{
