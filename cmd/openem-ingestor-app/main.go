@@ -35,11 +35,6 @@ func main() {
 	log.Println(core.GetFullConfig())
 	log.Printf("Config file used: %s", core.GetCurrentConfigFilePath())
 
-	// setup globus if we have a refresh token
-	if config.Transfer.Globus.RefreshToken != "" {
-		core.GlobusLoginWithRefreshToken(config.Transfer.Globus)
-	}
-
 	// Create an instance of the app structure
 	app := NewApp(config, version)
 	// Create application with options
