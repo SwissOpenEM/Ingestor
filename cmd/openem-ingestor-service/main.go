@@ -31,11 +31,6 @@ func main() {
 
 	ctx := context.Background()
 
-	// setup globus if we have a refresh token
-	if config.Transfer.Globus.RefreshToken != "" {
-		core.GlobusLoginWithRefreshToken(config.Transfer.Globus)
-	}
-
 	var serviceUser *core.UserCreds = nil
 	u, foundName := os.LookupEnv("INGESTOR_SERVICE_USER_NAME")
 	p, foundPass := os.LookupEnv("INGESTOR_SERVICE_USER_PASS")
