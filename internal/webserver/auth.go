@@ -30,6 +30,9 @@ func (i *IngestorWebServerImplemenation) GetLogin(ctx context.Context, request G
 	if val, ok := userSession.Get("expires_at").(string); ok {
 		expiry, _ := time.Parse(time.RFC3339Nano, val)
 		if time.Now().Before(expiry) {
+			if !loggedIntoGlobus(ginCtx) {
+
+			}
 			return GetLogin302Response{
 				Headers: GetLogin302ResponseHeaders{
 					Location: i.frontend.origin + i.frontend.redirectPath,
@@ -179,7 +182,7 @@ func (i *IngestorWebServerImplemenation) GetCallback(ctx context.Context, reques
 
 	// globus login (if using globus)
 	if i.taskQueue.GetTransferMethod() == task.TransferGlobus {
-		return globusLoginRedirect(ctx, i.globusAuthConf)
+		return globusCallbackRedirect(ctx, i.globusAuthConf)
 	}
 
 	// reply
