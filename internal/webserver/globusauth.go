@@ -18,18 +18,60 @@ import (
 	"golang.org/x/oauth2"
 )
 
-func globusLoginRedirect(ctx context.Context, globusAuthConf *oauth2.Config) (GetCallbackResponseObject, error) {
+func loggedIntoGlobus(ctx *gin.Context) bool {
+	globusSession := sessions.DefaultMany(ctx, "globus")
+	rt, ok1 := globusSession.Get("refresh_token").(string)
+	at, ok2 := globusSession.Get("access_token").(string)
+	e, ok3 := globusSession.Get("expiry").(string)
+	if !(ok1 && ok2 && ok3) || rt == "" || at == "" || e == "" {
+		return false
+	}
+	_, err := time.Parse(time.RFC3339Nano, e)
+	if err != nil {
+		return false
+	}
+
+	return true
+}
+
+func globusCallbackRedirect(ctx context.Context, globusAuthConf *oauth2.Config) (GetCallbackResponseObject, error) {
+	redirectUrl, err := globusRedirect(ctx, globusAuthConf)
+	if err != nil {
+		return GetCallback500TextResponse(err.Error()), nil
+	}
+
+	return GetCallback302Response{
+		Headers: GetCallback302ResponseHeaders{
+			Location: redirectUrl,
+		},
+	}, nil
+}
+
+func globusLoginRedirect(ctx context.Context, globusAuthConf *oauth2.Config) (GetLoginResponseObject, error) {
+	redirectUrl, err := globusRedirect(ctx, globusAuthConf)
+	if err != nil {
+		return nil, err
+	}
+
+	return GetLogin302Response{
+		Headers: GetLogin302ResponseHeaders{
+			Location: redirectUrl,
+		},
+	}, nil
+}
+
+func globusRedirect(ctx context.Context, globusAuthConf *oauth2.Config) (string, error) {
 	// get sessions
 	ginCtx, ok := ctx.(*gin.Context)
 	if !ok {
-		return GetCallback500TextResponse("can't access gin context"), nil
+		return "", fmt.Errorf("can't access gin context")
 	}
 	authSession := sessions.DefaultMany(ginCtx, "auth")
 
 	// generate state, verifier and nonce
 	state, err := randomfuncs.GenerateRandomString(16)
 	if err != nil {
-		return GetCallback500TextResponse(fmt.Sprintf("can't generate random string: %s", err.Error())), nil
+		return "", fmt.Errorf("can't generate random string: %s", err.Error())
 	}
 	verifier := oauth2.GenerateVerifier()
 
@@ -43,21 +85,17 @@ func globusLoginRedirect(ctx context.Context, globusAuthConf *oauth2.Config) (Ge
 	authSession.Set("verifier", verifier)
 	err = authSession.Save()
 	if err != nil {
-		return GetCallback500TextResponse(fmt.Sprintf("can't create auth session cookie: %s", err.Error())), nil
+		return "", fmt.Errorf("can't create auth session cookie: %s", err.Error())
 	}
 
-	return GetCallback302Response{
-		Headers: GetCallback302ResponseHeaders{
-			Location: globusAuthConf.AuthCodeURL(
-				state,
-				oauth2.AccessTypeOffline,
-				oauth2.S256ChallengeOption(verifier),
-			),
-		},
-	}, nil
+	return globusAuthConf.AuthCodeURL(
+		state,
+		oauth2.AccessTypeOffline,
+		oauth2.S256ChallengeOption(verifier),
+	), nil
 }
 
-// this is specifically needed for globus access
+// this is the callback endpoint for handling the globus code exchange
 func (i *IngestorWebServerImplemenation) GetGlobusCallback(ctx context.Context, request GetGlobusCallbackRequestObject) (GetGlobusCallbackResponseObject, error) {
 	ginCtx, ok := ctx.(*gin.Context)
 	if !ok {
@@ -90,7 +128,7 @@ func (i *IngestorWebServerImplemenation) GetGlobusCallback(ctx context.Context, 
 	}
 
 	// exchange authorization code for accessToken
-	oauthToken, err := i.oauth2Config.Exchange(
+	oauthToken, err := i.globusAuthConf.Exchange(
 		ctx,
 		request.Params.Code,
 		oauth2.AccessTypeOffline,
@@ -102,7 +140,7 @@ func (i *IngestorWebServerImplemenation) GetGlobusCallback(ctx context.Context, 
 
 	globusSession.Set("refresh_token", oauthToken.RefreshToken)
 	globusSession.Set("access_token", oauthToken.AccessToken)
-	globusSession.Set("expiry", oauthToken.Expiry.String())
+	globusSession.Set("expiry", oauthToken.Expiry.Format(time.RFC3339Nano))
 	globusSession.Options(sessions.Options{
 		HttpOnly: true,
 		MaxAge:   int(i.sessionDuration),
