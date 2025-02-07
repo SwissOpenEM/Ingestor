@@ -44,6 +44,28 @@ see [wails.io](https://wails.io) for details.
 ../Ingestor/cmd/openem-ingestor-service> go build
 ```
 
+## Running the container using Docker Compose
+
+The ingestor service can be run in a docker container and be deployed using docker compose.
+
+```bash
+docker compose up -d
+```
+
+The following environment variables need to be set (e.g. using an `.env` file):
+
+| Variable               | Description                                                                                                  | Example Value                          |
+|------------------------|--------------------------------------------------------------------------------------------------------------|----------------------------------------|
+| `NFS_SERVER_ADDRESS`   | Address of NFS fileserver where dataset are stored                                                           | `192.168.1.1`, `nfs-server.facilty.ch` |
+| `UID`                  | User id as which the container runs. This might be relevant to access certain datatasets if run as non-root  | `1000`                                 |
+| `GID`                  | Group id as which the container runs. This might be relevant to access certain datatasets if run as non-root | `1000`                                 |
+| `HOST_COLLECTION_PATH` | Path to folder on the host system where dataset are stored. Can also be a mounted folder.                    | `/mnt/datasets`                        |
+| `KEYCLOAK_URL`         | Url to keycloak instance used with Scicat                                                                    | `https://kc.psi.ch`                    |
+| `SCICAT_FRONTEND_URL`  | Url to Scicat brontend                                                                                       | `https://discovery.psi.ch`             |
+| `SCICAT_BACKEND_URL`   | Url to Scicat backend                                                                                        | `https://dacat.psi.ch`                 |
+
+The ingestor configuration is set directly as a `config` top-level element in docker-compose.yaml.
+
 ## Configuration
 
 Configuration options are described in [configs/ReadMe.md](configs/ReadMe.md)
