@@ -9,12 +9,14 @@ import (
 )
 
 type TokenSource struct {
-	ctx          *gin.Context
-	accessToken  string
-	refreshToken string
-	expiry       time.Time
-	refreshFunc  func(ctx *gin.Context, refreshToken string) (string, string, time.Time, error)
-	tokenMutex   sync.Mutex
+	ctx             *gin.Context
+	oc              *oauth2.Config
+	accessToken     string
+	refreshToken    string
+	expiry          time.Time
+	sessionDuration uint
+	refreshFunc     func(ctx *gin.Context, globusConf *oauth2.Config, refreshToken string, sessionDuration uint) (string, string, time.Time, error)
+	tokenMutex      sync.Mutex
 }
 
 func (ts *TokenSource) Token() (*oauth2.Token, error) {
@@ -22,7 +24,7 @@ func (ts *TokenSource) Token() (*oauth2.Token, error) {
 	defer ts.tokenMutex.Unlock()
 
 	if time.Now().After(ts.expiry) || ts.accessToken == "" {
-		accessToken, refreshToken, expiry, err := ts.refreshFunc(ts.ctx, ts.refreshToken)
+		accessToken, refreshToken, expiry, err := ts.refreshFunc(ts.ctx, ts.oc, ts.refreshToken, ts.sessionDuration)
 		if err != nil {
 			return nil, err
 		}
@@ -41,15 +43,20 @@ func (ts *TokenSource) Token() (*oauth2.Token, error) {
 
 func NewTokenSource(
 	ctx *gin.Context,
+	oc *oauth2.Config,
 	accessToken string,
 	refreshToken string,
 	expiry time.Time,
-	refreshFunc func(ctx *gin.Context, refreshToken string) (string, string, time.Time, error),
+	sessionDuration uint,
+	refreshFunc func(ctx *gin.Context, oc *oauth2.Config, refreshToken string, sessionDuration uint) (string, string, time.Time, error),
 ) *TokenSource {
 	return &TokenSource{
-		ctx:          ctx,
-		accessToken:  accessToken,
-		refreshToken: refreshToken,
-		expiry:       expiry,
+		ctx:             ctx,
+		oc:              oc,
+		accessToken:     accessToken,
+		refreshToken:    refreshToken,
+		expiry:          expiry,
+		sessionDuration: sessionDuration,
+		refreshFunc:     refreshFunc,
 	}
 }
