@@ -10,6 +10,7 @@ import (
 
 	"github.com/SwissOpenEM/Ingestor/internal/core"
 	"github.com/SwissOpenEM/Ingestor/internal/task"
+	"github.com/SwissOpenEM/Ingestor/internal/webserver/globusauth"
 	"github.com/google/uuid"
 )
 
@@ -48,7 +49,7 @@ func (i *IngestorWebServerImplemenation) DatasetControllerIngestDataset(ctx cont
 
 	// |-> globus dependencies
 	if i.taskQueue.GetTransferMethod() == task.TransferGlobus {
-		client, err := i.globusGetClientFromSession(ctx)
+		client, err := globusauth.GetClientFromSession(ctx, i.globusAuthConf, i.sessionDuration)
 		if err != nil {
 			return nil, err
 		}
