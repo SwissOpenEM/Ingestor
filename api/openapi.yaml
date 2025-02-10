@@ -109,12 +109,14 @@ paths:
           required: false
           schema:
             type: integer
+            format: uint
             description: Page number for pagination.
         - name: pageSize
           in: query
           required: false
           schema:
             type: integer
+            format: uint
             description: Number of transfers per page.
       responses:
         "200":
@@ -339,6 +341,9 @@ paths:
   /metadata:
     get:
       summary: get metadata of a dataset
+      security:
+        - cookieAuth:
+          - ingestor_read
       description: |
         Starts a metadata extraction task on the ingestor side, with live updates about the progress using Server Side Events (SSE).
         It will close the connection with the final message containing the metadata json.
