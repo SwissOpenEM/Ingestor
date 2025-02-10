@@ -53,58 +53,47 @@ func (i *IngestorWebServerImplemenation) TransferControllerGetTransfer(ctx conte
 		}, nil
 	}
 
+	page := uint(1)
+	pageSize := uint(10)
 	if request.Params.Page != nil {
-		var start, end, pageIndex, pageSize uint
-
-		pageSize = 50
-		if request.Params.PageSize != nil {
-			pageSize = uint(*request.Params.PageSize)
-		}
-
-		if *request.Params.Page <= 0 {
-			pageIndex = 1
-		} else {
-			pageIndex = uint(*request.Params.Page)
-		}
-
-		start = (pageIndex - 1) * pageSize
-		end = pageIndex * pageSize
-
-		resultNo := i.taskQueue.GetTaskCount()
-		ids, statuses, err := i.taskQueue.GetTaskStatusList(start, end)
-		if err != nil {
-			return TransferControllerGetTransfer400TextResponse(err.Error()), nil
-		}
-
-		transferItems := []TransferItem{}
-		for i, status := range statuses {
-			idString := ids[i].String()
-			s := status.StatusMessage
-			if !status.Failed {
-				if status.Finished {
-					s = "finished"
-				} else if status.Started {
-					s = fmt.Sprintf(
-						"progress: %d%%",
-						int(math.Round(float64(status.BytesTransferred)/float64(status.BytesTotal))),
-					)
-				} else {
-					s = "queued"
-				}
-			} else if status.StatusMessage == "" {
-				s = "failed - unknown error"
-			}
-			transferItems = append(transferItems, TransferItem{
-				Status:     &s,
-				TransferId: &idString,
-			})
-		}
-
-		return TransferControllerGetTransfer200JSONResponse{
-			Total:     &resultNo,
-			Transfers: &transferItems,
-		}, nil
+		page = max(*request.Params.Page, 1)
+	}
+	if request.Params.PageSize != nil {
+		pageSize = min(*request.Params.PageSize, 100)
 	}
 
-	return TransferControllerGetTransfer400TextResponse("Not enough parameters"), nil
+	resultNo := i.taskQueue.GetTaskCount()
+	ids, statuses, err := i.taskQueue.GetTaskStatusList((page-1)*pageSize, page*pageSize)
+	if err != nil {
+		return TransferControllerGetTransfer400TextResponse(err.Error()), nil
+	}
+
+	transferItems := []TransferItem{}
+	for i, status := range statuses {
+		idString := ids[i].String()
+		s := status.StatusMessage
+		if !status.Failed {
+			if status.Finished {
+				s = "finished"
+			} else if status.Started {
+				s = fmt.Sprintf(
+					"progress: %d%%",
+					int(math.Round(float64(status.BytesTransferred)/float64(status.BytesTotal))),
+				)
+			} else {
+				s = "queued"
+			}
+		} else if status.StatusMessage == "" {
+			s = "failed - unknown error"
+		}
+		transferItems = append(transferItems, TransferItem{
+			Status:     &s,
+			TransferId: &idString,
+		})
+	}
+
+	return TransferControllerGetTransfer200JSONResponse{
+		Total:     &resultNo,
+		Transfers: &transferItems,
+	}, nil
 }
