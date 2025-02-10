@@ -74,9 +74,9 @@ func Logout(ctx *gin.Context, globusConf oauth2.Config) error {
 	revokeErrs[0] = revokeToken(globusConf.ClientID, globusConf.ClientSecret, accessToken)
 	revokeErrs[1] = revokeToken(globusConf.ClientID, globusConf.ClientSecret, refreshToken)
 
-	DeleteTokenCookie(ctx)
+	err = DeleteTokenCookie(ctx)
 
-	return errors.Join(revokeErrs[0], revokeErrs[1]) // return potential revocation errors
+	return errors.Join(err, revokeErrs[0], revokeErrs[1]) // return potential errors
 }
 
 func GetClientFromSession(ctx context.Context, globusConfig *oauth2.Config, sessionDuration uint) (*globus.GlobusClient, error) {
@@ -138,7 +138,10 @@ func getNewTokens(ctx *gin.Context, globusConf *oauth2.Config, refreshToken stri
 
 	// update context cookies if context still exists
 	if ctx.Err() == nil {
-		SetTokenCookie(ctx, t.RefreshToken, t.AccessToken, expiry, sessionDuration)
+		err = SetTokenCookie(ctx, t.RefreshToken, t.AccessToken, expiry, sessionDuration)
+		if err != nil {
+			return t.AccessToken, t.RefreshToken, expiry, err
+		}
 	}
 
 	return t.AccessToken, t.RefreshToken, expiry, nil
