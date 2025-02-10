@@ -169,7 +169,7 @@ func (i *IngestorWebServerImplemenation) GetCallback(ctx context.Context, reques
 	if i.taskQueue.GetTransferMethod() == task.TransferGlobus {
 		// revoke session with globus, if we have one ongoing
 		if globusauth.TestGlobusCookie(ginCtx) {
-			globusauth.Logout(ginCtx, *i.globusAuthConf)
+			_ = globusauth.Logout(ginCtx, *i.globusAuthConf) // we don't care if logout fails
 		}
 		return globusCallbackRedirect(ctx, i.globusAuthConf)
 	}
@@ -313,7 +313,10 @@ func (i *IngestorWebServerImplemenation) GetGlobusCallback(ctx context.Context, 
 		return GetGlobusCallback400TextResponse(fmt.Sprintf("code exchange failed: %s", err.Error())), nil
 	}
 
-	globusauth.SetTokenCookie(ginCtx, oauthToken.RefreshToken, oauthToken.AccessToken, oauthToken.Expiry, i.sessionDuration)
+	err = globusauth.SetTokenCookie(ginCtx, oauthToken.RefreshToken, oauthToken.AccessToken, oauthToken.Expiry, i.sessionDuration)
+	if err != nil {
+		return GetGlobusCallback400TextResponse(fmt.Sprintf("creating globus session cookie failed: %s", err.Error())), nil
+	}
 
 	return GetGlobusCallback302Response{
 		Headers: GetGlobusCallback302ResponseHeaders{
