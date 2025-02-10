@@ -12,10 +12,10 @@ func (i *IngestorWebServerImplemenation) ExtractorControllerGetExtractorMethods(
 	page := uint(1)
 	pageSize := uint(10)
 	if request.Params.Page != nil {
-		page = min(*request.Params.Page, 1)
+		page = max(*request.Params.Page, 1)
 	}
 	if request.Params.PageSize != nil {
-		pageSize = min(max(*request.Params.PageSize, 100), 1)
+		pageSize = min(*request.Params.PageSize, 100)
 	}
 
 	// get subslice and convert to "DTO"

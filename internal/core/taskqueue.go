@@ -164,18 +164,10 @@ func (w *TaskQueue) GetTaskStatusList(start uint, end uint) (idList []uuid.UUID,
 	defer w.taskListLock.RUnlock()
 
 	taskListLen := w.datasetUploadTasks.Len()
-	if start > uint(taskListLen) {
-		return idList, statusList, err
-	}
-	if end > uint(taskListLen) {
-		end = uint(taskListLen)
-	}
-	if start == 0 {
-		start = 1
-	}
+	end = min(end, uint(taskListLen))
 
 	keys := w.datasetUploadTasks.Keys()
-	for i := start - 1; i < end; i++ {
+	for i := start; i < end; i++ {
 		task, _ := w.datasetUploadTasks.Get(keys[i])
 		idList = append(idList, keys[i])
 		statusList = append(statusList, task.GetStatus())

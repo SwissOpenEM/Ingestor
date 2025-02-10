@@ -52,7 +52,7 @@ func (i *IngestorWebServerImplemenation) DatasetControllerIngestDataset(ctx cont
 	if i.taskQueue.GetTransferMethod() == task.TransferGlobus {
 		client, err := globusauth.GetClientFromSession(ctx, i.globusAuthConf, i.sessionDuration)
 		if err != nil {
-			return nil, err
+			return DatasetControllerIngestDataset400TextResponse(err.Error()), nil
 		}
 		transferObjects["globus_client"] = client
 	}
@@ -91,14 +91,13 @@ func (i *IngestorWebServerImplemenation) DatasetControllerGetDataset(ctx context
 	}
 	slices.Sort(datasets)
 
-	var page uint = 1
-	var pageSize uint = 10
-
+	page := uint(1)
+	pageSize := uint(10)
 	if request.Params.Page != nil {
-		page = min(*request.Params.Page, 1)
+		page = max(*request.Params.Page, 1)
 	}
 	if request.Params.PageSize != nil {
-		pageSize = max(*request.Params.PageSize, 100)
+		pageSize = min(*request.Params.PageSize, 100)
 	}
 
 	return DatasetControllerGetDataset200JSONResponse{
