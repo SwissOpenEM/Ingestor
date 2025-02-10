@@ -211,7 +211,7 @@ func TransferDataset(
 
 	switch it.TransferMethod {
 	case task.TransferS3:
-		err = s3upload.UploadS3(task_context, datasetId, datasetFolder, fileList, it.DatasetFolder.Id, config.Transfer.S3, notifier)
+		err = s3upload.UploadS3(task_context, datasetId, datasetFolder, fileList, it.DatasetFolder.Id, config.Transfer.S3, it.UserToken, notifier)
 	case task.TransferGlobus:
 		// globus doesn't work with absolute folders, this library uses sourcePrefix to adapt the path to the globus' own path from a relative path
 		relativeDatasetFolder := strings.TrimPrefix(datasetFolder, config.WebServer.CollectionLocation)

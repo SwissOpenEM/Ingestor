@@ -16,6 +16,7 @@ import (
 	"github.com/SwissOpenEM/Ingestor/internal/task"
 	"github.com/alitto/pond/v2"
 	"github.com/hashicorp/go-retryablehttp"
+	"golang.org/x/oauth2"
 )
 
 const (
@@ -57,14 +58,21 @@ func GetPresignedUrlServer(endpoint string) *ClientWithResponses {
 	return presignedUrlServerClient
 }
 
+func createAddAuthorizationHeaderFunction(token string) func(ctx context.Context, req *http.Request) error {
+	return func(ctx context.Context, req *http.Request) error {
+		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
+		return nil
+	}
+}
+
 // Fetches presigned url(s) from API server. If parts > 1, multipart upload
 // is initiated
-func getPresignedUrls(object_name string, part int, endpoint string) (string, []string, error) {
+func getPresignedUrls(object_name string, part int, endpoint string, userToken string) (string, []string, error) {
 
 	response, err := GetPresignedUrlServer(endpoint).GetPresignedUrlsWithResponse(context.Background(), PresignedUrlBody{
 		ObjectName: object_name,
 		Parts:      part,
-	})
+	}, createAddAuthorizationHeaderFunction(userToken))
 
 	if err != nil {
 		return "", []string{}, err
@@ -81,16 +89,16 @@ func getPresignedUrls(object_name string, part int, endpoint string) (string, []
 
 		return "", []string{}, fmt.Errorf("%s", err_string)
 	}
-	return response.JSON200.UploadID, response.JSON200.Urls, err
+	return response.JSON201.UploadID, response.JSON201.Urls, err
 }
 
-func completeMultiPartUpload(object_name string, uploadID string, endpoint string, parts []CompletePart, full_file_checksum string) error {
+func completeMultiPartUpload(object_name string, uploadID string, endpoint string, parts []CompletePart, full_file_checksum string, userToken string) error {
 	response, err := GetPresignedUrlServer(endpoint).CompleteUploadWithResponse(context.Background(), CompleteUploadBody{
 		ObjectName:     object_name,
 		UploadID:       uploadID,
 		Parts:          parts,
 		ChecksumSHA256: full_file_checksum,
-	})
+	}, createAddAuthorizationHeaderFunction(userToken))
 
 	if err != nil {
 		return err
@@ -110,7 +118,7 @@ func completeMultiPartUpload(object_name string, uploadID string, endpoint strin
 	return nil
 }
 
-func uploadFile(ctx context.Context, filePath string, objectName string, options task.S3TransferConfig, notifier *TransferNotifier) error {
+func uploadFile(ctx context.Context, filePath string, objectName string, options task.S3TransferConfig, notifier *TransferNotifier, tokenSource oauth2.TokenSource) error {
 	file, err := os.Open(filePath)
 	if err != nil {
 		return fmt.Errorf("error opening file: %w", err)
@@ -126,16 +134,21 @@ func uploadFile(ctx context.Context, filePath string, objectName string, options
 	totalSize := fileInfo.Size()
 	httpClient := GetHttpUploader(options.PoolSize)
 
+	token, err := tokenSource.Token()
+	if err != nil {
+		return fmt.Errorf("error fetching a new token: %w", err)
+	}
+
 	if totalSize < options.ChunkSizeMB*MiB {
-		err := doUploadSingleFile(ctx, objectName, file, httpClient, options.Endpoint, notifier)
+		err := doUploadSingleFile(ctx, objectName, file, httpClient, options.Endpoint, token.AccessToken, notifier)
 		return err
 
 	}
 
-	uploadID, err := doUploadMultipart(ctx, totalSize, objectName, file, httpClient, options, notifier)
+	uploadID, err := doUploadMultipart(ctx, totalSize, objectName, file, httpClient, options, token.AccessToken, notifier)
 	if err != nil {
 		err_upload := fmt.Errorf("failed to do multipart upload: uploadID=%s,  objectName=%s, error=%s", uploadID, objectName, err.Error())
-		err_abort := abortMultipartUpload(uploadID, objectName, options.Endpoint)
+		err_abort := abortMultipartUpload(uploadID, objectName, options.Endpoint, token.AccessToken)
 		if err_abort != nil {
 			return fmt.Errorf("while aborting a multipart upload an error occured: %s. Previous error: %s", err_abort.Error(), err_upload.Error())
 		}
@@ -144,11 +157,11 @@ func uploadFile(ctx context.Context, filePath string, objectName string, options
 	return err
 }
 
-func abortMultipartUpload(uploadID string, objectName string, endpoint string) error {
+func abortMultipartUpload(uploadID string, objectName string, endpoint string, userToken string) error {
 	response, err := GetPresignedUrlServer(endpoint).AbortMultipartUploadWithResponse(context.Background(), AbortUploadBody{
 		ObjectName: objectName,
 		UploadID:   uploadID,
-	})
+	}, createAddAuthorizationHeaderFunction(userToken))
 
 	if err != nil {
 		return err
@@ -159,9 +172,9 @@ func abortMultipartUpload(uploadID string, objectName string, endpoint string) e
 	return nil
 }
 
-func doUploadSingleFile(ctx context.Context, objectName string, file *os.File, httpClient *HttpUploader, endpoint string, notifier *TransferNotifier) error {
+func doUploadSingleFile(ctx context.Context, objectName string, file *os.File, httpClient *HttpUploader, endpoint string, userToken string, notifier *TransferNotifier) error {
 
-	_, urls, err := getPresignedUrls(objectName, 1, endpoint)
+	_, urls, err := getPresignedUrls(objectName, 1, endpoint, userToken)
 	if err != nil {
 		return err
 	}
@@ -185,10 +198,10 @@ func doUploadSingleFile(ctx context.Context, objectName string, file *os.File, h
 	return nil
 }
 
-func doUploadMultipart(ctx context.Context, totalSize int64, objectName string, file *os.File, httpClient *HttpUploader, options task.S3TransferConfig, notifier *TransferNotifier) (string, error) {
+func doUploadMultipart(ctx context.Context, totalSize int64, objectName string, file *os.File, httpClient *HttpUploader, options task.S3TransferConfig, userToken string, notifier *TransferNotifier) (string, error) {
 	partCount := int(math.Ceil(float64(totalSize) / float64(options.ChunkSizeMB*MiB)))
 
-	uploadID, presignedURLs, err := getPresignedUrls(objectName, partCount, options.Endpoint)
+	uploadID, presignedURLs, err := getPresignedUrls(objectName, partCount, options.Endpoint, userToken)
 	if err != nil {
 		return uploadID, err
 	}
@@ -230,7 +243,7 @@ func doUploadMultipart(ctx context.Context, totalSize int64, objectName string, 
 	n := sha256.Sum256([]byte(c))
 	base64hash := base64.StdEncoding.EncodeToString(n[:])
 
-	err = completeMultiPartUpload(objectName, uploadID, options.Endpoint, parts, base64hash)
+	err = completeMultiPartUpload(objectName, uploadID, options.Endpoint, parts, base64hash, userToken)
 	if err != nil {
 		return uploadID, fmt.Errorf("error completing multipart upload: %s", err.Error())
 	}
