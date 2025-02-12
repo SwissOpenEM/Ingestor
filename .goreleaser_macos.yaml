@@ -25,7 +25,7 @@ builds:
   - id: "openem-ingestor-app"
     hooks:
         pre:
-        - cmd: mkdir {{dir .Path}}
+        - cmd: mkdir -p {{dir .Path}}
         post:
         - dir: cmd/openem-ingestor-app
           cmd: "wails build -platform {{ .Os }} -clean -ldflags \"-s -w  -X 'main.version={{.Version}}'\" -trimpath -o {{base .Path}}"

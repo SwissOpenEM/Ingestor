@@ -2,9 +2,7 @@ module github.com/SwissOpenEM/Ingestor
 
 go 1.22.2
 
-toolchain go1.22.9
-
-// toolchain go1.22.6
+toolchain go1.23.6
 
 require (
 	github.com/SwissOpenEM/globus v0.1.1
