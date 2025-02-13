@@ -3,7 +3,6 @@ package webserver
 import (
 	"context"
 	"fmt"
-	"math"
 
 	"github.com/google/uuid"
 )
@@ -71,23 +70,8 @@ func (i *IngestorWebServerImplemenation) TransferControllerGetTransfer(ctx conte
 	transferItems := []TransferItem{}
 	for i, status := range statuses {
 		idString := ids[i].String()
-		s := status.StatusMessage
-		if !status.Failed {
-			if status.Finished {
-				s = "finished"
-			} else if status.Started {
-				s = fmt.Sprintf(
-					"progress: %d%%",
-					int(math.Round(float64(status.BytesTransferred)/float64(status.BytesTotal))),
-				)
-			} else {
-				s = "queued"
-			}
-		} else if status.StatusMessage == "" {
-			s = "failed - unknown error"
-		}
 		transferItems = append(transferItems, TransferItem{
-			Status:     &s,
+			Status:     &status.StatusMessage,
 			TransferId: &idString,
 		})
 	}
