@@ -39,7 +39,7 @@ func (w *TaskQueue) Startup() {
 	}
 }
 
-func (w *TaskQueue) AddTransferTask(datasetId string, fileList []datasetIngestor.Datafile, metadataMap map[string]interface{}, taskId uuid.UUID) error {
+func (w *TaskQueue) AddTransferTask(datasetId string, fileList []datasetIngestor.Datafile, totalSize int64, metadataMap map[string]interface{}, taskId uuid.UUID) error {
 	transferMethod := w.getTransferMethod()
 	task := task.CreateTransferTask(datasetId, fileList, task.DatasetFolder{Id: taskId}, metadataMap, transferMethod, nil)
 
@@ -50,6 +50,9 @@ func (w *TaskQueue) AddTransferTask(datasetId string, fileList []datasetIngestor
 	default:
 		return errors.New("sourceFolder in metadata isn't a string")
 	}
+	msg := "added"
+	size := int(totalSize)
+	task.SetStatus(nil, &size, nil, nil, nil, nil, nil, &msg)
 
 	w.taskListLock.Lock()
 	defer w.taskListLock.Unlock()
@@ -122,6 +125,8 @@ func (w *TaskQueue) ScheduleTask(id uuid.UUID) {
 		fmt.Println("Scheduling upload failed for: ", id)
 		return
 	}
+	msg := "queued"
+	ingestionTask.SetStatus(nil, nil, nil, nil, nil, nil, nil, &msg)
 
 	// Go routine to handle result and errors
 	go func(id uuid.UUID) {

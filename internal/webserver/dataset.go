@@ -38,14 +38,13 @@ func (i *IngestorWebServerImplemenation) DatasetControllerIngestDataset(ctx cont
 
 	// do catalogue insertion
 	datasetId, totalSize, fileList, err := core.AddDatasetToScicat(metadata, folderPath, request.Body.UserToken, i.taskQueue.Config.Scicat.Host)
-	_ = totalSize
 	if err != nil {
 		return DatasetControllerIngestDataset400TextResponse(err.Error()), nil
 	}
 
 	// create and start transfer task
 	taskId := uuid.New()
-	err = i.taskQueue.AddTransferTask(datasetId, fileList, metadata, taskId)
+	err = i.taskQueue.AddTransferTask(datasetId, fileList, totalSize, metadata, taskId)
 	if err != nil {
 		if _, ok := err.(*os.PathError); ok {
 			return nil, fmt.Errorf("could not create the task due to a path error: %s", err.Error())
