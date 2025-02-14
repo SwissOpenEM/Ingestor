@@ -141,6 +141,10 @@ func GlobusTransfer(globusConf task.GlobusTransferConfig, task *task.TransferTas
 	falseVal := false
 	trueVal := true
 
+	// note: the totalFiles variable here uses the count returned by Globus
+	//   this can change over the course of the transfer, as Globus succeeds in finding the files
+	//   (recursion, checking their existence...)
+
 	bytesTransferred, filesTransferred, totalFiles, taskCompleted, err = globusCheckTransfer(globusTaskId)
 	if err != nil {
 		return err

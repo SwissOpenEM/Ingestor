@@ -40,8 +40,15 @@ func (i *IngestorWebServerImplemenation) TransferControllerGetTransfer(ctx conte
 		}
 		transferItems := []TransferItem{
 			{
-				Status:     &status.StatusMessage,
-				TransferId: &id,
+				TransferId:       id,
+				Status:           &status.StatusMessage,
+				Started:          &status.Started,
+				Finished:         &status.Finished,
+				Failed:           &status.Failed,
+				BytesTransferred: &status.BytesTransferred,
+				BytesTotal:       &status.BytesTotal,
+				FilesTransferred: &status.FilesTransferred,
+				FilesTotal:       &status.FilesTotal,
 			},
 		}
 
@@ -71,8 +78,11 @@ func (i *IngestorWebServerImplemenation) TransferControllerGetTransfer(ctx conte
 	for i, status := range statuses {
 		idString := ids[i].String()
 		transferItems = append(transferItems, TransferItem{
-			Status:     &status.StatusMessage,
-			TransferId: &idString,
+			TransferId: idString,
+			Status:     getPointerOrNil(status.StatusMessage),
+			Started:    getPointerOrNil(status.Started),
+			Finished:   getPointerOrNil(status.Finished),
+			Failed:     getPointerOrNil(status.Failed),
 		})
 	}
 
@@ -80,4 +90,13 @@ func (i *IngestorWebServerImplemenation) TransferControllerGetTransfer(ctx conte
 		Total:     &resultNo,
 		Transfers: &transferItems,
 	}, nil
+}
+
+func getPointerOrNil[T comparable](v T) *T {
+	var a T
+	if a == v {
+		return nil
+	} else {
+		return &v
+	}
 }

@@ -439,8 +439,22 @@ components:
           type: string
         status:
           type: string
+        started:
+          type: boolean
+        finished:
+          type: boolean
+        failed:
+          type: boolean
+        bytesTransferred:
+          type: integer
+        bytesTotal:
+          type: integer
+        filesTransferred:
+          type: integer
+        filesTotal:
+          type: integer
       required:
-        - transerId
+        - transferId
     GetTransferResponse:
       type: object
       properties:
