@@ -7,6 +7,7 @@ import (
 func (i *IngestorWebServerImplemenation) ExtractorControllerGetExtractorMethods(ctx context.Context, request ExtractorControllerGetExtractorMethodsRequestObject) (ExtractorControllerGetExtractorMethodsResponseObject, error) {
 	// get methods
 	methods := i.extractorHandler.AvailableMethods()
+	total := len(methods)
 
 	// get indices
 	page := uint(1)
@@ -28,6 +29,6 @@ func (i *IngestorWebServerImplemenation) ExtractorControllerGetExtractorMethods(
 	// return result
 	return ExtractorControllerGetExtractorMethods200JSONResponse{
 		Methods: methodsDTO,
-		Total:   len(methods),
+		Total:   total,
 	}, nil
 }

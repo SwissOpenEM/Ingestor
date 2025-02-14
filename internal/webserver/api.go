@@ -11,6 +11,7 @@ import (
 	"github.com/SwissOpenEM/Ingestor/internal/metadataextractor"
 	"github.com/SwissOpenEM/Ingestor/internal/webserver/metadatatasks"
 	"github.com/SwissOpenEM/Ingestor/internal/webserver/wsconfig"
+	"github.com/SwissOpenEM/globus"
 	"github.com/coreos/go-oidc/v3/oidc"
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/oauth2"
@@ -19,20 +20,23 @@ import (
 var _ StrictServerInterface = (*IngestorWebServerImplemenation)(nil)
 
 type IngestorWebServerImplemenation struct {
-	version              string
-	taskQueue            *core.TaskQueue
-	metp                 *metadatatasks.MetadataExtractionTaskPool
-	extractorHandler     *metadataextractor.ExtractorHandler
-	oauth2Config         *oauth2.Config
-	oidcProvider         *oidc.Provider
-	oidcVerifier         *oidc.IDTokenVerifier
-	jwtKeyfunc           jwt.Keyfunc
-	jwtSignMethods       []string
-	sessionDuration      uint
-	scopeToRoleMap       map[string]string
-	pathConfig           wsconfig.PathsConf
-	frontendOrigin       string
-	frontendRedirectPath string
+	version          string
+	taskQueue        *core.TaskQueue
+	metp             *metadatatasks.MetadataExtractionTaskPool
+	extractorHandler *metadataextractor.ExtractorHandler
+	oauth2Config     *oauth2.Config
+	globusAuthConf   *oauth2.Config
+	oidcProvider     *oidc.Provider
+	oidcVerifier     *oidc.IDTokenVerifier
+	jwtKeyfunc       jwt.Keyfunc
+	jwtSignMethods   []string
+	sessionDuration  uint
+	scopeToRoleMap   map[string]string
+	pathConfig       wsconfig.PathsConf
+	frontend         struct {
+		origin       string
+		redirectPath string
+	}
 }
 
 func NewIngestorWebServer(version string, tq *core.TaskQueue, eh *metadataextractor.ExtractorHandler, ws wsconfig.WebServerConfig) (*IngestorWebServerImplemenation, error) {
@@ -77,20 +81,34 @@ func NewIngestorWebServer(version string, tq *core.TaskQueue, eh *metadataextrac
 
 	metp := metadatatasks.NewTaskPool(ws.QueueSize, ws.NoWorkers, eh)
 
+	globusAuthConf := globus.AuthGenerateOauthClientConfig(
+		context.Background(),
+		tq.Config.Transfer.Globus.ClientID,
+		tq.Config.Transfer.Globus.ClientSecret,
+		tq.Config.Transfer.Globus.RedirectURL,
+		tq.Config.Transfer.Globus.Scopes,
+	)
+
 	return &IngestorWebServerImplemenation{
-		version:              version,
-		taskQueue:            tq,
-		extractorHandler:     eh,
-		oauth2Config:         &oauthConf,
-		oidcProvider:         oidcProvider,
-		oidcVerifier:         oidcVerifier,
-		jwtKeyfunc:           keyfunc,
-		jwtSignMethods:       signMethods,
-		scopeToRoleMap:       scopeToRoleMap,
-		sessionDuration:      ws.SessionDuration,
-		pathConfig:           ws.PathsConf,
-		metp:                 metp,
-		frontendOrigin:       ws.FrontendConf.Origin,
-		frontendRedirectPath: ws.FrontendConf.RedirectPath,
+		version:          version,
+		taskQueue:        tq,
+		extractorHandler: eh,
+		oauth2Config:     &oauthConf,
+		globusAuthConf:   &globusAuthConf,
+		oidcProvider:     oidcProvider,
+		oidcVerifier:     oidcVerifier,
+		jwtKeyfunc:       keyfunc,
+		jwtSignMethods:   signMethods,
+		scopeToRoleMap:   scopeToRoleMap,
+		sessionDuration:  ws.SessionDuration,
+		pathConfig:       ws.PathsConf,
+		metp:             metp,
+		frontend: struct {
+			origin       string
+			redirectPath string
+		}{
+			origin:       ws.FrontendConf.Origin,
+			redirectPath: ws.FrontendConf.RedirectPath,
+		},
 	}, nil
 }

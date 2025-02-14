@@ -46,6 +46,7 @@ type TransferTask struct {
 	Cancel          context.CancelFunc
 	status          *TaskStatus
 	statusLock      *sync.RWMutex
+	transferObjects map[string]interface{}
 }
 
 type Result struct {
@@ -54,13 +55,14 @@ type Result struct {
 	Error           error
 }
 
-func CreateTransferTask(datasetId string, fileList []datasetIngestor.Datafile, datasetFolder DatasetFolder, metadata map[string]interface{}, transferMethod TransferMethod, cancel context.CancelFunc) TransferTask {
+func CreateTransferTask(datasetId string, fileList []datasetIngestor.Datafile, datasetFolder DatasetFolder, metadata map[string]interface{}, transferMethod TransferMethod, transferObjects map[string]interface{}, cancel context.CancelFunc) TransferTask {
 	return TransferTask{
 		datasetId:       datasetId,
 		fileList:        fileList,
 		DatasetFolder:   datasetFolder,
 		DatasetMetadata: metadata,
 		TransferMethod:  transferMethod,
+		transferObjects: transferObjects,
 		Cancel:          cancel,
 		status:          &TaskStatus{},
 		statusLock:      &sync.RWMutex{},
@@ -118,4 +120,8 @@ func (t *TransferTask) GetDatasetId() string {
 
 func (t *TransferTask) GetFileList() []datasetIngestor.Datafile {
 	return t.fileList
+}
+
+func (t *TransferTask) GetTransferObject(name string) interface{} {
+	return t.transferObjects[name]
 }
