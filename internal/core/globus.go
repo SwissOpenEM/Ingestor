@@ -104,7 +104,7 @@ func globusCheckTransfer(globusTaskId string) (bytesTransferred int, filesTransf
 	}
 }
 
-func GlobusTransfer(globusConf task.GlobusTransferConfig, task *task.TransferTask, taskCtx context.Context, localTaskId uuid.UUID, datasetFolder string, fileList []datasetIngestor.Datafile, notifier ProgressNotifier) error {
+func GlobusTransfer(globusConf task.GlobusTransferConfig, t *task.TransferTask, taskCtx context.Context, localTaskId uuid.UUID, datasetFolder string, fileList []datasetIngestor.Datafile, notifier ProgressNotifier) error {
 	// transfer given filelist
 	var filePathList []string
 	var fileIsSymlinkList []bool
@@ -138,8 +138,6 @@ func GlobusTransfer(globusConf task.GlobusTransferConfig, task *task.TransferTas
 	startTime := time.Now()
 	var taskCompleted bool
 	var bytesTransferred, filesTransferred, totalFiles int
-	falseVal := false
-	trueVal := true
 
 	// note: the totalFiles variable here uses the count returned by Globus
 	//   this can change over the course of the transfer, as Globus succeeds in finding the files
@@ -153,7 +151,12 @@ func GlobusTransfer(globusConf task.GlobusTransferConfig, task *task.TransferTas
 		totalFiles = 1 // needed because percentage meter goes NaN otherwise
 	}
 	statusMsg := "transfering"
-	task.SetStatus(&bytesTransferred, nil, &filesTransferred, &totalFiles, &falseVal, &trueVal, &taskCompleted, &statusMsg)
+	var state *task.State = nil
+	if taskCompleted {
+		f := task.Finished
+		state = &f
+	}
+	t.SetStatus(&bytesTransferred, nil, &filesTransferred, &totalFiles, state, &statusMsg)
 	if taskCompleted {
 		return nil
 	}
@@ -173,7 +176,8 @@ func GlobusTransfer(globusConf task.GlobusTransferConfig, task *task.TransferTas
 				return fmt.Errorf("globus: couldn't cancel task - code: \"%s\", message: \"%s\"", result.Code, result.Message)
 			}
 			statusMsg = "task was cancelled"
-			task.SetStatus(nil, nil, nil, nil, nil, nil, nil, &statusMsg)
+			*state = task.Cancelled
+			t.SetStatus(nil, nil, nil, nil, state, &statusMsg)
 			notifier.OnTaskCanceled(localTaskId)
 			return nil
 		case <-timerUpdater:
@@ -191,7 +195,7 @@ func GlobusTransfer(globusConf task.GlobusTransferConfig, task *task.TransferTas
 				totalFiles = 1 // needed because percentage meter goes NaN otherwise
 			}
 
-			task.SetStatus(&bytesTransferred, nil, &filesTransferred, &totalFiles, nil, nil, nil, nil)
+			t.SetStatus(&bytesTransferred, nil, &filesTransferred, &totalFiles, nil, nil)
 			notifier.OnTaskProgress(localTaskId, filesTransferred, totalFiles, int(time.Since(startTime).Seconds()))
 
 			if taskCompleted {

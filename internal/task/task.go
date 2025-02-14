@@ -30,10 +30,33 @@ type TaskStatus struct {
 	BytesTotal       int
 	FilesTransferred int
 	FilesTotal       int
-	Failed           bool
-	Started          bool
-	Finished         bool
-	StatusMessage    string
+	State            State
+	Message          string
+}
+
+type State int
+
+const (
+	Waiting State = iota
+	Started
+	Finished
+	Failed
+	Cancelled
+)
+
+func (i *State) ToStr() string {
+	switch *i {
+	case Waiting:
+		return "waiting"
+	case Started:
+		return "started"
+	case Finished:
+		return "finished"
+	case Failed:
+		return "failed"
+	default:
+		return "invalid state"
+	}
 }
 
 type TransferTask struct {
@@ -79,10 +102,8 @@ func (t *TransferTask) SetStatus(
 	bytesTotal *int,
 	filesTransferred *int,
 	filesTotal *int,
-	failed *bool,
-	started *bool,
-	finished *bool,
-	statusMessage *string,
+	state *State,
+	message *string,
 ) {
 	t.statusLock.Lock()
 	defer t.statusLock.Unlock()
@@ -98,17 +119,11 @@ func (t *TransferTask) SetStatus(
 	if filesTotal != nil {
 		t.status.FilesTotal = *filesTotal
 	}
-	if failed != nil {
-		t.status.Failed = *failed
+	if state != nil {
+		t.status.State = *state
 	}
-	if started != nil {
-		t.status.Started = *started
-	}
-	if finished != nil {
-		t.status.Finished = *finished
-	}
-	if statusMessage != nil {
-		t.status.StatusMessage = *statusMessage
+	if message != nil {
+		t.status.Message = *message
 	}
 }
 

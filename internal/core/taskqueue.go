@@ -52,7 +52,7 @@ func (w *TaskQueue) AddTransferTask(datasetId string, fileList []datasetIngestor
 	}
 	msg := "added"
 	size := int(totalSize)
-	task.SetStatus(nil, &size, nil, nil, nil, nil, nil, &msg)
+	task.SetStatus(nil, &size, nil, nil, nil, &msg)
 
 	w.taskListLock.Lock()
 	defer w.taskListLock.Unlock()
@@ -68,16 +68,17 @@ func (w *TaskQueue) startWorker() {
 
 		transferTask.Cancel = cancel
 
+		s := task.Started // mark as "started"
+		transferTask.SetStatus(nil, nil, nil, nil, &s, nil)
 		result := w.TransferDataset(task_context, transferTask)
 		if result.Error == nil {
-			falseVal := false
-			trueVal := true
+			state := task.Finished
 			message := "finished"
-			transferTask.SetStatus(nil, nil, nil, nil, &falseVal, nil, &trueVal, &message)
+			transferTask.SetStatus(nil, nil, nil, nil, &state, &message)
 		} else {
-			trueVal := true
+			state := task.Failed
 			message := fmt.Sprintf("failed - error: %s", result.Error.Error())
-			transferTask.SetStatus(nil, nil, nil, nil, &trueVal, nil, &trueVal, &message)
+			transferTask.SetStatus(nil, nil, nil, nil, &state, &message)
 		}
 		w.resultChannel <- result
 	}
@@ -126,7 +127,7 @@ func (w *TaskQueue) ScheduleTask(id uuid.UUID) {
 		return
 	}
 	msg := "queued"
-	ingestionTask.SetStatus(nil, nil, nil, nil, nil, nil, nil, &msg)
+	ingestionTask.SetStatus(nil, nil, nil, nil, nil, &msg)
 
 	// Go routine to handle result and errors
 	go func(id uuid.UUID) {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/SwissOpenEM/Ingestor/internal/task"
 	"github.com/google/uuid"
 )
 
@@ -38,13 +39,11 @@ func (i *IngestorWebServerImplemenation) TransferControllerGetTransfer(ctx conte
 		if err != nil {
 			return TransferControllerGetTransfer400TextResponse(fmt.Sprintf("No such task with id '%s'", uid.String())), nil
 		}
+
 		transferItems := []TransferItem{
 			{
 				TransferId:       id,
-				Status:           &status.StatusMessage,
-				Started:          &status.Started,
-				Finished:         &status.Finished,
-				Failed:           &status.Failed,
+				State:            stateToDto(status.State),
 				BytesTransferred: &status.BytesTransferred,
 				BytesTotal:       &status.BytesTotal,
 				FilesTransferred: &status.FilesTransferred,
@@ -52,9 +51,7 @@ func (i *IngestorWebServerImplemenation) TransferControllerGetTransfer(ctx conte
 			},
 		}
 
-		totalItems := len(transferItems)
 		return TransferControllerGetTransfer200JSONResponse{
-			Total:     &totalItems,
 			Transfers: &transferItems,
 		}, nil
 	}
@@ -79,10 +76,8 @@ func (i *IngestorWebServerImplemenation) TransferControllerGetTransfer(ctx conte
 		idString := ids[i].String()
 		transferItems = append(transferItems, TransferItem{
 			TransferId: idString,
-			Status:     getPointerOrNil(status.StatusMessage),
-			Started:    getPointerOrNil(status.Started),
-			Finished:   getPointerOrNil(status.Finished),
-			Failed:     getPointerOrNil(status.Failed),
+			State:      stateToDto(status.State),
+			Message:    getPointerOrNil(status.Message),
 		})
 	}
 
@@ -98,5 +93,22 @@ func getPointerOrNil[T comparable](v T) *T {
 		return nil
 	} else {
 		return &v
+	}
+}
+
+func stateToDto(s task.State) TransferItemState {
+	switch s {
+	case task.Waiting:
+		return Waiting
+	case task.Started:
+		return Started
+	case task.Finished:
+		return Finished
+	case task.Failed:
+		return Failed
+	case task.Cancelled:
+		return Cancelled
+	default:
+		return InvalidState
 	}
 }
