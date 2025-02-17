@@ -35,7 +35,7 @@ func (i *IngestorWebServerImplemenation) TransferControllerGetTransfer(ctx conte
 			return TransferControllerGetTransfer400TextResponse(fmt.Sprintf("Can't parse UUID: %s", err.Error())), nil
 		}
 
-		status, err := i.taskQueue.GetTaskStatus(uid)
+		status, err := i.taskQueue.GetTaskDetails(uid)
 		if err != nil {
 			return TransferControllerGetTransfer400TextResponse(fmt.Sprintf("No such task with id '%s'", uid.String())), nil
 		}
@@ -43,7 +43,7 @@ func (i *IngestorWebServerImplemenation) TransferControllerGetTransfer(ctx conte
 		transferItems := []TransferItem{
 			{
 				TransferId:       id,
-				State:            stateToDto(status.State),
+				Status:           statusToDto(status.Status),
 				BytesTransferred: &status.BytesTransferred,
 				BytesTotal:       &status.BytesTotal,
 				FilesTransferred: &status.FilesTransferred,
@@ -66,7 +66,7 @@ func (i *IngestorWebServerImplemenation) TransferControllerGetTransfer(ctx conte
 	}
 
 	resultNo := i.taskQueue.GetTaskCount()
-	ids, statuses, err := i.taskQueue.GetTaskStatusList((page-1)*pageSize, page*pageSize)
+	ids, statuses, err := i.taskQueue.GetTaskDetailsList((page-1)*pageSize, page*pageSize)
 	if err != nil {
 		return TransferControllerGetTransfer400TextResponse(err.Error()), nil
 	}
@@ -76,7 +76,7 @@ func (i *IngestorWebServerImplemenation) TransferControllerGetTransfer(ctx conte
 		idString := ids[i].String()
 		transferItems = append(transferItems, TransferItem{
 			TransferId: idString,
-			State:      stateToDto(status.State),
+			Status:     statusToDto(status.Status),
 			Message:    getPointerOrNil(status.Message),
 		})
 	}
@@ -96,12 +96,12 @@ func getPointerOrNil[T comparable](v T) *T {
 	}
 }
 
-func stateToDto(s task.State) TransferItemState {
+func statusToDto(s task.Status) TransferItemStatus {
 	switch s {
 	case task.Waiting:
 		return Waiting
-	case task.Started:
-		return Started
+	case task.Transferring:
+		return Transferring
 	case task.Finished:
 		return Finished
 	case task.Failed:

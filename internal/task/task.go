@@ -25,31 +25,31 @@ type TaskTransferConfig struct {
 	GlobusTransferConfig
 }
 
-type TaskStatus struct {
+type TaskDetails struct {
 	BytesTransferred int
 	BytesTotal       int
 	FilesTransferred int
 	FilesTotal       int
-	State            State
+	Status           Status
 	Message          string
 }
 
-type State int
+type Status int
 
 const (
-	Waiting State = iota
-	Started
+	Waiting Status = iota
+	Transferring
 	Finished
 	Failed
 	Cancelled
 )
 
-func (i *State) ToStr() string {
+func (i *Status) ToStr() string {
 	switch *i {
 	case Waiting:
 		return "waiting"
-	case Started:
-		return "started"
+	case Transferring:
+		return "transferring"
 	case Finished:
 		return "finished"
 	case Failed:
@@ -67,7 +67,7 @@ type TransferTask struct {
 	DatasetMetadata map[string]interface{}
 	TransferMethod  TransferMethod
 	Cancel          context.CancelFunc
-	status          *TaskStatus
+	details         *TaskDetails
 	statusLock      *sync.RWMutex
 }
 
@@ -85,45 +85,45 @@ func CreateTransferTask(datasetId string, fileList []datasetIngestor.Datafile, d
 		DatasetMetadata: metadata,
 		TransferMethod:  transferMethod,
 		Cancel:          cancel,
-		status:          &TaskStatus{},
+		details:         &TaskDetails{},
 		statusLock:      &sync.RWMutex{},
 	}
 }
 
-func (t *TransferTask) GetStatus() TaskStatus {
+func (t *TransferTask) GetDetails() TaskDetails {
 	t.statusLock.RLock()
 	defer t.statusLock.RUnlock()
-	copy := *t.status
+	copy := *t.details
 	return copy
 }
 
-func (t *TransferTask) SetStatus(
+func (t *TransferTask) SetDetails(
 	bytesTransferred *int,
 	bytesTotal *int,
 	filesTransferred *int,
 	filesTotal *int,
-	state *State,
+	status *Status,
 	message *string,
 ) {
 	t.statusLock.Lock()
 	defer t.statusLock.Unlock()
 	if bytesTransferred != nil {
-		t.status.BytesTransferred = *bytesTransferred
+		t.details.BytesTransferred = *bytesTransferred
 	}
 	if bytesTotal != nil {
-		t.status.BytesTotal = *bytesTotal
+		t.details.BytesTotal = *bytesTotal
 	}
 	if filesTransferred != nil {
-		t.status.FilesTransferred = *filesTransferred
+		t.details.FilesTransferred = *filesTransferred
 	}
 	if filesTotal != nil {
-		t.status.FilesTotal = *filesTotal
+		t.details.FilesTotal = *filesTotal
 	}
-	if state != nil {
-		t.status.State = *state
+	if status != nil {
+		t.details.Status = *status
 	}
 	if message != nil {
-		t.status.Message = *message
+		t.details.Message = *message
 	}
 }
 

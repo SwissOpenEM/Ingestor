@@ -151,12 +151,12 @@ func GlobusTransfer(globusConf task.GlobusTransferConfig, t *task.TransferTask, 
 		totalFiles = 1 // needed because percentage meter goes NaN otherwise
 	}
 	statusMsg := "transfering"
-	var state *task.State = nil
+	var state *task.Status = nil
 	if taskCompleted {
 		f := task.Finished
 		state = &f
 	}
-	t.SetStatus(&bytesTransferred, nil, &filesTransferred, &totalFiles, state, &statusMsg)
+	t.SetDetails(&bytesTransferred, nil, &filesTransferred, &totalFiles, state, &statusMsg)
 	if taskCompleted {
 		return nil
 	}
@@ -177,7 +177,7 @@ func GlobusTransfer(globusConf task.GlobusTransferConfig, t *task.TransferTask, 
 			}
 			statusMsg = "task was cancelled"
 			*state = task.Cancelled
-			t.SetStatus(nil, nil, nil, nil, state, &statusMsg)
+			t.SetDetails(nil, nil, nil, nil, state, &statusMsg)
 			notifier.OnTaskCanceled(localTaskId)
 			return nil
 		case <-timerUpdater:
@@ -195,7 +195,7 @@ func GlobusTransfer(globusConf task.GlobusTransferConfig, t *task.TransferTask, 
 				totalFiles = 1 // needed because percentage meter goes NaN otherwise
 			}
 
-			t.SetStatus(&bytesTransferred, nil, &filesTransferred, &totalFiles, nil, nil)
+			t.SetDetails(&bytesTransferred, nil, &filesTransferred, &totalFiles, nil, nil)
 			notifier.OnTaskProgress(localTaskId, filesTransferred, totalFiles, int(time.Since(startTime).Seconds()))
 
 			if taskCompleted {

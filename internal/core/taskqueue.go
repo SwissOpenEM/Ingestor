@@ -52,7 +52,7 @@ func (w *TaskQueue) AddTransferTask(datasetId string, fileList []datasetIngestor
 	}
 	msg := "added"
 	size := int(totalSize)
-	task.SetStatus(nil, &size, nil, nil, nil, &msg)
+	task.SetDetails(nil, &size, nil, nil, nil, &msg)
 
 	w.taskListLock.Lock()
 	defer w.taskListLock.Unlock()
@@ -68,17 +68,17 @@ func (w *TaskQueue) startWorker() {
 
 		transferTask.Cancel = cancel
 
-		s := task.Started // mark as "started"
-		transferTask.SetStatus(nil, nil, nil, nil, &s, nil)
+		s := task.Transferring // mark as "started"
+		transferTask.SetDetails(nil, nil, nil, nil, &s, nil)
 		result := w.TransferDataset(task_context, transferTask)
 		if result.Error == nil {
-			state := task.Finished
+			status := task.Finished
 			message := "finished"
-			transferTask.SetStatus(nil, nil, nil, nil, &state, &message)
+			transferTask.SetDetails(nil, nil, nil, nil, &status, &message)
 		} else {
-			state := task.Failed
+			status := task.Failed
 			message := fmt.Sprintf("failed - error: %s", result.Error.Error())
-			transferTask.SetStatus(nil, nil, nil, nil, &state, &message)
+			transferTask.SetDetails(nil, nil, nil, nil, &status, &message)
 		}
 		w.resultChannel <- result
 	}
@@ -127,7 +127,7 @@ func (w *TaskQueue) ScheduleTask(id uuid.UUID) {
 		return
 	}
 	msg := "queued"
-	ingestionTask.SetStatus(nil, nil, nil, nil, nil, &msg)
+	ingestionTask.SetDetails(nil, nil, nil, nil, nil, &msg)
 
 	// Go routine to handle result and errors
 	go func(id uuid.UUID) {
@@ -151,19 +151,19 @@ func (w *TaskQueue) ScheduleTask(id uuid.UUID) {
 	}(ingestionTask.DatasetFolder)
 }
 
-func (w *TaskQueue) GetTaskStatus(id uuid.UUID) (task.TaskStatus, error) {
+func (w *TaskQueue) GetTaskDetails(id uuid.UUID) (task.TaskDetails, error) {
 	w.taskListLock.RLock()
 	t, found := w.datasetUploadTasks.Get(id)
 	w.taskListLock.RUnlock()
 	if !found {
-		return task.TaskStatus{}, fmt.Errorf("no task exists with id '%s'", id.String())
+		return task.TaskDetails{}, fmt.Errorf("no task exists with id '%s'", id.String())
 	}
-	return t.GetStatus(), nil
+	return t.GetDetails(), nil
 }
 
-func (w *TaskQueue) GetTaskStatusList(start uint, end uint) (idList []uuid.UUID, statusList []task.TaskStatus, err error) {
+func (w *TaskQueue) GetTaskDetailsList(start uint, end uint) (idList []uuid.UUID, detailsList []task.TaskDetails, err error) {
 	if end < start {
-		return idList, statusList, errors.New("end index is smaller than start index")
+		return idList, detailsList, errors.New("end index is smaller than start index")
 	}
 
 	w.taskListLock.RLock()
@@ -176,10 +176,10 @@ func (w *TaskQueue) GetTaskStatusList(start uint, end uint) (idList []uuid.UUID,
 	for i := start; i < end; i++ {
 		task, _ := w.datasetUploadTasks.Get(keys[i])
 		idList = append(idList, keys[i])
-		statusList = append(statusList, task.GetStatus())
+		detailsList = append(detailsList, task.GetDetails())
 	}
 
-	return idList, statusList, err
+	return idList, detailsList, err
 }
 
 func (w *TaskQueue) GetTaskCount() int {

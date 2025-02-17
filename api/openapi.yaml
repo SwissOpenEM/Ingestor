@@ -437,9 +437,9 @@ components:
       properties:
         transferId:
           type: string
-        state:
+        status:
           type: string
-          enum: [waiting, started, finished, failed, cancelled, invalid state]
+          enum: [waiting, transferring, finished, failed, cancelled, invalid state]
         message:
           type: string
         bytesTransferred:
@@ -452,7 +452,7 @@ components:
           type: integer
       required:
         - transferId
-        - state
+        - status
     GetTransferResponse:
       type: object
       properties:
