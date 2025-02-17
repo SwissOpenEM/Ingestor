@@ -439,7 +439,7 @@ components:
           type: string
         status:
           type: string
-          enum: [waiting, transferring, finished, failed, cancelled, invalid state]
+          enum: [waiting, transferring, finished, failed, cancelled, invalid status]
         message:
           type: string
         bytesTransferred:

@@ -109,6 +109,6 @@ func statusToDto(s task.Status) TransferItemStatus {
 	case task.Cancelled:
 		return Cancelled
 	default:
-		return InvalidState
+		return InvalidStatus
 	}
 }

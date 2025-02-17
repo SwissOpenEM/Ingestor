@@ -55,7 +55,7 @@ func (i *Status) ToStr() string {
 	case Failed:
 		return "failed"
 	default:
-		return "invalid state"
+		return "invalid status"
 	}
 }
 
