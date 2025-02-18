@@ -35,7 +35,6 @@ func createExpectedValidConfigGlobus() task.TransferConfig {
 			SourcePrefixPath:      "/some/optional/path",
 			DestinationCollection: "collectionid2",
 			DestinationPrefixPath: "/another/optional/path",
-			RefreshToken:          "refresh_token",
 		},
 	}
 }

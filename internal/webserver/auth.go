@@ -7,6 +7,8 @@ import (
 	"slices"
 	"time"
 
+	"github.com/SwissOpenEM/Ingestor/internal/task"
+	"github.com/SwissOpenEM/Ingestor/internal/webserver/globusauth"
 	"github.com/SwissOpenEM/Ingestor/internal/webserver/randomfuncs"
 	"github.com/coreos/go-oidc/v3/oidc"
 	"github.com/gin-contrib/sessions"
@@ -23,19 +25,6 @@ func (i *IngestorWebServerImplemenation) GetLogin(ctx context.Context, request G
 		return GetLogin302Response{}, errors.New("CANT CONVERT")
 	}
 	authSession := sessions.DefaultMany(ginCtx, "auth")
-	userSession := sessions.DefaultMany(ginCtx, "user")
-
-	// check if already logged-in
-	if val, ok := userSession.Get("expires_at").(string); ok {
-		expiry, _ := time.Parse(time.RFC3339Nano, val)
-		if time.Now().Before(expiry) {
-			return GetLogin302Response{
-				Headers: GetLogin302ResponseHeaders{
-					Location: "/",
-				},
-			}, nil
-		}
-	}
 
 	// generate state, verifier and nonce
 	state, err := randomfuncs.GenerateRandomString(16)
@@ -77,7 +66,10 @@ func (i *IngestorWebServerImplemenation) GetLogin(ctx context.Context, request G
 
 func (i *IngestorWebServerImplemenation) GetCallback(ctx context.Context, request GetCallbackRequestObject) (GetCallbackResponseObject, error) {
 	// get sessions
-	ginCtx := ctx.(*gin.Context)
+	ginCtx, ok := ctx.(*gin.Context)
+	if !ok {
+		return GetCallback500TextResponse("can't access context"), nil
+	}
 	authSession := sessions.DefaultMany(ginCtx, "auth")
 	userSession := sessions.DefaultMany(ginCtx, "user")
 
@@ -112,7 +104,6 @@ func (i *IngestorWebServerImplemenation) GetCallback(ctx context.Context, reques
 	oauthToken, err := i.oauth2Config.Exchange(
 		ctx,
 		request.Params.Code,
-		oauth2.AccessTypeOffline,
 		oauth2.VerifierOption(verifier),
 	)
 	if err != nil {
@@ -174,10 +165,19 @@ func (i *IngestorWebServerImplemenation) GetCallback(ctx context.Context, reques
 		return GetCallback500TextResponse(fmt.Sprintf("can't set user session: %s", err.Error())), nil
 	}
 
-	// reply
+	// globus redirect for logging-in (if using globus)
+	if i.taskQueue.GetTransferMethod() == task.TransferGlobus {
+		// revoke session with globus, if we have one ongoing
+		if globusauth.TestGlobusCookie(ginCtx) {
+			_ = globusauth.Logout(ginCtx, *i.globusAuthConf) // we don't care if logout fails
+		}
+		return globusCallbackRedirect(ctx, i.globusAuthConf)
+	}
+
+	// standard redirect to frontend if there's nothing else to do
 	return GetCallback302Response{
 		Headers: GetCallback302ResponseHeaders{
-			Location: i.frontendOrigin + i.frontendRedirectPath,
+			Location: i.frontend.origin + i.frontend.redirectPath,
 		},
 	}, nil
 }
@@ -200,8 +200,15 @@ func (i *IngestorWebServerImplemenation) GetLogout(ctx context.Context, request 
 		return GetLogout500TextResponse(err.Error()), nil
 	}
 
+	if i.taskQueue.GetTransferMethod() == task.TransferGlobus {
+		err = globusauth.Logout(ginCtx, *i.globusAuthConf)
+		if err != nil {
+			return GetLogout500TextResponse(err.Error()), nil
+		}
+	}
+
 	return GetLogout302Response{GetLogout302ResponseHeaders{
-		Location: i.frontendOrigin + i.frontendRedirectPath,
+		Location: i.frontend.origin + i.frontend.redirectPath,
 	}}, nil
 }
 
@@ -261,5 +268,72 @@ func (i *IngestorWebServerImplemenation) GetUserinfo(ctx context.Context, reques
 		FamilyName:        strPointerOrNil(&familyName),
 		GivenName:         strPointerOrNil(&givenName),
 		ExpiresAt:         &expiresAt,
+	}, nil
+}
+
+// this is the callback endpoint for handling the globus code exchange
+func (i *IngestorWebServerImplemenation) GetGlobusCallback(ctx context.Context, request GetGlobusCallbackRequestObject) (GetGlobusCallbackResponseObject, error) {
+	ginCtx, ok := ctx.(*gin.Context)
+	if !ok {
+		return GetGlobusCallback500TextResponse("can't access context"), nil
+	}
+	authSession := sessions.DefaultMany(ginCtx, "auth")
+
+	state, ok1 := authSession.Get("state").(string)
+	verifier, ok2 := authSession.Get("verifier").(string)
+	if !ok1 || !ok2 {
+		return GetGlobusCallback400TextResponse("auth session has expired or is invalid"), nil
+	}
+
+	// delete auth session
+	authSession.Delete("state")
+	authSession.Delete("verifier")
+	authSession.Options(sessions.Options{
+		HttpOnly: true,
+		Secure:   ginCtx.Request.TLS != nil,
+		MaxAge:   -1,
+	})
+	err := authSession.Save()
+	if err != nil {
+		return GetGlobusCallback500TextResponse(err.Error()), nil
+	}
+
+	if request.Params.State != state {
+		return GetGlobusCallback400TextResponse("invalid state"), nil
+	}
+
+	// exchange authorization code for accessToken
+	oauthToken, err := i.globusAuthConf.Exchange(
+		ctx,
+		request.Params.Code,
+		oauth2.AccessTypeOffline,
+		oauth2.VerifierOption(verifier),
+	)
+	if err != nil {
+		return GetGlobusCallback400TextResponse(fmt.Sprintf("code exchange failed: %s", err.Error())), nil
+	}
+
+	err = globusauth.SetTokenCookie(ginCtx, oauthToken.RefreshToken, oauthToken.AccessToken, oauthToken.Expiry, i.sessionDuration)
+	if err != nil {
+		return GetGlobusCallback400TextResponse(fmt.Sprintf("creating globus session cookie failed: %s", err.Error())), nil
+	}
+
+	return GetGlobusCallback302Response{
+		Headers: GetGlobusCallback302ResponseHeaders{
+			Location: i.frontend.origin + i.frontend.redirectPath,
+		},
+	}, nil
+}
+
+func globusCallbackRedirect(ctx context.Context, globusAuthConf *oauth2.Config) (GetCallbackResponseObject, error) {
+	redirectUrl, err := globusauth.GetRedirectUrl(ctx, globusAuthConf)
+	if err != nil {
+		return GetCallback500TextResponse(err.Error()), nil
+	}
+
+	return GetCallback302Response{
+		Headers: GetCallback302ResponseHeaders{
+			Location: redirectUrl,
+		},
 	}, nil
 }
