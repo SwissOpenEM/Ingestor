@@ -39,9 +39,11 @@ func (w *TaskQueue) Startup() {
 	}
 }
 
-func (w *TaskQueue) AddTransferTask(transferObjects map[string]interface{}, datasetId string, fileList []datasetIngestor.Datafile, totalSize int64, metadataMap map[string]interface{}, taskId uuid.UUID) error {
+// func (w *TaskQueue) AddTransferTask(transferObjects map[string]interface{}, datasetId string, fileList []datasetIngestor.Datafile, totalSize int64, metadataMap map[string]interface{}, taskId uuid.UUID) error {
+func (w *TaskQueue) AddTransferTask(transferObjects map[string]interface{}, datasetId string, fileList []datasetIngestor.Datafile, totalSize int64, metadataMap map[string]interface{}, taskId uuid.UUID, userToken string) error {
 	transferMethod := w.GetTransferMethod()
-	task := task.CreateTransferTask(datasetId, fileList, task.DatasetFolder{Id: taskId}, metadataMap, transferMethod, transferObjects, nil)
+	// task := task.CreateTransferTask(datasetId, fileList, task.DatasetFolder{Id: taskId}, metadataMap, transferMethod, transferObjects, nil)
+	task := task.CreateTransferTask(datasetId, fileList, task.DatasetFolder{Id: taskId}, metadataMap, transferMethod, transferObjects, nil, userToken)
 
 	switch v := metadataMap["sourceFolder"].(type) {
 	case string:
@@ -196,7 +198,7 @@ func (w *TaskQueue) GetTaskFolder(id uuid.UUID) string {
 	defer w.taskListLock.RUnlock()
 
 	if t, ok := w.datasetUploadTasks.Get(id); ok {
-		return t.FolderPath
+		return t.DatasetFolder.FolderPath
 	}
 	return ""
 }
