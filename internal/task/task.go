@@ -49,11 +49,7 @@ type TransferTask struct {
 	transferObjects map[string]interface{}
 }
 
-type Result struct {
-	Elapsed_seconds int
-	Dataset_PID     string
-	Error           error
-}
+type StatusOption func(t *TransferTask)
 
 func CreateTransferTask(datasetId string, fileList []datasetIngestor.Datafile, datasetFolder DatasetFolder, metadata map[string]interface{}, transferMethod TransferMethod, transferObjects map[string]interface{}, cancel context.CancelFunc) TransferTask {
 	return TransferTask{
@@ -76,41 +72,59 @@ func (t *TransferTask) GetStatus() TaskStatus {
 	return copy
 }
 
-func (t *TransferTask) SetStatus(
-	bytesTransferred *int,
-	bytesTotal *int,
-	filesTransferred *int,
-	filesTotal *int,
-	failed *bool,
-	started *bool,
-	finished *bool,
-	statusMessage *string,
-) {
+func (t *TransferTask) UpdateStatus(options ...StatusOption) {
 	t.statusLock.Lock()
 	defer t.statusLock.Unlock()
-	if bytesTransferred != nil {
-		t.status.BytesTransferred = *bytesTransferred
+	for _, option := range options {
+		option(t)
 	}
-	if bytesTotal != nil {
-		t.status.BytesTotal = *bytesTotal
+}
+
+func SetBytesTransferred(b int) StatusOption {
+	return func(t *TransferTask) {
+		t.status.BytesTransferred = b
 	}
-	if filesTransferred != nil {
-		t.status.FilesTransferred = *filesTransferred
+}
+
+func SetBytesTotal(b int) StatusOption {
+	return func(t *TransferTask) {
+		t.status.BytesTotal = b
 	}
-	if filesTotal != nil {
-		t.status.FilesTotal = *filesTotal
+}
+
+func SetFilesTransferred(f int) StatusOption {
+	return func(t *TransferTask) {
+		t.status.FilesTransferred = f
 	}
-	if failed != nil {
-		t.status.Failed = *failed
+}
+
+func SetFilesTotal(f int) StatusOption {
+	return func(t *TransferTask) {
+		t.status.FilesTotal = f
 	}
-	if started != nil {
-		t.status.Started = *started
+}
+
+func SetFailed(f bool) StatusOption {
+	return func(t *TransferTask) {
+		t.status.Failed = f
 	}
-	if finished != nil {
-		t.status.Finished = *finished
+}
+
+func SetStarted(s bool) StatusOption {
+	return func(t *TransferTask) {
+		t.status.Started = s
 	}
-	if statusMessage != nil {
-		t.status.StatusMessage = *statusMessage
+}
+
+func SetFinished(f bool) StatusOption {
+	return func(t *TransferTask) {
+		t.status.Finished = f
+	}
+}
+
+func SetStatusMessage(m string) StatusOption {
+	return func(t *TransferTask) {
+		t.status.StatusMessage = m
 	}
 }
 

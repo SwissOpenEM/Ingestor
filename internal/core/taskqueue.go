@@ -11,6 +11,7 @@ import (
 	"time"
 
 	task "github.com/SwissOpenEM/Ingestor/internal/task"
+	"github.com/alitto/pond/v2"
 	"github.com/elliotchance/orderedmap/v2"
 	"github.com/google/uuid"
 	"github.com/paulscherrerinstitute/scicat-cli/v3/datasetIngestor"
@@ -20,7 +21,7 @@ type TaskQueue struct {
 	taskListLock       sync.RWMutex                                          // locking mechanism for uploadIds and datasetUploadTasks
 	datasetUploadTasks *orderedmap.OrderedMap[uuid.UUID, *task.TransferTask] // For storing requests, mapped to the id's above
 	inputChannel       chan *task.TransferTask                               // Requests to upload data are put into this channel
-	resultChannel      chan task.Result                                      // The result of the upload is put into this channel
+	taskPool           pond.Pool
 
 	AppContext  context.Context
 	Config      Config
@@ -30,57 +31,50 @@ type TaskQueue struct {
 
 func (w *TaskQueue) Startup() {
 	w.inputChannel = make(chan *task.TransferTask)
-	w.resultChannel = make(chan task.Result)
 	w.datasetUploadTasks = orderedmap.NewOrderedMap[uuid.UUID, *task.TransferTask]()
-
-	// start multiple go routines/workers that will listen on the input channel
-	for worker := 1; worker <= w.Config.Misc.ConcurrencyLimit; worker++ {
-		go w.startWorker()
-	}
+	w.taskPool = pond.NewPool(100, pond.WithQueueSize(1000))
 }
 
 func (w *TaskQueue) AddTransferTask(transferObjects map[string]interface{}, datasetId string, fileList []datasetIngestor.Datafile, totalSize int64, metadataMap map[string]interface{}, taskId uuid.UUID) error {
 	transferMethod := w.GetTransferMethod()
-	task := task.CreateTransferTask(datasetId, fileList, task.DatasetFolder{Id: taskId}, metadataMap, transferMethod, transferObjects, nil)
+	t := task.CreateTransferTask(datasetId, fileList, task.DatasetFolder{Id: taskId}, metadataMap, transferMethod, transferObjects, nil)
 
 	switch v := metadataMap["sourceFolder"].(type) {
 	case string:
 		// the collection location has to be added to get the absolute path of the dataset
-		task.DatasetFolder.FolderPath = path.Join(w.Config.WebServer.CollectionLocation, filepath.FromSlash(v))
+		t.DatasetFolder.FolderPath = path.Join(w.Config.WebServer.CollectionLocation, filepath.FromSlash(v))
 	default:
 		return errors.New("sourceFolder in metadata isn't a string")
 	}
-	msg := "added"
-	size := int(totalSize)
-	task.SetStatus(nil, &size, nil, nil, nil, nil, nil, &msg)
+	t.UpdateStatus(
+		task.SetBytesTotal(int(totalSize)),
+		task.SetStatusMessage("added"),
+	)
 
 	w.taskListLock.Lock()
 	defer w.taskListLock.Unlock()
-	w.datasetUploadTasks.Set(taskId, &task)
+	w.datasetUploadTasks.Set(taskId, &t)
 
 	return nil
 }
 
-// Go routine that listens on the channel continously for upload requests and executes uploads.
-func (w *TaskQueue) startWorker() {
-	for transferTask := range w.inputChannel {
-		task_context, cancel := context.WithCancel(w.AppContext)
+func (w *TaskQueue) executeTransferTask(t *task.TransferTask) {
+	task_context, cancel := context.WithCancel(w.AppContext)
 
-		transferTask.Cancel = cancel
+	t.Cancel = cancel
 
-		result := w.TransferDataset(task_context, transferTask)
-		if result.Error == nil {
-			falseVal := false
-			trueVal := true
-			message := "finished"
-			transferTask.SetStatus(nil, nil, nil, nil, &falseVal, nil, &trueVal, &message)
-		} else {
-			trueVal := true
-			message := fmt.Sprintf("failed - error: %s", result.Error.Error())
-			transferTask.SetStatus(nil, nil, nil, nil, &trueVal, nil, &trueVal, &message)
-		}
-		w.resultChannel <- result
+	_, err := w.TransferDataset(task_context, t)
+	if err != nil {
+		t.UpdateStatus(
+			task.SetFailed(true),
+			task.SetFinished(true),
+			task.SetStatusMessage(fmt.Sprintf("failed - error: %s", err.Error())),
+		)
 	}
+	t.UpdateStatus(
+		task.SetFinished(true),
+		task.SetStatusMessage("finished"),
+	)
 }
 
 func (w *TaskQueue) CancelTask(id uuid.UUID) {
@@ -117,37 +111,16 @@ func (w *TaskQueue) RemoveTask(id uuid.UUID) error {
 	return nil
 }
 
-func (w *TaskQueue) ScheduleTask(id uuid.UUID) {
+func (w *TaskQueue) ScheduleTask(id uuid.UUID) error {
 	w.taskListLock.RLock()
 	ingestionTask, found := w.datasetUploadTasks.Get(id)
 	w.taskListLock.RUnlock()
 	if !found {
-		fmt.Println("Scheduling upload failed for: ", id)
-		return
+		return fmt.Errorf("task with id '%s' not found", id.String())
 	}
-	msg := "queued"
-	ingestionTask.SetStatus(nil, nil, nil, nil, nil, nil, nil, &msg)
 
-	// Go routine to handle result and errors
-	go func(id uuid.UUID) {
-		taskResult := <-w.resultChannel
-		if taskResult.Error != nil {
-			w.Notifier.OnTaskFailed(id, taskResult.Error)
-			println(fmt.Sprint(taskResult.Error))
-		} else {
-			w.Notifier.OnTaskCompleted(id, taskResult.Elapsed_seconds)
-			println(taskResult.Dataset_PID, taskResult.Elapsed_seconds)
-		}
-	}(ingestionTask.DatasetFolder.Id)
-
-	// Go routine to schedule the upload asynchronously
-	go func(folder task.DatasetFolder) {
-		fmt.Println("Scheduled upload for: ", folder)
-		w.Notifier.OnTaskScheduled(folder.Id)
-
-		// this channel is read by the go routines that does the actual upload
-		w.inputChannel <- ingestionTask
-	}(ingestionTask.DatasetFolder)
+	w.taskPool.Submit(func() { w.executeTransferTask(ingestionTask) })
+	return nil
 }
 
 func (w *TaskQueue) GetTaskStatus(id uuid.UUID) (task.TaskStatus, error) {
@@ -210,12 +183,12 @@ func TestIngestionFunction(task_context context.Context, task task.TransferTask,
 
 }
 
-func (w *TaskQueue) TransferDataset(taskCtx context.Context, it *task.TransferTask) task.Result {
+func (w *TaskQueue) TransferDataset(taskCtx context.Context, it *task.TransferTask) (float64, error) {
 	start := time.Now()
 	err := TransferDataset(taskCtx, it, w.ServiceUser, w.Config, w.Notifier)
 	end := time.Now()
 	elapsed := end.Sub(start)
-	return task.Result{Elapsed_seconds: int(elapsed.Seconds()), Error: err}
+	return elapsed.Seconds(), err
 }
 
 func (w *TaskQueue) GetTransferMethod() (transferMethod task.TransferMethod) {
