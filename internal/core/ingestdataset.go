@@ -210,10 +210,8 @@ func TransferDataset(
 	datasetId := it.GetDatasetId()
 	datasetFolder := it.DatasetFolder.FolderPath
 	fileList := it.GetFileList()
+
 	var err error
-	var http_client = &http.Client{
-		Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}},
-		Timeout:   120 * time.Second}
 
 	switch it.TransferMethod {
 	case task.TransferS3:
@@ -221,6 +219,9 @@ func TransferDataset(
 	case task.TransferGlobus:
 		// globus doesn't work with absolute folders, this library uses sourcePrefix to adapt the path to the globus' own path from a relative path
 		relativeDatasetFolder := strings.TrimPrefix(datasetFolder, config.WebServer.CollectionLocation)
+
+		// This seems like a false positive
+		//nolint:ineffassign
 		err = GlobusTransfer(config.Transfer.Globus, it, task_context, it.DatasetFolder.Id, relativeDatasetFolder, fileList, notifier)
 	_:
 		return fmt.Errorf("unknown transfer method: %d", it.TransferMethod)
@@ -230,6 +231,9 @@ func TransferDataset(
 		return err
 	}
 
+	var http_client = &http.Client{
+		Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}},
+		Timeout:   120 * time.Second}
 	// mark dataset archivable
 	user, _, err := datasetUtils.AuthenticateUser(http_client, config.Scicat.Host, serviceUser.Username, serviceUser.Password, false)
 	if err != nil {
