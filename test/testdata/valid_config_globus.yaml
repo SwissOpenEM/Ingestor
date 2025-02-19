@@ -1,6 +1,5 @@
 Scicat:
   Host: http://scicat:8080/api/v3
-  AccessToken: "token"
 Transfer:
   Method: Globus
   Globus:

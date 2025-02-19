@@ -1,12 +1,12 @@
 package task
 
 type S3TransferConfig struct {
-	Endpoint string `string:"Endpoint" validate:"hostname_port"`
-	Bucket   string `string:"Bucket"`
-	Location string `string:"Location"`
-	User     string `string:"User"`
-	Password string `string:"Password"`
-	Checksum bool   `bool:"Checksum"`
+	ClientID        string `string:"ClientID"`
+	TokenUrl        string `string:"TokenUrl" validate:"http_url"`
+	Endpoint        string `string:"Endpoint" validate:"http_url"`
+	ChunkSizeMB     int64  `int64:"ChunkSizeMB" validate:"required"`
+	ConcurrentFiles int    `int:"ConcurrentFiles" validate:"required"`
+	PoolSize        int    `int:"PoolSize" validate:"required"`
 }
 
 type GlobusTransferConfig struct {

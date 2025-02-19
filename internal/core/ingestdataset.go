@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/SwissOpenEM/Ingestor/internal/s3upload"
 	"github.com/SwissOpenEM/Ingestor/internal/task"
 	"github.com/fatih/color"
 	"github.com/paulscherrerinstitute/scicat-cli/v3/datasetIngestor"
@@ -198,34 +199,42 @@ func TransferDataset(
 	it *task.TransferTask,
 	serviceUser *UserCreds,
 	config Config,
-	notifier ProgressNotifier,
+	notifier task.ProgressNotifier,
 ) error {
+
+	// Check service user is available
+	if serviceUser == nil {
+		return fmt.Errorf("no service user was set, can't mark dataset as archivable. contact your administrator.")
+	}
+
 	datasetId := it.GetDatasetId()
 	datasetFolder := it.DatasetFolder.FolderPath
 	fileList := it.GetFileList()
+
 	var err error
-	var http_client = &http.Client{
-		Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}},
-		Timeout:   120 * time.Second}
 
 	switch it.TransferMethod {
 	case task.TransferS3:
-		_, err = UploadS3(task_context, datasetId, datasetFolder, it.DatasetFolder.Id, config.Transfer.S3, notifier)
+		err = s3upload.UploadS3(task_context, datasetId, datasetFolder, fileList, it.DatasetFolder.Id, config.Transfer.S3, it.UserToken, notifier)
 	case task.TransferGlobus:
 		// globus doesn't work with absolute folders, this library uses sourcePrefix to adapt the path to the globus' own path from a relative path
 		relativeDatasetFolder := strings.TrimPrefix(datasetFolder, config.WebServer.CollectionLocation)
+
+		// This seems like a false positive
+		//nolint:ineffassign
 		err = GlobusTransfer(config.Transfer.Globus, it, task_context, it.DatasetFolder.Id, relativeDatasetFolder, fileList, notifier)
 	_:
+		return fmt.Errorf("unknown transfer method: %d", it.TransferMethod)
 	}
 
 	if err != nil {
 		return err
 	}
 
+	var http_client = &http.Client{
+		Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}},
+		Timeout:   120 * time.Second}
 	// mark dataset archivable
-	if serviceUser == nil {
-		return fmt.Errorf("no service user was set, can't mark dataset as archivable")
-	}
 	user, _, err := datasetUtils.AuthenticateUser(http_client, config.Scicat.Host, serviceUser.Username, serviceUser.Password, false)
 	if err != nil {
 		return err

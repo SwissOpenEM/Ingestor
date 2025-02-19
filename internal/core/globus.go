@@ -46,7 +46,7 @@ func globusCheckTransfer(client *globus.GlobusClient, globusTaskId string) (byte
 	}
 }
 
-func GlobusTransfer(globusConf task.GlobusTransferConfig, task *task.TransferTask, taskCtx context.Context, localTaskId uuid.UUID, datasetFolder string, fileList []datasetIngestor.Datafile, notifier ProgressNotifier) error {
+func GlobusTransfer(globusConf task.GlobusTransferConfig, task *task.TransferTask, taskCtx context.Context, localTaskId uuid.UUID, datasetFolder string, fileList []datasetIngestor.Datafile, notifier task.ProgressNotifier) error {
 	client, ok := task.GetTransferObject("globus_client").(*globus.GlobusClient)
 	if !ok {
 		return fmt.Errorf("globus client is not set for this task")
@@ -100,7 +100,7 @@ func GlobusTransfer(globusConf task.GlobusTransferConfig, task *task.TransferTas
 	if taskCompleted {
 		return nil
 	}
-	notifier.OnTaskProgress(localTaskId, filesTransferred, totalFiles, int(time.Since(startTime).Seconds()))
+	notifier.OnTaskProgress(localTaskId, float32(filesTransferred)/float32(totalFiles)*100, int(time.Since(startTime).Seconds()))
 
 	timerUpdater := time.After(1 * time.Second)
 	transferUpdater := time.After(1 * time.Minute)
@@ -122,7 +122,7 @@ func GlobusTransfer(globusConf task.GlobusTransferConfig, task *task.TransferTas
 		case <-timerUpdater:
 			// update timer every second
 			timerUpdater = time.After(1 * time.Second)
-			notifier.OnTaskProgress(localTaskId, filesTransferred, totalFiles, int(time.Since(startTime).Seconds()))
+			notifier.OnTaskProgress(localTaskId, float32(filesTransferred)/float32(totalFiles)*100, int(time.Since(startTime).Seconds()))
 		case <-transferUpdater:
 			// check state of transfer
 			transferUpdater = time.After(1 * time.Minute)
@@ -135,7 +135,7 @@ func GlobusTransfer(globusConf task.GlobusTransferConfig, task *task.TransferTas
 			}
 
 			task.SetStatus(&bytesTransferred, nil, &filesTransferred, &totalFiles, nil, nil, nil, nil)
-			notifier.OnTaskProgress(localTaskId, filesTransferred, totalFiles, int(time.Since(startTime).Seconds()))
+			notifier.OnTaskProgress(localTaskId, float32(filesTransferred)/float32(totalFiles)*100, int(time.Since(startTime).Seconds()))
 
 			if taskCompleted {
 				return nil // we're done!

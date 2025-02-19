@@ -24,7 +24,7 @@ type TaskQueue struct {
 
 	AppContext  context.Context
 	Config      Config
-	Notifier    ProgressNotifier
+	Notifier    task.ProgressNotifier
 	ServiceUser *UserCreds
 }
 
@@ -39,9 +39,9 @@ func (w *TaskQueue) Startup() {
 	}
 }
 
-func (w *TaskQueue) AddTransferTask(transferObjects map[string]interface{}, datasetId string, fileList []datasetIngestor.Datafile, totalSize int64, metadataMap map[string]interface{}, taskId uuid.UUID) error {
+func (w *TaskQueue) AddTransferTask(transferObjects map[string]interface{}, datasetId string, fileList []datasetIngestor.Datafile, totalSize int64, metadataMap map[string]interface{}, taskId uuid.UUID, userToken string) error {
 	transferMethod := w.GetTransferMethod()
-	task := task.CreateTransferTask(datasetId, fileList, task.DatasetFolder{Id: taskId}, metadataMap, transferMethod, transferObjects, nil)
+	task := task.CreateTransferTask(datasetId, fileList, task.DatasetFolder{Id: taskId}, metadataMap, transferMethod, transferObjects, nil, userToken)
 
 	switch v := metadataMap["sourceFolder"].(type) {
 	case string:
@@ -119,14 +119,18 @@ func (w *TaskQueue) RemoveTask(id uuid.UUID) error {
 
 func (w *TaskQueue) ScheduleTask(id uuid.UUID) {
 	w.taskListLock.RLock()
-	ingestionTask, found := w.datasetUploadTasks.Get(id)
+	// This will return a pointer instead a copy of the object
+	ingestionTask := w.datasetUploadTasks.GetElement(id)
 	w.taskListLock.RUnlock()
-	if !found {
+	if ingestionTask == nil {
 		fmt.Println("Scheduling upload failed for: ", id)
 		return
 	}
 	msg := "queued"
-	ingestionTask.SetStatus(nil, nil, nil, nil, nil, nil, nil, &msg)
+	ingestionTask.Value.SetStatus(nil, nil, nil, nil, nil, nil, nil, &msg)
+	task_context, cancel := context.WithCancel(w.AppContext)
+	ingestionTask.Value.Context = task_context
+	ingestionTask.Value.Cancel = cancel
 
 	// Go routine to handle result and errors
 	go func(id uuid.UUID) {
@@ -138,7 +142,7 @@ func (w *TaskQueue) ScheduleTask(id uuid.UUID) {
 			w.Notifier.OnTaskCompleted(id, taskResult.Elapsed_seconds)
 			println(taskResult.Dataset_PID, taskResult.Elapsed_seconds)
 		}
-	}(ingestionTask.DatasetFolder.Id)
+	}(ingestionTask.Value.DatasetFolder.Id)
 
 	// Go routine to schedule the upload asynchronously
 	go func(folder task.DatasetFolder) {
@@ -146,8 +150,8 @@ func (w *TaskQueue) ScheduleTask(id uuid.UUID) {
 		w.Notifier.OnTaskScheduled(folder.Id)
 
 		// this channel is read by the go routines that does the actual upload
-		w.inputChannel <- ingestionTask
-	}(ingestionTask.DatasetFolder)
+		w.inputChannel <- ingestionTask.Value
+	}(ingestionTask.Value.DatasetFolder)
 }
 
 func (w *TaskQueue) GetTaskStatus(id uuid.UUID) (task.TaskStatus, error) {
@@ -192,19 +196,19 @@ func (w *TaskQueue) GetTaskFolder(id uuid.UUID) string {
 	defer w.taskListLock.RUnlock()
 
 	if t, ok := w.datasetUploadTasks.Get(id); ok {
-		return t.FolderPath
+		return t.DatasetFolder.FolderPath
 	}
 	return ""
 }
 
-func TestIngestionFunction(task_context context.Context, task task.TransferTask, config Config, notifier ProgressNotifier) (string, error) {
+func TestIngestionFunction(task_context context.Context, task task.TransferTask, config Config, notifier task.ProgressNotifier) (string, error) {
 	start := time.Now()
 
 	for i := 0; i < 10; i++ {
 		time.Sleep(time.Second * 1)
 		now := time.Now()
 		elapsed := now.Sub(start)
-		notifier.OnTaskProgress(task.DatasetFolder.Id, i+1, 10, int(elapsed.Seconds()))
+		notifier.OnTaskProgress(task.DatasetFolder.Id, float32(i)/10.0*100, int(elapsed.Seconds()))
 	}
 	return "1", nil
 
@@ -224,6 +228,8 @@ func (w *TaskQueue) GetTransferMethod() (transferMethod task.TransferMethod) {
 		transferMethod = task.TransferGlobus
 	case "s3":
 		transferMethod = task.TransferS3
+	default:
+		panic("unknown transfer method")
 	}
 	return transferMethod
 }

@@ -58,7 +58,7 @@ func (i *IngestorWebServerImplemenation) DatasetControllerIngestDataset(ctx cont
 
 	// create and start transfer task
 	taskId := uuid.New()
-	err = i.taskQueue.AddTransferTask(transferObjects, datasetId, fileList, totalSize, metadata, taskId)
+	err = i.taskQueue.AddTransferTask(transferObjects, datasetId, fileList, totalSize, metadata, taskId, request.Body.UserToken)
 	if err != nil {
 		if _, ok := err.(*os.PathError); ok {
 			return nil, fmt.Errorf("could not create the task due to a path error: %s", err.Error())
