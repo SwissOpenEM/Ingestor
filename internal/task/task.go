@@ -95,7 +95,7 @@ func (t *TransferTask) GetDetails() TaskDetails {
 	return copy
 }
 
-func (t *TransferTask) UpdateStatus(options ...StatusOption) {
+func (t *TransferTask) UpdateDetails(options ...StatusOption) {
 	t.statusLock.Lock()
 	defer t.statusLock.Unlock()
 	for _, option := range options {

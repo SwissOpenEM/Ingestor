@@ -50,7 +50,7 @@ func (w *TaskQueue) AddTransferTask(transferObjects map[string]interface{}, data
 	default:
 		return errors.New("sourceFolder in metadata isn't a string")
 	}
-	t.UpdateStatus(
+	t.UpdateDetails(
 		task.SetBytesTotal(int(totalSize)),
 		task.SetMessage("added"),
 	)
@@ -69,12 +69,12 @@ func (w *TaskQueue) executeTransferTask(t *task.TransferTask) {
 
 	_, err := w.TransferDataset(task_context, t)
 	if err != nil {
-		t.UpdateStatus(
+		t.UpdateDetails(
 			task.SetStatus(task.Failed),
 			task.SetMessage(fmt.Sprintf("failed - error: %s", err.Error())),
 		)
 	}
-	t.UpdateStatus(
+	t.UpdateDetails(
 		task.SetStatus(task.Finished),
 		task.SetMessage("finished"),
 	)
@@ -121,7 +121,7 @@ func (w *TaskQueue) ScheduleTask(id uuid.UUID) error {
 	if !found {
 		return fmt.Errorf("task with id '%s' not found", id.String())
 	}
-	ingestionTask.UpdateStatus(task.SetMessage("queued"))
+	ingestionTask.UpdateDetails(task.SetMessage("queued"))
 
 	w.taskPool.Submit(func() { w.executeTransferTask(ingestionTask) })
 	return nil

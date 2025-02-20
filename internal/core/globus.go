@@ -101,7 +101,7 @@ func GlobusTransfer(globusConf task.GlobusTransferConfig, t *task.TransferTask, 
 	if taskCompleted {
 		status = task.Finished
 	}
-	t.UpdateStatus(
+	t.UpdateDetails(
 		task.SetBytesTransferred(bytesTransferred),
 		task.SetFilesTransferred(filesTransferred),
 		task.SetFilesTotal(totalFiles),
@@ -126,7 +126,7 @@ func GlobusTransfer(globusConf task.GlobusTransferConfig, t *task.TransferTask, 
 			if result.Code != "Canceled" {
 				return fmt.Errorf("globus: couldn't cancel task - code: \"%s\", message: \"%s\"", result.Code, result.Message)
 			}
-			t.UpdateStatus(
+			t.UpdateDetails(
 				task.SetMessage("task was cancelled"),
 				task.SetStatus(task.Cancelled),
 			)
@@ -147,7 +147,7 @@ func GlobusTransfer(globusConf task.GlobusTransferConfig, t *task.TransferTask, 
 				totalFiles = 1 // needed because percentage meter goes NaN otherwise
 			}
 
-			t.UpdateStatus(task.SetBytesTransferred(bytesTransferred), task.SetFilesTransferred(filesTransferred), task.SetFilesTotal(totalFiles))
+			t.UpdateDetails(task.SetBytesTransferred(bytesTransferred), task.SetFilesTransferred(filesTransferred), task.SetFilesTotal(totalFiles))
 			notifier.OnTaskProgress(localTaskId, filesTransferred, totalFiles, int(time.Since(startTime).Seconds()))
 
 			if taskCompleted {
