@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/SwissOpenEM/Ingestor/internal/task"
 	"github.com/google/uuid"
 )
 
@@ -34,20 +35,23 @@ func (i *IngestorWebServerImplemenation) TransferControllerGetTransfer(ctx conte
 			return TransferControllerGetTransfer400TextResponse(fmt.Sprintf("Can't parse UUID: %s", err.Error())), nil
 		}
 
-		status, err := i.taskQueue.GetTaskStatus(uid)
+		status, err := i.taskQueue.GetTaskDetails(uid)
 		if err != nil {
 			return TransferControllerGetTransfer400TextResponse(fmt.Sprintf("No such task with id '%s'", uid.String())), nil
 		}
+
 		transferItems := []TransferItem{
 			{
-				Status:     &status.StatusMessage,
-				TransferId: &id,
+				TransferId:       id,
+				Status:           statusToDto(status.Status),
+				BytesTransferred: &status.BytesTransferred,
+				BytesTotal:       &status.BytesTotal,
+				FilesTransferred: &status.FilesTransferred,
+				FilesTotal:       &status.FilesTotal,
 			},
 		}
 
-		totalItems := len(transferItems)
 		return TransferControllerGetTransfer200JSONResponse{
-			Total:     &totalItems,
 			Transfers: &transferItems,
 		}, nil
 	}
@@ -62,7 +66,7 @@ func (i *IngestorWebServerImplemenation) TransferControllerGetTransfer(ctx conte
 	}
 
 	resultNo := i.taskQueue.GetTaskCount()
-	ids, statuses, err := i.taskQueue.GetTaskStatusList((page-1)*pageSize, page*pageSize)
+	ids, statuses, err := i.taskQueue.GetTaskDetailsList((page-1)*pageSize, page*pageSize)
 	if err != nil {
 		return TransferControllerGetTransfer400TextResponse(err.Error()), nil
 	}
@@ -71,8 +75,9 @@ func (i *IngestorWebServerImplemenation) TransferControllerGetTransfer(ctx conte
 	for i, status := range statuses {
 		idString := ids[i].String()
 		transferItems = append(transferItems, TransferItem{
-			Status:     &status.StatusMessage,
-			TransferId: &idString,
+			TransferId: idString,
+			Status:     statusToDto(status.Status),
+			Message:    getPointerOrNil(status.Message),
 		})
 	}
 
@@ -80,4 +85,30 @@ func (i *IngestorWebServerImplemenation) TransferControllerGetTransfer(ctx conte
 		Total:     &resultNo,
 		Transfers: &transferItems,
 	}, nil
+}
+
+func getPointerOrNil[T comparable](v T) *T {
+	var a T
+	if a == v {
+		return nil
+	} else {
+		return &v
+	}
+}
+
+func statusToDto(s task.Status) TransferItemStatus {
+	switch s {
+	case task.Waiting:
+		return Waiting
+	case task.Transferring:
+		return Transferring
+	case task.Finished:
+		return Finished
+	case task.Failed:
+		return Failed
+	case task.Cancelled:
+		return Cancelled
+	default:
+		return InvalidStatus
+	}
 }

@@ -52,7 +52,7 @@ func (w *TaskQueue) AddTransferTask(transferObjects map[string]interface{}, data
 	}
 	t.UpdateStatus(
 		task.SetBytesTotal(int(totalSize)),
-		task.SetStatusMessage("added"),
+		task.SetMessage("added"),
 	)
 
 	w.taskListLock.Lock()
@@ -70,14 +70,13 @@ func (w *TaskQueue) executeTransferTask(t *task.TransferTask) {
 	_, err := w.TransferDataset(task_context, t)
 	if err != nil {
 		t.UpdateStatus(
-			task.SetFailed(true),
-			task.SetFinished(true),
-			task.SetStatusMessage(fmt.Sprintf("failed - error: %s", err.Error())),
+			task.SetStatus(task.Failed),
+			task.SetMessage(fmt.Sprintf("failed - error: %s", err.Error())),
 		)
 	}
 	t.UpdateStatus(
-		task.SetFinished(true),
-		task.SetStatusMessage("finished"),
+		task.SetStatus(task.Finished),
+		task.SetMessage("finished"),
 	)
 }
 
@@ -122,24 +121,25 @@ func (w *TaskQueue) ScheduleTask(id uuid.UUID) error {
 	if !found {
 		return fmt.Errorf("task with id '%s' not found", id.String())
 	}
+	ingestionTask.UpdateStatus(task.SetMessage("queued"))
 
 	w.taskPool.Submit(func() { w.executeTransferTask(ingestionTask) })
 	return nil
 }
 
-func (w *TaskQueue) GetTaskStatus(id uuid.UUID) (task.TaskStatus, error) {
+func (w *TaskQueue) GetTaskDetails(id uuid.UUID) (task.TaskDetails, error) {
 	w.taskListLock.RLock()
 	t, found := w.datasetUploadTasks.Get(id)
 	w.taskListLock.RUnlock()
 	if !found {
-		return task.TaskStatus{}, fmt.Errorf("no task exists with id '%s'", id.String())
+		return task.TaskDetails{}, fmt.Errorf("no task exists with id '%s'", id.String())
 	}
-	return t.GetStatus(), nil
+	return t.GetDetails(), nil
 }
 
-func (w *TaskQueue) GetTaskStatusList(start uint, end uint) (idList []uuid.UUID, statusList []task.TaskStatus, err error) {
+func (w *TaskQueue) GetTaskDetailsList(start uint, end uint) (idList []uuid.UUID, detailsList []task.TaskDetails, err error) {
 	if end < start {
-		return idList, statusList, errors.New("end index is smaller than start index")
+		return idList, detailsList, errors.New("end index is smaller than start index")
 	}
 
 	w.taskListLock.RLock()
@@ -152,10 +152,10 @@ func (w *TaskQueue) GetTaskStatusList(start uint, end uint) (idList []uuid.UUID,
 	for i := start; i < end; i++ {
 		task, _ := w.datasetUploadTasks.Get(keys[i])
 		idList = append(idList, keys[i])
-		statusList = append(statusList, task.GetStatus())
+		detailsList = append(detailsList, task.GetDetails())
 	}
 
-	return idList, statusList, err
+	return idList, detailsList, err
 }
 
 func (w *TaskQueue) GetTaskCount() int {

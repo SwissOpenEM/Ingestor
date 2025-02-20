@@ -25,15 +25,38 @@ type TaskTransferConfig struct {
 	GlobusTransferConfig
 }
 
-type TaskStatus struct {
+type TaskDetails struct {
 	BytesTransferred int
 	BytesTotal       int
 	FilesTransferred int
 	FilesTotal       int
-	Failed           bool
-	Started          bool
-	Finished         bool
-	StatusMessage    string
+	Status           Status
+	Message          string
+}
+
+type Status int
+
+const (
+	Waiting Status = iota
+	Transferring
+	Finished
+	Failed
+	Cancelled
+)
+
+func (i *Status) ToStr() string {
+	switch *i {
+	case Waiting:
+		return "waiting"
+	case Transferring:
+		return "transferring"
+	case Finished:
+		return "finished"
+	case Failed:
+		return "failed"
+	default:
+		return "invalid status"
+	}
 }
 
 type TransferTask struct {
@@ -44,7 +67,7 @@ type TransferTask struct {
 	DatasetMetadata map[string]interface{}
 	TransferMethod  TransferMethod
 	Cancel          context.CancelFunc
-	status          *TaskStatus
+	details         *TaskDetails
 	statusLock      *sync.RWMutex
 	transferObjects map[string]interface{}
 }
@@ -60,15 +83,15 @@ func CreateTransferTask(datasetId string, fileList []datasetIngestor.Datafile, d
 		TransferMethod:  transferMethod,
 		transferObjects: transferObjects,
 		Cancel:          cancel,
-		status:          &TaskStatus{},
+		details:         &TaskDetails{},
 		statusLock:      &sync.RWMutex{},
 	}
 }
 
-func (t *TransferTask) GetStatus() TaskStatus {
+func (t *TransferTask) GetDetails() TaskDetails {
 	t.statusLock.RLock()
 	defer t.statusLock.RUnlock()
-	copy := *t.status
+	copy := *t.details
 	return copy
 }
 
@@ -82,49 +105,37 @@ func (t *TransferTask) UpdateStatus(options ...StatusOption) {
 
 func SetBytesTransferred(b int) StatusOption {
 	return func(t *TransferTask) {
-		t.status.BytesTransferred = b
+		t.details.BytesTransferred = b
 	}
 }
 
 func SetBytesTotal(b int) StatusOption {
 	return func(t *TransferTask) {
-		t.status.BytesTotal = b
+		t.details.BytesTotal = b
 	}
 }
 
 func SetFilesTransferred(f int) StatusOption {
 	return func(t *TransferTask) {
-		t.status.FilesTransferred = f
+		t.details.FilesTransferred = f
 	}
 }
 
 func SetFilesTotal(f int) StatusOption {
 	return func(t *TransferTask) {
-		t.status.FilesTotal = f
+		t.details.FilesTotal = f
 	}
 }
 
-func SetFailed(f bool) StatusOption {
+func SetStatus(s Status) StatusOption {
 	return func(t *TransferTask) {
-		t.status.Failed = f
+		t.details.Status = s
 	}
 }
 
-func SetStarted(s bool) StatusOption {
+func SetMessage(m string) StatusOption {
 	return func(t *TransferTask) {
-		t.status.Started = s
-	}
-}
-
-func SetFinished(f bool) StatusOption {
-	return func(t *TransferTask) {
-		t.status.Finished = f
-	}
-}
-
-func SetStatusMessage(m string) StatusOption {
-	return func(t *TransferTask) {
-		t.status.StatusMessage = m
+		t.details.Message = m
 	}
 }
 

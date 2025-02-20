@@ -86,6 +86,10 @@ func GlobusTransfer(globusConf task.GlobusTransferConfig, t *task.TransferTask, 
 	var taskCompleted bool
 	var bytesTransferred, filesTransferred, totalFiles int
 
+	// note: the totalFiles variable here uses the count returned by Globus
+	//   this can change over the course of the transfer, as Globus succeeds in finding the files
+	//   (recursion, checking their existence...)
+
 	bytesTransferred, filesTransferred, totalFiles, taskCompleted, err = globusCheckTransfer(client, globusTaskId)
 	if err != nil {
 		return err
@@ -93,14 +97,16 @@ func GlobusTransfer(globusConf task.GlobusTransferConfig, t *task.TransferTask, 
 	if totalFiles == 0 {
 		totalFiles = 1 // needed because percentage meter goes NaN otherwise
 	}
+	status := task.Transferring
+	if taskCompleted {
+		status = task.Finished
+	}
 	t.UpdateStatus(
 		task.SetBytesTransferred(bytesTransferred),
 		task.SetFilesTransferred(filesTransferred),
 		task.SetFilesTotal(totalFiles),
-		task.SetFailed(false),
-		task.SetStarted(true),
-		task.SetFinished(taskCompleted),
-		task.SetStatusMessage("transfering"),
+		task.SetStatus(status),
+		task.SetMessage("transfering"),
 	)
 	if taskCompleted {
 		return nil
@@ -120,7 +126,10 @@ func GlobusTransfer(globusConf task.GlobusTransferConfig, t *task.TransferTask, 
 			if result.Code != "Canceled" {
 				return fmt.Errorf("globus: couldn't cancel task - code: \"%s\", message: \"%s\"", result.Code, result.Message)
 			}
-			t.UpdateStatus(task.SetStatusMessage("task was cancelled"))
+			t.UpdateStatus(
+				task.SetMessage("task was cancelled"),
+				task.SetStatus(task.Cancelled),
+			)
 			notifier.OnTaskCanceled(localTaskId)
 			return nil
 		case <-timerUpdater:
