@@ -21,7 +21,9 @@ type GlobusTransferConfig struct {
 }
 
 type TransferConfig struct {
-	Method string               `string:"Method" validate:"oneof=S3 Globus"`
-	S3     S3TransferConfig     `mapstructure:"S3" validate:"required_if=Method S3,omitempty"`
-	Globus GlobusTransferConfig `mapstructure:"Globus" validate:"required_if=Method Globus,omitempty"`
+	Method           string               `string:"Method" validate:"oneof=S3 Globus"`
+	ConcurrencyLimit int                  `int:"ConcurrencyLimit" validate:"gte=0"`
+	QueueSize        int                  `int:"QueueSize"`
+	S3               S3TransferConfig     `mapstructure:"S3" validate:"required_if=Method S3,omitempty"`
+	Globus           GlobusTransferConfig `mapstructure:"Globus" validate:"required_if=Method Globus,omitempty"`
 }

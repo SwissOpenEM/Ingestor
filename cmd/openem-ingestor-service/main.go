@@ -56,6 +56,6 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	s := webserver.NewIngesterServer(ingestor, config.Misc.Port)
+	s := webserver.NewIngesterServer(ingestor, config.WebServer.Port)
 	log.Fatal(s.ListenAndServe())
 }

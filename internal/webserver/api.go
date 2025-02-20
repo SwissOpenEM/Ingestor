@@ -79,7 +79,7 @@ func NewIngestorWebServer(version string, tq *core.TaskQueue, eh *metadataextrac
 		return nil, err
 	}
 
-	metp := metadatatasks.NewTaskPool(ws.QueueSize, ws.NoWorkers, eh)
+	metp := metadatatasks.NewTaskPool(ws.QueueSize, ws.ConcurrencyLimit, eh)
 
 	globusAuthConf := globus.AuthGenerateOauthClientConfig(
 		context.Background(),

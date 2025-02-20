@@ -97,7 +97,7 @@ func (a *App) startup(ctx context.Context) {
 		}
 		s := webserver.NewIngesterServer(ingestor, port)
 		log.Fatal(s.ListenAndServe())
-	}(a.config.Misc.Port)
+	}(a.config.WebServer.Port)
 
 }
 

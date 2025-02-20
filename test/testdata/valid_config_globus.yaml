@@ -2,6 +2,8 @@ Scicat:
   Host: http://scicat:8080/api/v3
   AccessToken: "token"
 Transfer:
+  ConcurrencyLimit: 10
+  QueueSize: 1000
   Method: Globus
   Globus:
     ClientId: "clientid_registered_with_globus"
@@ -12,9 +14,6 @@ Transfer:
     DestinationPrefixPath: "/another/optional/path"
     Scopes:
       - "urn:globus:auth:scope:transfer.api.globus.org:all[*https://auth.globus.org/scopes/[collection_id1]/data_access]"
-Misc:
-  ConcurrencyLimit: 2
-  Port: 8888
 MetadataExtractors:
   InstallationPath: ./parentPathToAllExtractors/
   DownloadMissingExtractors: false
@@ -80,5 +79,7 @@ WebServer:
   Paths:
     CollectionLocation: "/some/path"
   MetadataExtJobs:
-    NoWorkers: 100
+    ConcurrencyLimit: 100
     QueueSize: 200
+  Other:
+    Port: 8888

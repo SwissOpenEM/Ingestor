@@ -57,12 +57,17 @@ type PathsConf struct {
 }
 
 type MetadataExtJobsConf struct {
-	NoWorkers uint `validate:"required,min=1"`
-	QueueSize uint `validate:"required,min=1"`
+	ConcurrencyLimit uint `validate:"required,min=1"`
+	QueueSize        uint `validate:"required,min=1"`
+}
+
+type OtherConf struct {
+	Port int `int:"Port" validate:"required,gte=0"`
 }
 
 type WebServerConfig struct {
 	AuthConf            `mapstructure:"Auth"`
 	PathsConf           `mapstructure:"Paths"`
 	MetadataExtJobsConf `mapstructure:"MetadataExtJobs"`
+	OtherConf           `mapstructure:"Other"`
 }

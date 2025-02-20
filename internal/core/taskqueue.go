@@ -32,7 +32,11 @@ type TaskQueue struct {
 func (w *TaskQueue) Startup() {
 	w.inputChannel = make(chan *task.TransferTask)
 	w.datasetUploadTasks = orderedmap.NewOrderedMap[uuid.UUID, *task.TransferTask]()
-	w.taskPool = pond.NewPool(100, pond.WithQueueSize(1000))
+	if w.Config.Transfer.QueueSize > 0 {
+		w.taskPool = pond.NewPool(w.Config.Transfer.ConcurrencyLimit, pond.WithQueueSize(w.Config.Transfer.QueueSize))
+	} else {
+		w.taskPool = pond.NewPool(w.Config.Transfer.ConcurrencyLimit)
+	}
 }
 
 func (w *TaskQueue) AddTransferTask(transferObjects map[string]interface{}, datasetId string, fileList []datasetIngestor.Datafile, totalSize int64, metadataMap map[string]interface{}, taskId uuid.UUID) error {

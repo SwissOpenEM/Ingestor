@@ -3,6 +3,8 @@ Scicat:
   AccessToken: "token"
 Transfer:
   Method: S3
+  ConcurrencyLimit: 10
+  QueueSize: 1000
   S3:
     Endpoint: s3:9000
     Bucket: landingzone
@@ -10,9 +12,6 @@ Transfer:
     Location: "eu-west-1"
     User: "minio_user"
     Password: "minio_pass"
-Misc:
-  ConcurrencyLimit: 2
-  Port: 8888
 MetadataExtractors:
   InstallationPath: ./parentPathToAllExtractors/
   DownloadMissingExtractors: false
@@ -78,5 +77,7 @@ WebServer:
   Paths:
     CollectionLocation: "/some/path"
   MetadataExtJobs:
-    NoWorkers: 100
+    ConcurrencyLimit: 100
     QueueSize: 200
+  Other:
+    Port: 8888
