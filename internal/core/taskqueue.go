@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/SwissOpenEM/Ingestor/internal/progress"
 	task "github.com/SwissOpenEM/Ingestor/internal/task"
 	"github.com/alitto/pond/v2"
 	"github.com/elliotchance/orderedmap/v2"
@@ -25,7 +26,7 @@ type TaskQueue struct {
 
 	AppContext  context.Context
 	Config      Config
-	Notifier    ProgressNotifier
+	Notifier    progress.QueueNotifier
 	ServiceUser *UserCreds
 }
 
@@ -50,10 +51,12 @@ func (w *TaskQueue) AddTransferTask(transferObjects map[string]interface{}, data
 	default:
 		return errors.New("sourceFolder in metadata isn't a string")
 	}
+
 	t.UpdateDetails(
 		task.SetBytesTotal(int(totalSize)),
 		task.SetMessage("added"),
 	)
+	w.Notifier.OnTaskAdded(taskId, t.DatasetFolder.FolderPath)
 
 	w.taskListLock.Lock()
 	defer w.taskListLock.Unlock()
@@ -174,7 +177,7 @@ func (w *TaskQueue) GetTaskFolder(id uuid.UUID) string {
 	return ""
 }
 
-func TestIngestionFunction(task_context context.Context, task task.TransferTask, config Config, notifier ProgressNotifier) (string, error) {
+func TestIngestionFunction(task_context context.Context, task task.TransferTask, config Config, notifier progress.QueueNotifier) (string, error) {
 	start := time.Now()
 
 	for i := 0; i < 10; i++ {

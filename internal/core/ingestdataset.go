@@ -13,13 +13,53 @@ import (
 	"strings"
 	"time"
 
+	"github.com/SwissOpenEM/Ingestor/internal/progress"
 	"github.com/SwissOpenEM/Ingestor/internal/task"
+	"github.com/SwissOpenEM/Ingestor/internal/transfer"
+	"github.com/SwissOpenEM/globus"
 	"github.com/fatih/color"
+	"github.com/google/uuid"
 	"github.com/paulscherrerinstitute/scicat-cli/v3/datasetIngestor"
 	"github.com/paulscherrerinstitute/scicat-cli/v3/datasetUtils"
 )
 
 const MAX_FILES = 400000
+
+type TransferTaskNotifier struct {
+	id    uuid.UUID
+	qn    progress.QueueNotifier
+	tt    *task.TransferTask
+	start time.Time
+}
+
+func createTransferTaskNotifier(id uuid.UUID, qn progress.QueueNotifier, tt *task.TransferTask, start time.Time) TransferTaskNotifier {
+	return TransferTaskNotifier{
+		id:    id,
+		qn:    qn,
+		tt:    tt,
+		start: start,
+	}
+}
+
+func (n TransferTaskNotifier) OnTransferProgress(bytesTransferred int, filesTransferred int) {
+	n.qn.OnTaskProgress(n.id, filesTransferred, n.tt.GetDetails().FilesTotal, int(time.Since(n.start).Seconds()))
+	n.tt.UpdateDetails(task.SetBytesTransferred(bytesTransferred), task.SetFilesTransferred(filesTransferred))
+}
+
+func (n TransferTaskNotifier) OnTransferCompleted() {
+	n.qn.OnTaskCompleted(n.id, int(time.Since(n.start).Seconds()))
+	n.tt.UpdateDetails(task.SetStatus(task.Finished), task.SetMessage("finished"))
+}
+
+func (n TransferTaskNotifier) OnTransferCancelled() {
+	n.qn.OnTaskCanceled(n.id)
+	n.tt.UpdateDetails(task.SetStatus(task.Cancelled), task.SetMessage("cancelled"))
+}
+
+func (n TransferTaskNotifier) OnTransferFailed(err error) {
+	n.qn.OnTaskFailed(n.id, err)
+	n.tt.UpdateDetails(task.SetStatus(task.Failed), task.SetMessage(fmt.Sprintf("task failed with the following error: %s", err.Error())))
+}
 
 func createLocalSymlinkCallbackForFileLister(skipSymlinks *string, skippedLinks *uint) func(symlinkPath string, sourceFolder string) (bool, error) {
 	scanner := bufio.NewScanner(os.Stdin)
@@ -189,7 +229,6 @@ func AddDatasetToScicat(
 	datasetId, err = datasetIngestor.IngestDataset(http_client, SCICAT_API_URL, metaDataMap, fileList, user)
 
 	// TODO: add attachments here if it's going to be needed
-
 	return datasetId, totalSize, fileList, err
 }
 
@@ -198,11 +237,11 @@ func TransferDataset(
 	it *task.TransferTask,
 	serviceUser *UserCreds,
 	config Config,
-	notifier ProgressNotifier,
+	notifier progress.QueueNotifier,
 ) error {
+	// TODO: migrate S3 upload to TransferNotifier
 	datasetId := it.GetDatasetId()
 	datasetFolder := it.DatasetFolder.FolderPath
-	fileList := it.GetFileList()
 	var err error
 	var http_client = &http.Client{
 		Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}},
@@ -212,9 +251,37 @@ func TransferDataset(
 	case task.TransferS3:
 		_, err = UploadS3(task_context, datasetId, datasetFolder, it.DatasetFolder.Id, config.Transfer.S3, notifier)
 	case task.TransferGlobus:
+		globusClient, ok := it.GetTransferObject("globus_client").(*globus.GlobusClient)
+		if !ok {
+			return fmt.Errorf("globus client was not set")
+		}
 		// globus doesn't work with absolute folders, this library uses sourcePrefix to adapt the path to the globus' own path from a relative path
 		relativeDatasetFolder := strings.TrimPrefix(datasetFolder, config.WebServer.CollectionLocation)
-		err = GlobusTransfer(config.Transfer.Globus, it, task_context, it.DatasetFolder.Id, relativeDatasetFolder, fileList, notifier)
+		fileList := it.GetFileList()
+		filesToTransfer := make([]transfer.GlobusFile, len(fileList))
+		for i, file := range fileList {
+			filesToTransfer[i].Path = file.Path
+			filesToTransfer[i].IsSymlink = file.IsSymlink
+		}
+		gtp := transfer.GlobusTransferParams{
+			Client:                globusClient,
+			SourceCollection:      config.Transfer.Globus.SourceCollection,
+			SourcePrefixPath:      config.Transfer.Globus.SourcePrefixPath,
+			DestinationCollection: config.Transfer.Globus.DestinationCollection,
+			DestinationPrefixPath: config.Transfer.Globus.DestinationPrefixPath,
+			TransferFolder:        relativeDatasetFolder,
+			FileList:              filesToTransfer,
+		}
+		err = transfer.GlobusTransfer(
+			task_context,
+			gtp,
+			createTransferTaskNotifier(
+				it.DatasetFolder.Id,
+				notifier,
+				it,
+				time.Now(),
+			),
+		)
 	_:
 	}
 

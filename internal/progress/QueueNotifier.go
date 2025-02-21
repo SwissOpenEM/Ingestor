@@ -1,9 +1,9 @@
-package core
+package progress
 
 import "github.com/google/uuid"
 
-// Interface to notify about progress of a task
-type ProgressNotifier interface {
+// Interface to notify about progress of a task in a queue
+type QueueNotifier interface {
 	OnTaskScheduled(id uuid.UUID)
 	OnTaskCanceled(id uuid.UUID)
 	OnTaskAdded(id uuid.UUID, folder string)
