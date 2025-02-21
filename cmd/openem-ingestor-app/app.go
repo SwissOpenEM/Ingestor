@@ -174,6 +174,5 @@ func (a *App) RemoveTask(id uuid.UUID) {
 }
 
 func (a *App) ScheduleTask(id uuid.UUID) {
-
-	a.taskqueue.ScheduleTask(id)
+	_ = a.taskqueue.ScheduleTask(id) // ignore error
 }
