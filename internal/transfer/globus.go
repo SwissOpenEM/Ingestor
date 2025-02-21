@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/SwissOpenEM/Ingestor/internal/progress"
+	"github.com/SwissOpenEM/Ingestor/internal/notifiers"
 	"github.com/SwissOpenEM/globus"
 )
 
@@ -61,7 +61,7 @@ func globusCheckTransfer(client *globus.GlobusClient, globusTaskId string) (byte
 func GlobusTransfer(
 	transferCtx context.Context,
 	gtp GlobusTransferParams,
-	notifier progress.TransferNotifier,
+	notifier notifiers.TransferNotifier,
 ) error {
 	// transfer given filelist
 	var filePathList []string

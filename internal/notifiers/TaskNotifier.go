@@ -1,4 +1,4 @@
-package progress
+package notifiers
 
 // Interface to notify about progress of a specific task
 type TransferNotifier interface {

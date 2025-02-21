@@ -1,4 +1,4 @@
-package progress
+package notifiers
 
 import "github.com/google/uuid"
 

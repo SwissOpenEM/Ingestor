@@ -4,19 +4,19 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/SwissOpenEM/Ingestor/internal/progress"
+	"github.com/SwissOpenEM/Ingestor/internal/notifiers"
 	"github.com/SwissOpenEM/Ingestor/internal/task"
 	"github.com/google/uuid"
 )
 
 type TransferTaskNotifier struct {
 	id    uuid.UUID
-	qn    progress.QueueNotifier
+	qn    notifiers.QueueNotifier
 	tt    *task.TransferTask
 	start time.Time
 }
 
-func createTransferTaskNotifier(id uuid.UUID, qn progress.QueueNotifier, tt *task.TransferTask, start time.Time) TransferTaskNotifier {
+func createTransferTaskNotifier(id uuid.UUID, qn notifiers.QueueNotifier, tt *task.TransferTask, start time.Time) TransferTaskNotifier {
 	return TransferTaskNotifier{
 		id:    id,
 		qn:    qn,

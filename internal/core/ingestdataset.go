@@ -13,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/SwissOpenEM/Ingestor/internal/progress"
+	"github.com/SwissOpenEM/Ingestor/internal/notifiers"
 	"github.com/SwissOpenEM/Ingestor/internal/task"
 	"github.com/SwissOpenEM/Ingestor/internal/transfer"
 	"github.com/SwissOpenEM/globus"
@@ -200,7 +200,7 @@ func TransferDataset(
 	it *task.TransferTask,
 	serviceUser *UserCreds,
 	config Config,
-	notifier progress.QueueNotifier,
+	notifier notifiers.QueueNotifier,
 ) error {
 	// TODO: migrate S3 upload to TransferNotifier
 	datasetId := it.GetDatasetId()

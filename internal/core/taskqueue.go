@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/SwissOpenEM/Ingestor/internal/progress"
+	"github.com/SwissOpenEM/Ingestor/internal/notifiers"
 	task "github.com/SwissOpenEM/Ingestor/internal/task"
 	"github.com/alitto/pond/v2"
 	"github.com/elliotchance/orderedmap/v2"
@@ -26,7 +26,7 @@ type TaskQueue struct {
 
 	AppContext  context.Context
 	Config      Config
-	Notifier    progress.QueueNotifier
+	Notifier    notifiers.QueueNotifier
 	ServiceUser *UserCreds
 }
 
@@ -177,7 +177,7 @@ func (w *TaskQueue) GetTaskFolder(id uuid.UUID) string {
 	return ""
 }
 
-func TestIngestionFunction(task_context context.Context, task task.TransferTask, config Config, notifier progress.QueueNotifier) (string, error) {
+func TestIngestionFunction(task_context context.Context, task task.TransferTask, config Config, notifier notifiers.QueueNotifier) (string, error) {
 	start := time.Now()
 
 	for i := 0; i < 10; i++ {
