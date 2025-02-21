@@ -57,8 +57,8 @@ type PathsConf struct {
 }
 
 type MetadataExtJobsConf struct {
-	ConcurrencyLimit uint `validate:"required,min=1"`
-	QueueSize        uint `validate:"required,min=1"`
+	ConcurrencyLimit int `validate:"required,min=1"`
+	QueueSize        int `validate:"min=0"`
 }
 
 type OtherConf struct {
