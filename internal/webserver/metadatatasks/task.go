@@ -1,9 +1,5 @@
 package metadatatasks
 
-import (
-	"context"
-)
-
 type ExtractionProgress struct {
 	extractorOutput string
 	extractorError  error
@@ -11,13 +7,6 @@ type ExtractionProgress struct {
 	taskStdErr      string
 	finished        bool
 	ProgressSignal  chan bool
-}
-
-type task struct {
-	ctx          context.Context
-	datasetPath  string
-	method       string
-	taskProgress *ExtractionProgress
 }
 
 func (t *ExtractionProgress) setExtractorOutputAndErr(out string, err error) {
