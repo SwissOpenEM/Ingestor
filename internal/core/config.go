@@ -18,16 +18,10 @@ type ScicatConfig struct {
 	AccessToken string `string:"AccessToken"`
 }
 
-type MiscConfig struct {
-	ConcurrencyLimit int `int:"ConcurrencyLimit" validate:"gte=0"`
-	Port             int `int:"Port" validate:"required,gte=0"`
-}
-
 type Config struct {
 	Scicat             ScicatConfig                       `mapstructure:"Scicat"`
 	Transfer           task.TransferConfig                `mapstructure:"Transfer"`
 	WebServer          wsconfig.WebServerConfig           `mapstructure:"WebServer"`
-	Misc               MiscConfig                         `mapstructure:"Misc"`
 	MetadataExtractors metadataextractor.ExtractorsConfig `mapstructure:"MetadataExtractors"`
 }
 
@@ -58,7 +52,7 @@ func ReadConfig(configFileName string) (Config, error) {
 	viperConf.SetConfigName(configFileName) // name of config file (without extension)
 	viperConf.SetConfigType("yaml")
 
-	viper.SetDefault("Misc.Port", 8888)
+	viper.SetDefault("WebServer.Port", 8888)
 
 	userConfigDir, _ := os.UserConfigDir()
 	executablePath, _ := os.Executable()

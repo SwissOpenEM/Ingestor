@@ -2,20 +2,20 @@ package metadatatasks
 
 import (
 	"context"
-	"errors"
 	"sync"
 
 	"github.com/SwissOpenEM/Ingestor/internal/metadataextractor"
+	"github.com/alitto/pond/v2"
 )
 
 type MetadataExtractionTaskPool struct {
-	tasks   chan task
-	wg      sync.WaitGroup
-	handler *metadataextractor.ExtractorHandler
+	p  pond.Pool
+	wg sync.WaitGroup
+	h  *metadataextractor.ExtractorHandler
 }
 
 func (p *MetadataExtractionTaskPool) GetAvailableMethods() []metadataextractor.MethodAndSchema {
-	return p.handler.AvailableMethods()
+	return p.h.AvailableMethods()
 }
 
 func (p *MetadataExtractionTaskPool) NewTask(ctx context.Context, datasetPath string, method string) (*ExtractionProgress, error) {
@@ -23,40 +23,29 @@ func (p *MetadataExtractionTaskPool) NewTask(ctx context.Context, datasetPath st
 		ProgressSignal: make(chan bool, 1),
 	}
 
-	select {
-	case p.tasks <- task{
-		ctx:          ctx,
-		datasetPath:  datasetPath,
-		method:       method,
-		taskProgress: &epc,
-	}:
-		return &epc, nil
-	default:
-		return nil, errors.New("task queue is full")
+	executeTask := func() {
+		epc.setProgress()
+		outputFile := metadataextractor.MetadataFilePath(datasetPath)
+		out, err := p.h.ExtractMetadata(ctx, method, datasetPath, outputFile, epc.setStdOut, epc.setStdErr)
+		epc.setExtractorOutputAndErr(out, err)
 	}
 
+	p.p.Submit(executeTask)
+	return &epc, nil
 }
 
-func NewTaskPool(queueSize uint, numWorkers uint, handler *metadataextractor.ExtractorHandler) *MetadataExtractionTaskPool {
-	pool := MetadataExtractionTaskPool{
-		tasks:   make(chan task, queueSize),
-		wg:      sync.WaitGroup{},
-		handler: handler,
+func NewTaskPool(queueSize int, maxConcurrency int, handler *metadataextractor.ExtractorHandler) *MetadataExtractionTaskPool {
+	var pondPool pond.Pool
+	if queueSize > 0 {
+		pondPool = pond.NewPool(int(maxConcurrency), pond.WithQueueSize(int(queueSize)))
+	} else {
+		pondPool = pond.NewPool(int(maxConcurrency))
 	}
-
-	for i := uint(0); i < numWorkers; i++ {
-		go worker(&pool)
+	pool := MetadataExtractionTaskPool{
+		p:  pondPool,
+		wg: sync.WaitGroup{},
+		h:  handler,
 	}
 
 	return &pool
-}
-
-func worker(pool *MetadataExtractionTaskPool) {
-	for {
-		task := <-pool.tasks
-		task.taskProgress.setProgress()
-		outputFile := metadataextractor.MetadataFilePath(task.datasetPath)
-		out, err := pool.handler.ExtractMetadata(task.ctx, task.method, task.datasetPath, outputFile, task.taskProgress.setStdOut, task.taskProgress.setStdErr)
-		task.taskProgress.setExtractorOutputAndErr(out, err)
-	}
 }

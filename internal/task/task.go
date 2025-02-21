@@ -72,11 +72,7 @@ type TransferTask struct {
 	transferObjects map[string]interface{}
 }
 
-type Result struct {
-	Elapsed_seconds int
-	Dataset_PID     string
-	Error           error
-}
+type StatusOption func(t *TransferTask)
 
 func CreateTransferTask(datasetId string, fileList []datasetIngestor.Datafile, datasetFolder DatasetFolder, metadata map[string]interface{}, transferMethod TransferMethod, transferObjects map[string]interface{}, cancel context.CancelFunc) TransferTask {
 	return TransferTask{
@@ -99,33 +95,47 @@ func (t *TransferTask) GetDetails() TaskDetails {
 	return copy
 }
 
-func (t *TransferTask) SetDetails(
-	bytesTransferred *int,
-	bytesTotal *int,
-	filesTransferred *int,
-	filesTotal *int,
-	status *Status,
-	message *string,
-) {
+func (t *TransferTask) UpdateDetails(options ...StatusOption) {
 	t.statusLock.Lock()
 	defer t.statusLock.Unlock()
-	if bytesTransferred != nil {
-		t.details.BytesTransferred = *bytesTransferred
+	for _, option := range options {
+		option(t)
 	}
-	if bytesTotal != nil {
-		t.details.BytesTotal = *bytesTotal
+}
+
+func SetBytesTransferred(b int) StatusOption {
+	return func(t *TransferTask) {
+		t.details.BytesTransferred = b
 	}
-	if filesTransferred != nil {
-		t.details.FilesTransferred = *filesTransferred
+}
+
+func SetBytesTotal(b int) StatusOption {
+	return func(t *TransferTask) {
+		t.details.BytesTotal = b
 	}
-	if filesTotal != nil {
-		t.details.FilesTotal = *filesTotal
+}
+
+func SetFilesTransferred(f int) StatusOption {
+	return func(t *TransferTask) {
+		t.details.FilesTransferred = f
 	}
-	if status != nil {
-		t.details.Status = *status
+}
+
+func SetFilesTotal(f int) StatusOption {
+	return func(t *TransferTask) {
+		t.details.FilesTotal = f
 	}
-	if message != nil {
-		t.details.Message = *message
+}
+
+func SetStatus(s Status) StatusOption {
+	return func(t *TransferTask) {
+		t.details.Status = s
+	}
+}
+
+func SetMessage(m string) StatusOption {
+	return func(t *TransferTask) {
+		t.details.Message = m
 	}
 }
 

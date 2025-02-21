@@ -97,7 +97,7 @@ func (a *App) startup(ctx context.Context) {
 		}
 		s := webserver.NewIngesterServer(ingestor, port)
 		log.Fatal(s.ListenAndServe())
-	}(a.config.Misc.Port)
+	}(a.config.WebServer.Port)
 
 }
 
@@ -174,6 +174,5 @@ func (a *App) RemoveTask(id uuid.UUID) {
 }
 
 func (a *App) ScheduleTask(id uuid.UUID) {
-
-	a.taskqueue.ScheduleTask(id)
+	_ = a.taskqueue.ScheduleTask(id) // ignore error
 }

@@ -12,7 +12,9 @@ import (
 
 func createExpectedValidConfigS3() task.TransferConfig {
 	return task.TransferConfig{
-		Method: "S3",
+		Method:           "S3",
+		ConcurrencyLimit: 10,
+		QueueSize:        1000,
 		S3: task.S3TransferConfig{
 			Endpoint: "s3:9000",
 			Bucket:   "landingzone",
@@ -26,7 +28,9 @@ func createExpectedValidConfigS3() task.TransferConfig {
 
 func createExpectedValidConfigGlobus() task.TransferConfig {
 	return task.TransferConfig{
-		Method: "Globus",
+		Method:           "Globus",
+		ConcurrencyLimit: 10,
+		QueueSize:        1000,
 		Globus: task.GlobusTransferConfig{
 			ClientID:              "clientid_registered_with_globus",
 			RedirectURL:           "https://auth.globus.org/v2/web/auth-code",
@@ -40,11 +44,6 @@ func createExpectedValidConfigGlobus() task.TransferConfig {
 }
 
 func createExpectedValidConfig(transferConfig task.TransferConfig) Config {
-	expected_misc := MiscConfig{
-		ConcurrencyLimit: 2,
-		Port:             8888,
-	}
-
 	expected_scicat := ScicatConfig{
 		Host:        "http://scicat:8080/api/v3",
 		AccessToken: "token",
@@ -82,8 +81,11 @@ func createExpectedValidConfig(transferConfig task.TransferConfig) Config {
 			CollectionLocation: "/some/path",
 		},
 		MetadataExtJobsConf: wsconfig.MetadataExtJobsConf{
-			NoWorkers: 100,
-			QueueSize: 200,
+			ConcurrencyLimit: 100,
+			QueueSize:        200,
+		},
+		OtherConf: wsconfig.OtherConf{
+			Port: 8888,
 		},
 	}
 
@@ -144,7 +146,6 @@ func createExpectedValidConfig(transferConfig task.TransferConfig) Config {
 	}
 
 	expected_config := Config{
-		Misc:               expected_misc,
 		MetadataExtractors: expected_meta,
 		Scicat:             expected_scicat,
 		Transfer:           expected_tranfer,

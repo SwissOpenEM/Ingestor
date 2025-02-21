@@ -66,7 +66,10 @@ func (i *IngestorWebServerImplemenation) DatasetControllerIngestDataset(ctx cont
 			return DatasetControllerIngestDataset400TextResponse("You don't have the right to access the dataset folder or it doesn't exist"), nil
 		}
 	}
-	i.taskQueue.ScheduleTask(taskId)
+	err = i.taskQueue.ScheduleTask(taskId)
+	if err != nil {
+		return DatasetControllerIngestDataset400TextResponse(fmt.Sprintf("error when scheduling task: %s", err.Error())), nil
+	}
 
 	status := "started"
 	idString := taskId.String()
