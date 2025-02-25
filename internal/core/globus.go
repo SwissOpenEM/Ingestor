@@ -108,7 +108,6 @@ func GlobusTransfer(globusConf task.GlobusTransferConfig, t *task.TransferTask, 
 	}
 	notifier.OnTaskProgress(localTaskId, 100*filesTransferred/totalFiles)
 
-	timerUpdater := time.After(1 * time.Second)
 	transferUpdater := time.After(1 * time.Minute)
 	for {
 		select {
@@ -126,10 +125,6 @@ func GlobusTransfer(globusConf task.GlobusTransferConfig, t *task.TransferTask, 
 			t.SetDetails(nil, nil, nil, nil, state, &statusMsg)
 			notifier.OnTaskCanceled(localTaskId)
 			return nil
-		case <-timerUpdater:
-			// update timer every second
-			timerUpdater = time.After(1 * time.Second)
-			notifier.OnTaskProgress(localTaskId, 100*filesTransferred/totalFiles)
 		case <-transferUpdater:
 			// check state of transfer
 			transferUpdater = time.After(1 * time.Minute)
