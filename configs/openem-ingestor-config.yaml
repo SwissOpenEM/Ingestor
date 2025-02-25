@@ -22,6 +22,7 @@ Transfer:
 Misc:
   ConcurrencyLimit: 2
   Port: 8888
+  LogLevel: Info
 MetadataExtractors:
   InstallationPath: ./extractors/
   SchemasLocation: ./schemas/

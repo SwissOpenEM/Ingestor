@@ -170,7 +170,7 @@ func (a *App) CancelTask(id uuid.UUID) {
 }
 func (a *App) RemoveTask(id uuid.UUID) {
 	err := a.taskqueue.RemoveTask(id)
-	log.Println(err)
+	slog.Error(err.Error())
 }
 
 func (a *App) ScheduleTask(id uuid.UUID) {

@@ -41,6 +41,7 @@ func GetHttpUploader(poolSize int) *HttpUploader {
 		retryClient := retryablehttp.NewClient()
 		retryClient.RetryMax = 10
 		retryClient.Backoff = retryablehttp.DefaultBackoff
+		retryClient.Logger = log()
 
 		standardClient := retryClient.StandardClient()
 		instance = &HttpUploader{Pool: pond.NewPool(poolSize), Client: standardClient}

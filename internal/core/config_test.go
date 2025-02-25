@@ -43,6 +43,7 @@ func createExpectedValidConfig(transferConfig task.TransferConfig) Config {
 	expected_misc := MiscConfig{
 		ConcurrencyLimit: 2,
 		Port:             8888,
+		LogLevel:         "Info",
 	}
 
 	expected_scicat := ScicatConfig{

@@ -10,25 +10,46 @@ import (
 	core "github.com/SwissOpenEM/Ingestor/internal/core"
 	"github.com/SwissOpenEM/Ingestor/internal/metadataextractor"
 	"github.com/SwissOpenEM/Ingestor/internal/webserver"
-
-	"github.com/spf13/viper"
+	"gopkg.in/yaml.v2"
 )
 
 // String can be overwritten by using linker flags: -ldflags "-X main.version=VERSION"
 var version string = "DEVELOPMENT_VERSION"
 
+func setupLogging(logLevel string) {
+	level := slog.LevelDebug
+	switch logLevel {
+	case "Info":
+		level = slog.LevelInfo
+	case "Debug":
+		level = slog.LevelDebug
+	case "Error":
+		level = slog.LevelError
+	case "Warning":
+		level = slog.LevelWarn
+	}
+
+	opts := &slog.HandlerOptions{Level: level}
+	h := slog.NewTextHandler(os.Stdout, opts)
+	slog.SetDefault(slog.New(h))
+}
+
 func main() {
-	slog.Info("", "Version", version)
+	slog.Info("Starting ingestor service", "Version", version)
 
 	var config core.Config
 	var err error
 	if config, err = core.ReadConfig(core.DefaultConfigFileName()); err != nil {
-		slog.Info("Config file read", "file", viper.ConfigFileUsed())
+		slog.Info("Reading config", "file", core.GetCurrentConfigFilePath())
 		panic(fmt.Errorf("failed to read config file: %w", err))
 	}
 
-	log.Println(core.GetFullConfig())
-	log.Printf("Config file used: %s", core.GetCurrentConfigFilePath())
+	slog.Info("Config read", "Filepath", core.GetCurrentConfigFilePath())
+
+	configData, _ := yaml.Marshal(core.GetFullConfig())
+	println(string(configData))
+
+	setupLogging(config.Misc.LogLevel)
 
 	ctx := context.Background()
 
@@ -45,7 +66,7 @@ func main() {
 	tq := core.TaskQueue{
 		Config:      config,
 		AppContext:  ctx,
-		Notifier:    &core.LoggingNotifier{},
+		Notifier:    core.NewLoggingNotifier(),
 		ServiceUser: serviceUser,
 	}
 	tq.Startup()

@@ -2,7 +2,6 @@ package core
 
 import (
 	"fmt"
-	"log/slog"
 	"os"
 	"path"
 
@@ -18,8 +17,9 @@ type ScicatConfig struct {
 }
 
 type MiscConfig struct {
-	ConcurrencyLimit int `int:"ConcurrencyLimit" validate:"gte=0"`
-	Port             int `int:"Port" validate:"required,gte=0"`
+	ConcurrencyLimit int    `int:"ConcurrencyLimit" validate:"gte=0"`
+	Port             int    `int:"Port" validate:"required,gte=0"`
+	LogLevel         string `string:"LogLevel" validate:"oneof=Debug Info Warning Error"`
 }
 
 type Config struct {
@@ -42,7 +42,6 @@ func getConfig() (Config, error) {
 	validate := validator.New(validator.WithRequiredStructEnabled())
 	err := validate.Struct(&config)
 	if err != nil {
-		slog.Error("Configuration validation failed:", "error", err.Error())
 		return config, err
 	}
 
@@ -71,7 +70,7 @@ func ReadConfig(configFileName string) (Config, error) {
 		config, err := getConfig()
 		return config, err
 	}
-	return Config{}, nil
+	return Config{}, err
 }
 
 func GetCurrentConfigFilePath() string {
