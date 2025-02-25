@@ -72,6 +72,12 @@ type TransferTask struct {
 	transferObjects map[string]interface{}
 }
 
+type Result struct {
+	Elapsed_seconds int
+	Dataset_PID     string
+	Error           error
+}
+
 type StatusOption func(t *TransferTask)
 
 func CreateTransferTask(datasetId string, fileList []datasetIngestor.Datafile, datasetFolder DatasetFolder, metadata map[string]interface{}, transferMethod TransferMethod, transferObjects map[string]interface{}, cancel context.CancelFunc) TransferTask {

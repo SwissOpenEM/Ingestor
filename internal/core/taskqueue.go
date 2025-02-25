@@ -67,11 +67,11 @@ func (w *TaskQueue) executeTransferTask(t *task.TransferTask) {
 
 	t.Cancel = cancel
 
-	_, err := w.TransferDataset(task_context, t)
-	if err != nil {
+	r := w.TransferDataset(task_context, t)
+	if r.Error != nil {
 		t.UpdateDetails(
 			task.SetStatus(task.Failed),
-			task.SetMessage(fmt.Sprintf("failed - error: %s", err.Error())),
+			task.SetMessage(fmt.Sprintf("failed - error: %s", r.Error.Error())),
 		)
 	}
 	t.UpdateDetails(

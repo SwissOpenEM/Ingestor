@@ -6,7 +6,7 @@ toolchain go1.23.6
 
 require (
 	github.com/SwissOpenEM/globus v0.1.1
-	github.com/alitto/pond/v2 v2.1.4
+	github.com/alitto/pond/v2 v2.2.0
 	github.com/fatih/color v1.17.0
 	github.com/getkin/kin-openapi v0.124.0
 	github.com/gin-contrib/cors v1.7.2
@@ -30,7 +30,6 @@ require (
 
 require (
 	github.com/MicahParks/jwkset v0.5.19 // indirect
-	github.com/alitto/pond/v2 v2.2.0 // indirect
 	github.com/andybalholm/brotli v1.0.5 // indirect
 	github.com/bodgit/plumbing v1.3.0 // indirect
 	github.com/bodgit/sevenzip v1.4.0 // indirect
