@@ -3,7 +3,6 @@ package s3upload
 import (
 	"context"
 	"fmt"
-	"log/slog"
 	"os"
 	"path"
 	"sync/atomic"
@@ -51,8 +50,7 @@ func GetTokens(ctx context.Context, endpoint string, userToken string) (string, 
 	}
 
 	if resp.HTTPResponse.StatusCode != 201 {
-		slog.Error(fmt.Sprintf("Error getting new access token: %d, %s", resp.HTTPResponse.StatusCode, resp.HTTPResponse.Status))
-		return "", "", fmt.Errorf("failed to get access tokens: %s", resp.HTTPResponse.Status)
+		return "", "", fmt.Errorf("failed to get access tokens: %d, %s", resp.HTTPResponse.StatusCode, resp.HTTPResponse.Status)
 	}
 
 	return resp.JSON201.AccessToken, resp.JSON201.RefreshToken, nil
