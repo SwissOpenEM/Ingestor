@@ -4,6 +4,7 @@ import (
 	"embed"
 	"encoding/gob"
 	"fmt"
+	"log/slog"
 	"net"
 	"net/http"
 	"os"
@@ -17,6 +18,8 @@ import (
 	"github.com/gin-contrib/sessions/cookie"
 	gin "github.com/gin-gonic/gin"
 	middleware "github.com/oapi-codegen/gin-middleware"
+	slogGin "github.com/samber/slog-gin"
+	sloggin "github.com/samber/slog-gin"
 	swaggerfiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 )
@@ -26,6 +29,16 @@ import (
 
 //go:embed openapi.yaml
 var swaggerYAML embed.FS
+
+var config = sloggin.Config{
+	DefaultLevel:       slog.LevelDebug,
+	ClientErrorLevel:   slog.LevelWarn,
+	ServerErrorLevel:   slog.LevelError,
+	WithRequestBody:    true,
+	WithResponseBody:   true,
+	WithRequestHeader:  false,
+	WithResponseHeader: false,
+}
 
 func NewIngesterServer(ingestor *IngestorWebServerImplemenation, port int) *http.Server {
 	swagger, err := GetSwagger()
@@ -37,10 +50,9 @@ func NewIngesterServer(ingestor *IngestorWebServerImplemenation, port int) *http
 	// Clear out the servers array in the swagger spec, that skips validating
 	// that server names match. We don't know how this thing will be run.
 	swagger.Servers = nil
-
 	// This is how you set up a basic gin router
-	r := gin.Default()
-
+	r := gin.New()
+	r.Use(slogGin.NewWithConfig(slog.Default().With(), config))
 	r.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{ingestor.frontend.origin},
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
