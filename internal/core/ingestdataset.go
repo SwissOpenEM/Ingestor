@@ -204,19 +204,17 @@ func TransferDataset(
 	datasetId := it.GetDatasetId()
 	datasetFolder := it.DatasetFolder.FolderPath
 	fileList := it.GetFileList()
+
 	var err error
-	var http_client = &http.Client{
-		Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}},
-		Timeout:   120 * time.Second}
 
 	switch it.TransferMethod {
 	case task.TransferS3:
-		err = s3upload.UploadS3(task_context, datasetId, datasetFolder, fileList, it.DatasetFolder.Id, config.Transfer.S3, notifier)
+		err = s3upload.UploadS3(task_context, datasetId, datasetFolder, fileList, it.DatasetFolder.Id, config.Transfer.S3, it.UserToken, notifier)
 	case task.TransferGlobus:
 		// globus doesn't work with absolute folders, this library uses sourcePrefix to adapt the path to the globus' own path from a relative path
 		relativeDatasetFolder := strings.TrimPrefix(datasetFolder, config.WebServer.CollectionLocation)
 		err = GlobusTransfer(config.Transfer.Globus, it, task_context, it.DatasetFolder.Id, relativeDatasetFolder, fileList, notifier)
-	_:
+	default:
 		return fmt.Errorf("unknown transfer method: %d", it.TransferMethod)
 	}
 
@@ -224,6 +222,9 @@ func TransferDataset(
 		return err
 	}
 
+	var http_client = &http.Client{
+		Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}},
+		Timeout:   120 * time.Second}
 	// mark dataset archivable
 	if serviceUser == nil {
 		return fmt.Errorf("no service user was set, can't mark dataset as archivable")

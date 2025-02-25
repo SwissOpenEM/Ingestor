@@ -14,8 +14,7 @@ import (
 )
 
 type ScicatConfig struct {
-	Host        string `string:"Host" validate:"required,url"`
-	AccessToken string `string:"AccessToken"`
+	Host string `string:"Host" validate:"required,url"`
 }
 
 type MiscConfig struct {

@@ -3,6 +3,7 @@ package s3upload
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"os"
 	"path"
 	"sync/atomic"
@@ -12,6 +13,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/paulscherrerinstitute/scicat-cli/v3/datasetIngestor"
+	"golang.org/x/oauth2"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -23,7 +25,7 @@ type TransferNotifier struct {
 	startTime      time.Time
 	id             uuid.UUID
 	notifier       task.ProgressNotifier
-	TaskStatus     *task.TaskStatus
+	TaskStatus     *task.Status
 }
 
 func (pn *TransferNotifier) AddUploadedBytes(numBytes int64) {
@@ -41,8 +43,38 @@ type S3Objects struct {
 	TotalBytes  int64
 }
 
+func getTokens(ctx context.Context, endpoint string, userToken string) (string, string, error) {
+	resp, err := GetPresignedUrlServer(endpoint).CreateNewServiceTokenWithResponse(ctx,
+		createAddAuthorizationHeaderFunction(userToken))
+
+	if err != nil {
+		return "", "", err
+	}
+
+	if resp.HTTPResponse.StatusCode != 201 {
+		slog.Error(fmt.Sprintf("Error getting new access token: %d, %s", resp.HTTPResponse.StatusCode, resp.HTTPResponse.Status))
+		return "", "", fmt.Errorf("failed to get access tokens: %s", resp.HTTPResponse.Status)
+	}
+
+	return resp.JSON201.AccessToken, resp.JSON201.RefreshToken, nil
+}
+
+func createTokenSource(ctx context.Context, clientID string, tokenUrl string, accessToken string, refreshToken string) oauth2.TokenSource {
+	config := &oauth2.Config{
+		ClientID: clientID,
+		Endpoint: oauth2.Endpoint{TokenURL: tokenUrl},
+	}
+
+	token := &oauth2.Token{
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
+	}
+
+	return config.TokenSource(ctx, token)
+}
+
 // Upload all files in a folder using presinged urls
-func UploadS3(ctx context.Context, datasetPID string, datasetSourceFolder string, fileList []datasetIngestor.Datafile, uploadId uuid.UUID, options task.S3TransferConfig, notifier task.ProgressNotifier) error {
+func UploadS3(ctx context.Context, datasetPID string, datasetSourceFolder string, fileList []datasetIngestor.Datafile, uploadId uuid.UUID, options task.S3TransferConfig, userToken string, notifier task.ProgressNotifier) error {
 
 	if len(fileList) == 0 {
 		return fmt.Errorf("empty file list provided")
@@ -58,11 +90,20 @@ func UploadS3(ctx context.Context, datasetPID string, datasetSourceFolder string
 
 	transferNotifier := TransferNotifier{totalBytes: s3Objects.TotalBytes, bytesTansfered: 0, startTime: time.Now(), id: uploadId, notifier: notifier}
 
-	err := uploadFiles(ctx, &s3Objects, options, &transferNotifier, uploadId)
+	accessToken, refreshToken, err := getTokens(ctx, options.Endpoint, userToken)
+	if err != nil {
+		slog.Error(fmt.Sprintf("Failed to fetch token from '%s': %v", options.Endpoint, err))
+		return err
+	}
+
+	tokenSource := createTokenSource(context.Background(), options.ClientID, options.TokenUrl, accessToken, refreshToken)
+
+	err = uploadFiles(ctx, &s3Objects, options, &transferNotifier, uploadId, tokenSource)
+
 	return err
 }
 
-func uploadFiles(ctx context.Context, s3Objects *S3Objects, options task.S3TransferConfig, transferNotifier *TransferNotifier, uploadId uuid.UUID) error {
+func uploadFiles(ctx context.Context, s3Objects *S3Objects, options task.S3TransferConfig, transferNotifier *TransferNotifier, uploadId uuid.UUID, tokenSource oauth2.TokenSource) error {
 	errorGroup, context := errgroup.WithContext(ctx)
 	objectsChannel := make(chan int, len(s3Objects.Files))
 
@@ -77,7 +118,7 @@ func uploadFiles(ctx context.Context, s3Objects *S3Objects, options task.S3Trans
 						transferNotifier.notifier.OnTaskCanceled(uploadId)
 						return context.Err()
 					default:
-						err := uploadFile(context, s3Objects.Files[idx], s3Objects.ObjectNames[idx], options, transferNotifier)
+						err := uploadFile(context, s3Objects.Files[idx], s3Objects.ObjectNames[idx], options, transferNotifier, tokenSource)
 						if err != nil {
 							return err
 						}

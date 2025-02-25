@@ -21,6 +21,11 @@ import (
 	"github.com/oapi-codegen/runtime"
 )
 
+const (
+	BearerAuthScopes = "BearerAuth.Scopes"
+	SciCatAuthScopes = "SciCatAuth.Scopes"
+)
+
 // AbortUploadBody defines model for AbortUploadBody.
 type AbortUploadBody struct {
 	ObjectName string `json:"ObjectName"`
@@ -53,6 +58,33 @@ type CompleteUploadBody struct {
 type CompleteUploadResp struct {
 	Key      string `json:"Key"`
 	Location string `json:"Location"`
+}
+
+// CreateServiceTokenResp defines model for CreateServiceTokenResp.
+type CreateServiceTokenResp struct {
+	// AccessToken The JWT access token
+	AccessToken string `json:"access_token"`
+
+	// ExpiresIn The duration in seconds the access token is valid for
+	ExpiresIn *int `json:"expires_in,omitempty"`
+
+	// NotBeforePolicy Timestamp that indicates the time before which the JWT must not be accepted for processing
+	NotBeforePolicy *int `json:"not-before-policy,omitempty"`
+
+	// RefreshExpiresIn The duration in seconds the refresh token is valid for
+	RefreshExpiresIn *int `json:"refresh_expires_in,omitempty"`
+
+	// RefreshToken The JWT refresh token
+	RefreshToken string `json:"refresh_token"`
+
+	// Scope Claim in a JWT defines the set of permissions or access rights granted
+	Scope *string `json:"scope,omitempty"`
+
+	// SessionState Session ID, identifier that uniquely ties the session to the authenticated user
+	SessionState *string `json:"session_state,omitempty"`
+
+	// TokenType Bearer
+	TokenType *string `json:"token_type,omitempty"`
 }
 
 // HTTPValidationError defines model for HTTPValidationError.
@@ -263,6 +295,9 @@ type ClientInterface interface {
 	GetPresignedUrlsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	GetPresignedUrls(ctx context.Context, body GetPresignedUrlsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateNewServiceToken request
+	CreateNewServiceToken(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 }
 
 func (c *Client) AbortMultipartUploadWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -327,6 +362,18 @@ func (c *Client) GetPresignedUrlsWithBody(ctx context.Context, contentType strin
 
 func (c *Client) GetPresignedUrls(ctx context.Context, body GetPresignedUrlsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetPresignedUrlsRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) CreateNewServiceToken(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateNewServiceTokenRequest(c.Server)
 	if err != nil {
 		return nil, err
 	}
@@ -457,6 +504,33 @@ func NewGetPresignedUrlsRequestWithBody(server string, contentType string, body 
 	return req, nil
 }
 
+// NewCreateNewServiceTokenRequest generates requests for CreateNewServiceToken
+func NewCreateNewServiceTokenRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/token")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 func (c *Client) applyEditors(ctx context.Context, req *http.Request, additionalEditors []RequestEditorFn) error {
 	for _, r := range c.RequestEditors {
 		if err := r(ctx, req); err != nil {
@@ -514,12 +588,15 @@ type ClientWithResponsesInterface interface {
 	GetPresignedUrlsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GetPresignedUrlsResponse, error)
 
 	GetPresignedUrlsWithResponse(ctx context.Context, body GetPresignedUrlsJSONRequestBody, reqEditors ...RequestEditorFn) (*GetPresignedUrlsResponse, error)
+
+	// CreateNewServiceTokenWithResponse request
+	CreateNewServiceTokenWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*CreateNewServiceTokenResponse, error)
 }
 
 type AbortMultipartUploadResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *AbortUploadResp
+	JSON201      *AbortUploadResp
 	JSON422      *HTTPValidationError
 	JSON500      *InternalError
 }
@@ -543,7 +620,7 @@ func (r AbortMultipartUploadResponse) StatusCode() int {
 type CompleteUploadResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *CompleteUploadResp
+	JSON201      *CompleteUploadResp
 	JSON422      *HTTPValidationError
 	JSON500      *InternalError
 }
@@ -567,7 +644,7 @@ func (r CompleteUploadResponse) StatusCode() int {
 type GetPresignedUrlsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *PresignedUrlResp
+	JSON201      *PresignedUrlResp
 	JSON422      *HTTPValidationError
 	JSON500      *InternalError
 }
@@ -582,6 +659,30 @@ func (r GetPresignedUrlsResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r GetPresignedUrlsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type CreateNewServiceTokenResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON201      *CreateServiceTokenResp
+	JSON422      *HTTPValidationError
+	JSON500      *InternalError
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateNewServiceTokenResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateNewServiceTokenResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -639,6 +740,15 @@ func (c *ClientWithResponses) GetPresignedUrlsWithResponse(ctx context.Context, 
 	return ParseGetPresignedUrlsResponse(rsp)
 }
 
+// CreateNewServiceTokenWithResponse request returning *CreateNewServiceTokenResponse
+func (c *ClientWithResponses) CreateNewServiceTokenWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*CreateNewServiceTokenResponse, error) {
+	rsp, err := c.CreateNewServiceToken(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateNewServiceTokenResponse(rsp)
+}
+
 // ParseAbortMultipartUploadResponse parses an HTTP response from a AbortMultipartUploadWithResponse call
 func ParseAbortMultipartUploadResponse(rsp *http.Response) (*AbortMultipartUploadResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -653,12 +763,12 @@ func ParseAbortMultipartUploadResponse(rsp *http.Response) (*AbortMultipartUploa
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
 		var dest AbortUploadResp
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
-		response.JSON200 = &dest
+		response.JSON201 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
 		var dest HTTPValidationError
@@ -693,12 +803,12 @@ func ParseCompleteUploadResponse(rsp *http.Response) (*CompleteUploadResponse, e
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
 		var dest CompleteUploadResp
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
-		response.JSON200 = &dest
+		response.JSON201 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
 		var dest HTTPValidationError
@@ -733,12 +843,52 @@ func ParseGetPresignedUrlsResponse(rsp *http.Response) (*GetPresignedUrlsRespons
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
 		var dest PresignedUrlResp
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
-		response.JSON200 = &dest
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest HTTPValidationError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateNewServiceTokenResponse parses an HTTP response from a CreateNewServiceTokenWithResponse call
+func ParseCreateNewServiceTokenResponse(rsp *http.Response) (*CreateNewServiceTokenResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateNewServiceTokenResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest CreateServiceTokenResp
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
 		var dest HTTPValidationError
@@ -762,26 +912,34 @@ func ParseGetPresignedUrlsResponse(rsp *http.Response) (*GetPresignedUrlsRespons
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
+	"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",
+	"sylUiud4ireX278DAAD//y+L8prgHQAA",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

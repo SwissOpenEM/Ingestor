@@ -46,7 +46,7 @@ func globusCheckTransfer(client *globus.GlobusClient, globusTaskId string) (byte
 	}
 }
 
-func GlobusTransfer(globusConf task.GlobusTransferConfig, t *task.TransferTask, taskCtx context.Context, localTaskId uuid.UUID, datasetFolder string, fileList []datasetIngestor.Datafile, notifier ProgressNotifier) error {
+func GlobusTransfer(globusConf task.GlobusTransferConfig, t *task.TransferTask, taskCtx context.Context, localTaskId uuid.UUID, datasetFolder string, fileList []datasetIngestor.Datafile, notifier task.ProgressNotifier) error {
 	client, ok := t.GetTransferObject("globus_client").(*globus.GlobusClient)
 	if !ok {
 		return fmt.Errorf("globus client is not set for this task")

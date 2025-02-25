@@ -60,11 +60,12 @@ func (i *Status) ToStr() string {
 }
 
 type TransferTask struct {
-	DatasetFolder DatasetFolder
+	DatasetFolder   DatasetFolder
 	datasetId       string
 	fileList        []datasetIngestor.Datafile
 	DatasetMetadata map[string]interface{}
 	TransferMethod  TransferMethod
+	UserToken       string
 	Context         context.Context
 	Cancel          context.CancelFunc
 	details         *TaskDetails
@@ -78,12 +79,13 @@ type Result struct {
 	Error           error
 }
 
-func CreateTransferTask(datasetId string, fileList []datasetIngestor.Datafile, datasetFolder DatasetFolder, metadata map[string]interface{}, transferMethod TransferMethod, transferObjects map[string]interface{}, cancel context.CancelFunc) TransferTask {
+func CreateTransferTask(datasetId string, fileList []datasetIngestor.Datafile, datasetFolder DatasetFolder, metadata map[string]interface{}, transferMethod TransferMethod, transferObjects map[string]interface{}, cancel context.CancelFunc, userToken string) TransferTask {
 	return TransferTask{
 		datasetId:       datasetId,
 		fileList:        fileList,
 		DatasetFolder:   datasetFolder,
 		DatasetMetadata: metadata,
+		UserToken:       userToken,
 		TransferMethod:  transferMethod,
 		transferObjects: transferObjects,
 		Cancel:          cancel,
