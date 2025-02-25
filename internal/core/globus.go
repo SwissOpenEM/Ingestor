@@ -46,7 +46,7 @@ func globusCheckTransfer(client *globus.GlobusClient, globusTaskId string) (byte
 	}
 }
 
-func GlobusTransfer(globusConf task.GlobusTransferConfig, t *task.TransferTask, taskCtx context.Context, localTaskId uuid.UUID, datasetFolder string, fileList []datasetIngestor.Datafile, notifier ProgressNotifier) error {
+func GlobusTransfer(globusConf task.GlobusTransferConfig, t *task.TransferTask, taskCtx context.Context, localTaskId uuid.UUID, datasetFolder string, fileList []datasetIngestor.Datafile, notifier task.ProgressNotifier) error {
 	client, ok := t.GetTransferObject("globus_client").(*globus.GlobusClient)
 	if !ok {
 		return fmt.Errorf("globus client is not set for this task")
@@ -82,7 +82,6 @@ func GlobusTransfer(globusConf task.GlobusTransferConfig, t *task.TransferTask, 
 
 	// task monitoring
 	globusTaskId := result.TaskId
-	startTime := time.Now()
 	var taskCompleted bool
 	var bytesTransferred, filesTransferred, totalFiles int
 
@@ -111,9 +110,8 @@ func GlobusTransfer(globusConf task.GlobusTransferConfig, t *task.TransferTask, 
 	if taskCompleted {
 		return nil
 	}
-	notifier.OnTaskProgress(localTaskId, filesTransferred, totalFiles, int(time.Since(startTime).Seconds()))
+	notifier.OnTaskProgress(localTaskId, 100*filesTransferred/totalFiles)
 
-	timerUpdater := time.After(1 * time.Second)
 	transferUpdater := time.After(1 * time.Minute)
 	for {
 		select {
@@ -132,10 +130,6 @@ func GlobusTransfer(globusConf task.GlobusTransferConfig, t *task.TransferTask, 
 			)
 			notifier.OnTaskCanceled(localTaskId)
 			return nil
-		case <-timerUpdater:
-			// update timer every second
-			timerUpdater = time.After(1 * time.Second)
-			notifier.OnTaskProgress(localTaskId, filesTransferred, totalFiles, int(time.Since(startTime).Seconds()))
 		case <-transferUpdater:
 			// check state of transfer
 			transferUpdater = time.After(1 * time.Minute)
@@ -147,8 +141,8 @@ func GlobusTransfer(globusConf task.GlobusTransferConfig, t *task.TransferTask, 
 				totalFiles = 1 // needed because percentage meter goes NaN otherwise
 			}
 
-			t.UpdateDetails(task.SetBytesTransferred(bytesTransferred), task.SetFilesTransferred(filesTransferred), task.SetFilesTotal(totalFiles))
-			notifier.OnTaskProgress(localTaskId, filesTransferred, totalFiles, int(time.Since(startTime).Seconds()))
+			t.UpdateDetails(task.SetBytesTransferred(bytesTransferred), task.SetFilesTransferred(filesTransferred))
+			notifier.OnTaskProgress(localTaskId, 100*filesTransferred/totalFiles)
 
 			if taskCompleted {
 				return nil // we're done!

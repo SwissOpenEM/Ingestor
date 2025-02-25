@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/SwissOpenEM/Ingestor/internal/s3upload"
 	"github.com/SwissOpenEM/Ingestor/internal/task"
 	"github.com/fatih/color"
 	"github.com/paulscherrerinstitute/scicat-cli/v3/datasetIngestor"
@@ -195,33 +196,44 @@ func AddDatasetToScicat(
 
 func TransferDataset(
 	task_context context.Context,
-	it *task.TransferTask,
+	transferTask *task.TransferTask,
 	serviceUser *UserCreds,
 	config Config,
-	notifier ProgressNotifier,
+	notifier task.ProgressNotifier,
 ) error {
-	datasetId := it.GetDatasetId()
-	datasetFolder := it.DatasetFolder.FolderPath
-	fileList := it.GetFileList()
-	var err error
-	var http_client = &http.Client{
-		Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}},
-		Timeout:   120 * time.Second}
+	datasetId := transferTask.GetDatasetId()
+	datasetFolder := transferTask.DatasetFolder.FolderPath
+	fileList := transferTask.GetFileList()
 
-	switch it.TransferMethod {
+	var err error
+
+	switch transferTask.TransferMethod {
 	case task.TransferS3:
-		_, err = UploadS3(task_context, datasetId, datasetFolder, it.DatasetFolder.Id, config.Transfer.S3, notifier)
+		accessToken, ok := transferTask.GetTransferObject("accessToken").(string)
+		if !ok {
+			return fmt.Errorf("missing access token for s3 upload")
+		}
+		refreshToken, ok := transferTask.GetTransferObject("refreshToken").(string)
+		if !ok {
+			return fmt.Errorf("missing refresh token for s3 upload")
+		}
+
+		err = s3upload.UploadS3(task_context, datasetId, datasetFolder, fileList, transferTask.DatasetFolder.Id, config.Transfer.S3, accessToken, refreshToken, notifier)
 	case task.TransferGlobus:
 		// globus doesn't work with absolute folders, this library uses sourcePrefix to adapt the path to the globus' own path from a relative path
 		relativeDatasetFolder := strings.TrimPrefix(datasetFolder, config.WebServer.CollectionLocation)
-		err = GlobusTransfer(config.Transfer.Globus, it, task_context, it.DatasetFolder.Id, relativeDatasetFolder, fileList, notifier)
-	_:
+		err = GlobusTransfer(config.Transfer.Globus, transferTask, task_context, transferTask.DatasetFolder.Id, relativeDatasetFolder, fileList, notifier)
+	default:
+		return fmt.Errorf("unknown transfer method: %d", transferTask.TransferMethod)
 	}
 
 	if err != nil {
 		return err
 	}
 
+	var http_client = &http.Client{
+		Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}},
+		Timeout:   120 * time.Second}
 	// mark dataset archivable
 	if serviceUser == nil {
 		return fmt.Errorf("no service user was set, can't mark dataset as archivable")

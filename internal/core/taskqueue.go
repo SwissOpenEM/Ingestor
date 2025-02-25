@@ -25,7 +25,7 @@ type TaskQueue struct {
 
 	AppContext  context.Context
 	Config      Config
-	Notifier    ProgressNotifier
+	Notifier    task.ProgressNotifier
 	ServiceUser *UserCreds
 }
 
@@ -122,6 +122,9 @@ func (w *TaskQueue) ScheduleTask(id uuid.UUID) error {
 		return fmt.Errorf("task with id '%s' not found", id.String())
 	}
 	ingestionTask.UpdateDetails(task.SetMessage("queued"))
+	task_context, cancel := context.WithCancel(w.AppContext)
+	ingestionTask.Context = task_context
+	ingestionTask.Cancel = cancel
 
 	w.taskPool.Submit(func() { w.executeTransferTask(ingestionTask) })
 	return nil
@@ -169,30 +172,17 @@ func (w *TaskQueue) GetTaskFolder(id uuid.UUID) string {
 	defer w.taskListLock.RUnlock()
 
 	if t, ok := w.datasetUploadTasks.Get(id); ok {
-		return t.FolderPath
+		return t.DatasetFolder.FolderPath
 	}
 	return ""
 }
 
-func TestIngestionFunction(task_context context.Context, task task.TransferTask, config Config, notifier ProgressNotifier) (string, error) {
-	start := time.Now()
-
-	for i := 0; i < 10; i++ {
-		time.Sleep(time.Second * 1)
-		now := time.Now()
-		elapsed := now.Sub(start)
-		notifier.OnTaskProgress(task.DatasetFolder.Id, i+1, 10, int(elapsed.Seconds()))
-	}
-	return "1", nil
-
-}
-
-func (w *TaskQueue) TransferDataset(taskCtx context.Context, it *task.TransferTask) (float64, error) {
+func (w *TaskQueue) TransferDataset(taskCtx context.Context, it *task.TransferTask) task.Result {
 	start := time.Now()
 	err := TransferDataset(taskCtx, it, w.ServiceUser, w.Config, w.Notifier)
 	end := time.Now()
 	elapsed := end.Sub(start)
-	return elapsed.Seconds(), err
+	return task.Result{Elapsed_seconds: int(elapsed.Seconds()), Error: err}
 }
 
 func (w *TaskQueue) GetTransferMethod() (transferMethod task.TransferMethod) {
@@ -201,6 +191,8 @@ func (w *TaskQueue) GetTransferMethod() (transferMethod task.TransferMethod) {
 		transferMethod = task.TransferGlobus
 	case "s3":
 		transferMethod = task.TransferS3
+	default:
+		panic("unknown transfer method")
 	}
 	return transferMethod
 }

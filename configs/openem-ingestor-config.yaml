@@ -1,6 +1,5 @@
 Scicat:
   Host: http://scicat:8080/api/v3
-  AccessToken: "token"
 Transfer:
   Method: Globus
   Globus:
@@ -13,6 +12,13 @@ Transfer:
     RefreshToken: "refresh_token"
     Scopes:
       - "urn:globus:auth:scope:transfer.api.globus.org:all[*https://auth.globus.org/scopes/[collection_id1]/data_access]"
+  S3:
+    Endpoint: http://scopem-openem.ethz.ch/api/v1
+    TokenUrl: https:keycloak.localhost/realms/facility/protocol/openid-connect/token
+    ClientID: archiver-service-api
+    ChunkSizeMB: 64
+    ConcurrentFiles: 4
+    PoolSize: 8
 Misc:
   ConcurrencyLimit: 2
   Port: 8888
