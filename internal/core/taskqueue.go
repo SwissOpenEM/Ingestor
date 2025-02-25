@@ -39,9 +39,9 @@ func (w *TaskQueue) Startup() {
 	}
 }
 
-func (w *TaskQueue) AddTransferTask(transferObjects map[string]interface{}, datasetId string, fileList []datasetIngestor.Datafile, totalSize int64, metadataMap map[string]interface{}, taskId uuid.UUID, userToken string) error {
+func (w *TaskQueue) AddTransferTask(transferObjects map[string]interface{}, datasetId string, fileList []datasetIngestor.Datafile, totalSize int64, metadataMap map[string]interface{}, taskId uuid.UUID) error {
 	transferMethod := w.GetTransferMethod()
-	task := task.CreateTransferTask(datasetId, fileList, task.DatasetFolder{Id: taskId}, metadataMap, transferMethod, transferObjects, nil, userToken)
+	task := task.CreateTransferTask(datasetId, fileList, task.DatasetFolder{Id: taskId}, metadataMap, transferMethod, transferObjects, nil)
 
 	switch v := metadataMap["sourceFolder"].(type) {
 	case string:
@@ -120,7 +120,6 @@ func (w *TaskQueue) RemoveTask(id uuid.UUID) error {
 
 func (w *TaskQueue) ScheduleTask(id uuid.UUID) {
 	w.taskListLock.RLock()
-	// This will return a pointer instead a copy of the object
 	ingestionTask, found := w.datasetUploadTasks.Get(id)
 	w.taskListLock.RUnlock()
 	if !found {

@@ -9,9 +9,11 @@ import (
 	"slices"
 
 	"github.com/SwissOpenEM/Ingestor/internal/core"
+	"github.com/SwissOpenEM/Ingestor/internal/s3upload"
 	"github.com/SwissOpenEM/Ingestor/internal/task"
 	"github.com/SwissOpenEM/Ingestor/internal/webserver/globusauth"
 	"github.com/google/uuid"
+	"github.com/paulscherrerinstitute/scicat-cli/v3/datasetIngestor"
 )
 
 func (i *IngestorWebServerImplemenation) DatasetControllerIngestDataset(ctx context.Context, request DatasetControllerIngestDatasetRequestObject) (DatasetControllerIngestDatasetResponseObject, error) {
@@ -44,26 +46,13 @@ func (i *IngestorWebServerImplemenation) DatasetControllerIngestDataset(ctx cont
 		return DatasetControllerIngestDataset400TextResponse(err.Error()), nil
 	}
 
-	// add transfer dependencies to the transferObjects map
-	transferObjects := map[string]interface{}{}
+	taskId, err := i.addTransferTask(ctx, datasetId, fileList, totalSize, metadata, request)
 
-	// |-> globus dependencies
-	if i.taskQueue.GetTransferMethod() == task.TransferGlobus {
-		client, err := globusauth.GetClientFromSession(ctx, i.globusAuthConf, i.sessionDuration)
-		if err != nil {
-			return nil, err
-		}
-		transferObjects["globus_client"] = client
-	}
-
-	// create and start transfer task
-	taskId := uuid.New()
-	err = i.taskQueue.AddTransferTask(transferObjects, datasetId, fileList, totalSize, metadata, taskId, request.Body.UserToken)
 	if err != nil {
 		if _, ok := err.(*os.PathError); ok {
 			return nil, fmt.Errorf("could not create the task due to a path error: %s", err.Error())
 		} else {
-			return DatasetControllerIngestDataset400TextResponse("You don't have the right to access the dataset folder or it doesn't exist"), nil
+			return DatasetControllerIngestDataset400TextResponse(fmt.Sprintf("You don't have permissions to access the dataset folder or it doesn't exist: %s", err.Error())), nil
 		}
 	}
 	i.taskQueue.ScheduleTask(taskId)
@@ -74,6 +63,35 @@ func (i *IngestorWebServerImplemenation) DatasetControllerIngestDataset(ctx cont
 		TransferId: idString,
 		Status:     &status,
 	}, nil
+}
+
+func (i *IngestorWebServerImplemenation) addTransferTask(ctx context.Context, datasetId string, fileList []datasetIngestor.Datafile, totalSize int64, metadata map[string]interface{}, request DatasetControllerIngestDatasetRequestObject) (uuid.UUID, error) {
+	taskId := uuid.New()
+	transferObjects := map[string]interface{}{}
+	if i.taskQueue.GetTransferMethod() == task.TransferGlobus {
+		client, err := globusauth.GetClientFromSession(ctx, i.globusAuthConf, i.sessionDuration)
+		if err != nil {
+			return uuid.UUID{}, err
+		}
+		// |-> globus dependencies
+		// add transfer dependencies to the transferObjects map
+		transferObjects["globus_client"] = client
+
+	} else if i.taskQueue.GetTransferMethod() == task.TransferS3 {
+
+		// access and refresh token need be fetched at this point from the archiver backend since user token could expire
+		accessToken, refreshToken, err := s3upload.GetTokens(ctx, i.taskQueue.Config.Transfer.S3.Endpoint, request.Body.UserToken)
+		if err != nil {
+			return uuid.UUID{}, err
+		}
+		transferObjects["accessToken"] = accessToken
+		transferObjects["refreshToken"] = refreshToken
+	}
+	err := i.taskQueue.AddTransferTask(transferObjects, datasetId, fileList, totalSize, metadata, taskId)
+	if err != nil {
+		return uuid.UUID{}, err
+	}
+	return taskId, nil
 }
 
 func (i *IngestorWebServerImplemenation) DatasetControllerGetDataset(ctx context.Context, request DatasetControllerGetDatasetRequestObject) (DatasetControllerGetDatasetResponseObject, error) {

@@ -42,7 +42,7 @@ type S3Objects struct {
 	TotalBytes  int64
 }
 
-func getTokens(ctx context.Context, endpoint string, userToken string) (string, string, error) {
+func GetTokens(ctx context.Context, endpoint string, userToken string) (string, string, error) {
 	resp, err := GetPresignedUrlServer(endpoint).CreateNewServiceTokenWithResponse(ctx,
 		createAddAuthorizationHeaderFunction(userToken))
 
@@ -73,7 +73,7 @@ func createTokenSource(ctx context.Context, clientID string, tokenUrl string, ac
 }
 
 // Upload all files in a folder using presinged urls
-func UploadS3(ctx context.Context, datasetPID string, datasetSourceFolder string, fileList []datasetIngestor.Datafile, uploadId uuid.UUID, options task.S3TransferConfig, userToken string, notifier task.ProgressNotifier) error {
+func UploadS3(ctx context.Context, datasetPID string, datasetSourceFolder string, fileList []datasetIngestor.Datafile, uploadId uuid.UUID, options task.S3TransferConfig, accessToken string, refreshToken string, notifier task.ProgressNotifier) error {
 
 	if len(fileList) == 0 {
 		return fmt.Errorf("empty file list provided")
@@ -89,17 +89,9 @@ func UploadS3(ctx context.Context, datasetPID string, datasetSourceFolder string
 
 	transferNotifier := TransferNotifier{totalBytes: s3Objects.TotalBytes, bytesTransferred: 0, startTime: time.Now(), id: uploadId, notifier: notifier}
 
-	accessToken, refreshToken, err := getTokens(ctx, options.Endpoint, userToken)
-	if err != nil {
-		slog.Error(fmt.Sprintf("Failed to fetch token from '%s': %v", options.Endpoint, err))
-		return err
-	}
-
 	tokenSource := createTokenSource(context.Background(), options.ClientID, options.TokenUrl, accessToken, refreshToken)
 
-	err = uploadFiles(ctx, &s3Objects, options, &transferNotifier, uploadId, tokenSource)
-
-	return err
+	return uploadFiles(ctx, &s3Objects, options, &transferNotifier, uploadId, tokenSource)
 }
 
 func uploadFiles(ctx context.Context, s3Objects *S3Objects, options task.S3TransferConfig, transferNotifier *TransferNotifier, uploadId uuid.UUID, tokenSource oauth2.TokenSource) error {
