@@ -14,12 +14,12 @@ func createExpectedValidConfigS3() task.TransferConfig {
 	return task.TransferConfig{
 		Method: "S3",
 		S3: task.S3TransferConfig{
-			Endpoint: "s3:9000",
-			Bucket:   "landingzone",
-			Location: "eu-west-1",
-			User:     "minio_user",
-			Password: "minio_pass",
-			Checksum: true,
+			Endpoint:        "https://endpoint/api/v1",
+			TokenUrl:        "https://keycloak.localhost/realms/facility/protocol/openid-connect/token",
+			ClientID:        "archiver-service-api",
+			ChunkSizeMB:     64,
+			ConcurrentFiles: 4,
+			PoolSize:        8,
 		},
 	}
 }
@@ -46,8 +46,7 @@ func createExpectedValidConfig(transferConfig task.TransferConfig) Config {
 	}
 
 	expected_scicat := ScicatConfig{
-		Host:        "http://scicat:8080/api/v3",
-		AccessToken: "token",
+		Host: "http://scicat:8080/api/v3",
 	}
 
 	expected_tranfer := transferConfig
