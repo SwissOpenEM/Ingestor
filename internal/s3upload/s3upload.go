@@ -19,22 +19,21 @@ import (
 
 // Progress notifier object for Minio upload
 type TransferNotifier struct {
-	totalBytes     int64
-	bytesTansfered int64
-	FilesCount     int
-	startTime      time.Time
-	id             uuid.UUID
-	notifier       task.ProgressNotifier
-	TaskStatus     *task.Status
+	totalBytes       int64
+	bytesTransferred int64
+	FilesCount       int
+	startTime        time.Time
+	id               uuid.UUID
+	notifier         task.ProgressNotifier
+	TaskStatus       *task.Status
 }
 
 func (pn *TransferNotifier) AddUploadedBytes(numBytes int64) {
-	atomic.AddInt64(&pn.bytesTansfered, numBytes)
+	atomic.AddInt64(&pn.bytesTransferred, numBytes)
 }
 
 func (pn *TransferNotifier) UpdateTaskProgress() {
-	t := time.Since(pn.startTime)
-	pn.notifier.OnTaskProgress(pn.id, float32(pn.bytesTansfered)/float32(pn.totalBytes)*100, int(t.Seconds()))
+	pn.notifier.OnTaskProgress(pn.id, (int)(100*pn.bytesTransferred/pn.totalBytes))
 }
 
 type S3Objects struct {
@@ -88,7 +87,7 @@ func UploadS3(ctx context.Context, datasetPID string, datasetSourceFolder string
 		s3Objects.ObjectNames = append(s3Objects.ObjectNames, "openem-network/datasets/"+datasetPID+"/raw_files/"+f.Path)
 	}
 
-	transferNotifier := TransferNotifier{totalBytes: s3Objects.TotalBytes, bytesTansfered: 0, startTime: time.Now(), id: uploadId, notifier: notifier}
+	transferNotifier := TransferNotifier{totalBytes: s3Objects.TotalBytes, bytesTransferred: 0, startTime: time.Now(), id: uploadId, notifier: notifier}
 
 	accessToken, refreshToken, err := getTokens(ctx, options.Endpoint, userToken)
 	if err != nil {

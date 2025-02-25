@@ -44,9 +44,9 @@ func (w *WailsNotifier) OnTaskCompleted(id uuid.UUID, seconds_elapsed int) {
 	w.loggingNotifier.OnTaskCompleted(id, seconds_elapsed)
 	runtime.EventsEmit(w.AppContext, "upload-completed", id, seconds_elapsed)
 }
-func (w *WailsNotifier) OnTaskProgress(id uuid.UUID, percentage float32, elapsedSeconds int) {
-	w.loggingNotifier.OnTaskProgress(id, percentage, elapsedSeconds)
-	runtime.EventsEmit(w.AppContext, "progress-update", id, percentage, elapsedSeconds)
+func (w *WailsNotifier) OnTaskProgress(id uuid.UUID, percentage int) {
+	w.loggingNotifier.OnTaskProgress(id, percentage)
+	runtime.EventsEmit(w.AppContext, "progress-update", id, percentage)
 }
 
 // App struct

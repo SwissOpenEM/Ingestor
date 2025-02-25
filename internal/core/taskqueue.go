@@ -202,19 +202,6 @@ func (w *TaskQueue) GetTaskFolder(id uuid.UUID) string {
 	return ""
 }
 
-func TestIngestionFunction(task_context context.Context, task task.TransferTask, config Config, notifier task.ProgressNotifier) (string, error) {
-	start := time.Now()
-
-	for i := 0; i < 10; i++ {
-		time.Sleep(time.Second * 1)
-		now := time.Now()
-		elapsed := now.Sub(start)
-		notifier.OnTaskProgress(task.DatasetFolder.Id, float32(i)/10.0*100, int(elapsed.Seconds()))
-	}
-	return "1", nil
-
-}
-
 func (w *TaskQueue) TransferDataset(taskCtx context.Context, it *task.TransferTask) task.Result {
 	start := time.Now()
 	err := TransferDataset(taskCtx, it, w.ServiceUser, w.Config, w.Notifier)
