@@ -27,13 +27,15 @@ func main() {
 	log.Printf("Version %s", version)
 
 	var config core.Config
+
+	configFileReader := core.NewConfigReader()
 	var err error
-	if config, err = core.ReadConfig(core.DefaultConfigFileName()); err != nil {
+	if config, err = configFileReader.ReadConfig(core.DefaultConfigFileName()); err != nil {
 		log.Print(fmt.Errorf("failed to read config file: %w", err))
 	}
 
-	log.Println(core.GetFullConfig())
-	log.Printf("Config file used: %s", core.GetCurrentConfigFilePath())
+	log.Println(configFileReader.GetFullConfig())
+	log.Printf("Config file used: %s", configFileReader.GetCurrentConfigFilePath())
 
 	// Create an instance of the app structure
 	app := NewApp(config, version)

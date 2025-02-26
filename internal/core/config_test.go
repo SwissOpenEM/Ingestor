@@ -8,6 +8,7 @@ import (
 	"github.com/SwissOpenEM/Ingestor/internal/metadataextractor"
 	"github.com/SwissOpenEM/Ingestor/internal/task"
 	"github.com/SwissOpenEM/Ingestor/internal/webserver/wsconfig"
+	"github.com/spf13/viper"
 )
 
 func createExpectedValidConfigS3() task.TransferConfig {
@@ -155,8 +156,10 @@ func createExpectedValidConfig(transferConfig task.TransferConfig) Config {
 }
 
 func TestReadConfigS3(t *testing.T) {
-	viperConf.AddConfigPath("../../test/testdata")
-
+	viperTestConf := viper.New()
+	viperTestConf.SetConfigType("yaml")
+	viperTestConf.AddConfigPath("../../test/testdata")
+	configReader := ConfigReader{viperConf: viperTestConf}
 	type args struct {
 		configFileName string
 	}
@@ -177,7 +180,7 @@ func TestReadConfigS3(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := ReadConfig(tt.args.configFileName)
+			got, err := configReader.ReadConfig(tt.args.configFileName)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ReadConfig() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -190,7 +193,10 @@ func TestReadConfigS3(t *testing.T) {
 }
 
 func TestReadConfigGlobus(t *testing.T) {
-	viperConf.AddConfigPath("../../test/testdata")
+	viperTestConf := viper.New()
+	viperTestConf.SetConfigType("yaml")
+	viperTestConf.AddConfigPath("../../test/testdata")
+	configReader := ConfigReader{viperConf: viperTestConf}
 
 	type args struct {
 		configFileName string
@@ -212,13 +218,47 @@ func TestReadConfigGlobus(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := ReadConfig(tt.args.configFileName)
+			got, err := configReader.ReadConfig(tt.args.configFileName)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ReadConfig() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("ReadConfig() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestExampleConfig(t *testing.T) {
+	viperTestConf := viper.New()
+	viperTestConf.SetConfigType("yaml")
+	viperTestConf.AddConfigPath("../../configs")
+	configReader := ConfigReader{viperConf: viperTestConf}
+
+	type args struct {
+		configFileName string
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    Config
+		wantErr bool
+	}{
+		{
+			name: "valid config file",
+			args: args{
+				configFileName: "openem-ingestor-config.yaml",
+			},
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := configReader.ReadConfig(tt.args.configFileName)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ReadConfig() error = %v, wantErr %v", err, tt.wantErr)
+				return
 			}
 		})
 	}

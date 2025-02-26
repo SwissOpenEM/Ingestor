@@ -38,15 +38,16 @@ func main() {
 	slog.Info("Starting ingestor service", "Version", version)
 
 	var config core.Config
+	configFileReader := core.NewConfigReader()
 	var err error
-	if config, err = core.ReadConfig(core.DefaultConfigFileName()); err != nil {
-		slog.Info("Reading config", "file", core.GetCurrentConfigFilePath())
+	if config, err = configFileReader.ReadConfig(core.DefaultConfigFileName()); err != nil {
+		slog.Info("Reading config", "file", configFileReader.GetCurrentConfigFilePath())
 		panic(fmt.Errorf("failed to read config file: %w", err))
 	}
 
-	slog.Info("Config read", "Filepath", core.GetCurrentConfigFilePath())
+	slog.Info("Config read", "Filepath", configFileReader.GetCurrentConfigFilePath())
 
-	configData, _ := yaml.Marshal(core.GetFullConfig())
+	configData, _ := yaml.Marshal(configFileReader.GetFullConfig())
 	println(string(configData))
 
 	setupLogging(config.WebServer.LogLevel)

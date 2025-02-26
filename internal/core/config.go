@@ -23,11 +23,25 @@ type Config struct {
 	MetadataExtractors metadataextractor.ExtractorsConfig `mapstructure:"MetadataExtractors"`
 }
 
-var viperConf *viper.Viper = viper.New()
+type ConfigReader struct {
+	viperConf *viper.Viper
+}
 
-func getConfig() (Config, error) {
+func NewConfigReader() ConfigReader {
+	userConfigDir, _ := os.UserConfigDir()
+	executablePath, _ := os.Executable()
+
+	// Give priority to the config file found next to the executable
+	viperConf := viper.New()
+	viperConf.AddConfigPath(path.Dir(executablePath))
+	viperConf.AddConfigPath(path.Join(userConfigDir, "openem-ingestor"))
+	viperConf.SetConfigType("yaml")
+	return ConfigReader{viperConf: viperConf}
+}
+
+func (c *ConfigReader) getConfig() (Config, error) {
 	var config Config
-	if err := viperConf.UnmarshalExact(&config); err != nil {
+	if err := c.viperConf.UnmarshalExact(&config); err != nil {
 		fmt.Println(err)
 		return config, err
 	}
@@ -45,39 +59,31 @@ func DefaultConfigFileName() string {
 	return "openem-ingestor-config"
 }
 
-func ReadConfig(configFileName string) (Config, error) {
-	viperConf.SetConfigName(configFileName) // name of config file (without extension)
-	viperConf.SetConfigType("yaml")
+func (c *ConfigReader) ReadConfig(configFileName string) (Config, error) {
+	c.viperConf.SetConfigName(configFileName) // name of config file (without extension)
 
 	viper.SetDefault("WebServer.Port", 8888)
 
-	userConfigDir, _ := os.UserConfigDir()
-	executablePath, _ := os.Executable()
-
-	// Give priority to the config file found next to the executable
-	viperConf.AddConfigPath(path.Dir(executablePath))
-	viperConf.AddConfigPath(path.Join(userConfigDir, "openem-ingestor"))
-
-	err := viperConf.ReadInConfig()
+	err := c.viperConf.ReadInConfig()
 	if err == nil {
-		config, err := getConfig()
+		config, err := c.getConfig()
 		return config, err
 	}
 	return Config{}, err
 }
 
-func GetCurrentConfigFilePath() string {
-	return viperConf.ConfigFileUsed()
+func (c *ConfigReader) GetCurrentConfigFilePath() string {
+	return c.viperConf.ConfigFileUsed()
 }
 
-func GetFullConfig() map[string]any {
-	return viperConf.AllSettings()
+func (c *ConfigReader) GetFullConfig() map[string]any {
+	return c.viperConf.AllSettings()
 }
 
-func SetConfKey(key string, value any) {
-	viperConf.Set(key, value)
+func (c *ConfigReader) SetConfKey(key string, value any) {
+	c.viperConf.Set(key, value)
 }
 
-func SaveConfig() error {
-	return viperConf.WriteConfig()
+func (c *ConfigReader) SaveConfig() error {
+	return c.viperConf.WriteConfig()
 }
