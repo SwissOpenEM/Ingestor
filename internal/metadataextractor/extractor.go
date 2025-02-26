@@ -11,8 +11,6 @@ import (
 	"fmt"
 	"html/template"
 	"io"
-	"log"
-	"log/slog"
 	"net/http"
 	"os"
 	"os/exec"
@@ -98,26 +96,26 @@ func NewExtractorHandler(config ExtractorsConfig) *ExtractorHandler {
 	}
 
 	for _, extractorConfig := range config.Extractors {
-		slog.Info("Installing Extractor", "name", extractorConfig.Name)
+		log().Info("Installing Extractor", "name", extractorConfig.Name)
 
 		full_install_path := path.Join(config.InstallationPath, extractorConfig.GithubOrg, extractorConfig.GithubProject, extractorConfig.Version, extractorConfig.Executable)
 
 		if config.DownloadMissingExtractors {
 			err := downloadExtractor(full_install_path, extractorConfig)
 			if err != nil {
-				slog.Error("Failed to download extractor", "name", extractorConfig.Name)
+				log().Error("Failed to download extractor", "name", extractorConfig.Name)
 				continue
 			}
 		}
 
 		if err := verifyInstallation(full_install_path, extractorConfig); err != nil {
-			slog.Error("Installation verification failed", "error", err.Error(), "name", extractorConfig.Name, "path", full_install_path)
+			log().Error("Installation verification failed", "error", err.Error(), "name", extractorConfig.Name, "path", full_install_path)
 			continue
 		}
 
 		tmpl, err := template.New(extractorConfig.Name).Parse(extractorConfig.CommandLineTemplate)
 		if err != nil {
-			slog.Error("Failed to parse extractor commandline template", "name", extractorConfig.Name, "template", extractorConfig.CommandLineTemplate)
+			log().Error("Failed to parse extractor commandline template", "name", extractorConfig.Name, "template", extractorConfig.CommandLineTemplate)
 			continue
 		}
 
@@ -125,25 +123,25 @@ func NewExtractorHandler(config ExtractorsConfig) *ExtractorHandler {
 
 		for _, m := range extractorConfig.Methods {
 			if _, exists := h.methods[m.Name]; exists {
-				slog.Error("Duplicate method name found. Skipping.", "method", m.Name)
+				log().Error("Duplicate method name found. Skipping.", "method", m.Name)
 				continue
 			}
 
 			schemaPath := path.Join(config.SchemasLocation, m.Schema)
 
 			if _, err := os.Stat(schemaPath); errors.Is(err, os.ErrNotExist) {
-				slog.Error("Schema file not found. Skipping.", "method", m.Name, "file", schemaPath)
+				log().Error("Schema file not found. Skipping.", "method", m.Name, "file", schemaPath)
 				continue
 			}
 
 			schema, err := os.ReadFile(schemaPath)
 			if err != nil {
-				slog.Error("Failed to read schema file. Skipping.", "method", m.Name, "file", schemaPath, "error", err.Error())
+				log().Error("Failed to read schema file. Skipping.", "method", m.Name, "file", schemaPath, "error", err.Error())
 				continue
 			}
 
 			if !IsValidJSON(string(schema)) {
-				slog.Error("Schema file does not contain valid json. Skipping.", "method", m.Name, "schema", m.Schema)
+				log().Error("Schema file does not contain valid json. Skipping.", "method", m.Name, "schema", m.Schema)
 				continue
 			}
 
@@ -152,6 +150,7 @@ func NewExtractorHandler(config ExtractorsConfig) *ExtractorHandler {
 				Schema:    b64.StdEncoding.EncodeToString(schema),
 				Extractor: extractorConfig.Name,
 			}
+			log().Debug("Successfully added extractor", "method", m.Name, "extractor", extractorConfig.Name)
 		}
 
 		h.extractors[extractorConfig.Name] = Extractor{
@@ -209,7 +208,7 @@ func downloadRelease(github_org string, github_proj string, version string, targ
 					fmt.Printf("\n%+v\n", url)
 					reader, err := http.Get(url)
 					if err != nil {
-						slog.Error("error", "error", err.Error())
+						log().Error(err.Error())
 					}
 					defer reader.Body.Close()
 					targetFile := path.Join(targetFolder, *asset.Name)
@@ -218,7 +217,7 @@ func downloadRelease(github_org string, github_proj string, version string, targ
 
 					_, err = io.Copy(outFile, reader.Body)
 					if err != nil {
-						slog.Error("error", "error", err.Error())
+						log().Error(err.Error())
 					}
 					return outFile.Name(), nil
 				}
@@ -252,25 +251,25 @@ func downloadExtractor(full_install_path string, config ExtractorConfig) error {
 		targetFolder := os.TempDir()
 		file, err := downloadRelease(config.GithubOrg, config.GithubProject, config.Version, targetFolder)
 		if err != nil {
-			slog.Error("error", "error", err.Error())
+			log().Error("error", "error", err.Error())
 			return err
 		}
 
 		if ok, checksum, err := verifyFile(file, config); err == nil {
 			if !ok {
-				slog.Error("Verification failed", "file", file, "checksum", checksum)
+				log().Error("Verification failed", "file", file, "checksum", checksum)
 				return errors.New("verification failed")
 			} else {
-				slog.Info("Verification passed", "file", file, "checksum", checksum)
+				log().Info("Verification passed", "file", file, "checksum", checksum)
 			}
 		} else {
-			slog.Error("Failed to do verification ", "file", file, "error", err.Error())
+			log().Error("Failed to do verification ", "file", file, "error", err.Error())
 			return err
 		}
 
 		err = os.MkdirAll(path.Dir(full_install_path), 0777)
 		if err != nil {
-			slog.Error("Failed to create folder", "folder", path.Dir(full_install_path))
+			log().Error("Failed to create folder", "folder", path.Dir(full_install_path))
 			return err
 		}
 		x := &xtractr.XFile{
@@ -280,7 +279,7 @@ func downloadExtractor(full_install_path string, config ExtractorConfig) error {
 
 		size, files, _, err := x.Extract()
 		if err != nil || files == nil {
-			log.Fatal(size, files, err)
+			return fmt.Errorf("Extraction failed %d, %s, %s", size, files, err.Error())
 		}
 	}
 	return nil
@@ -389,7 +388,7 @@ func (e *ExtractorHandler) ExtractMetadata(ctx context.Context, method_name stri
 
 	extractor, ok := e.extractors[method.Extractor]
 	if !ok {
-		slog.Error("Extractor not found.", "method", method_name)
+		log().Error("Extractor not found.", "method", method_name)
 		return "", fmt.Errorf("extractor not found for the following method: '%s'", method_name)
 	}
 

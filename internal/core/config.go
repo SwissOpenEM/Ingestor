@@ -2,7 +2,6 @@ package core
 
 import (
 	"fmt"
-	"log/slog"
 	"os"
 	"path"
 
@@ -36,7 +35,6 @@ func getConfig() (Config, error) {
 	validate := validator.New(validator.WithRequiredStructEnabled())
 	err := validate.Struct(&config)
 	if err != nil {
-		slog.Error("Configuration validation failed:", "error", err.Error())
 		return config, err
 	}
 
@@ -65,7 +63,7 @@ func ReadConfig(configFileName string) (Config, error) {
 		config, err := getConfig()
 		return config, err
 	}
-	return Config{}, nil
+	return Config{}, err
 }
 
 func GetCurrentConfigFilePath() string {
