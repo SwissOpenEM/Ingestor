@@ -8,6 +8,8 @@ import (
 	"path"
 	"time"
 
+	b64 "encoding/base64"
+
 	"github.com/SwissOpenEM/Ingestor/internal/webserver/metadatatasks"
 	"github.com/gin-gonic/gin"
 )
@@ -86,7 +88,8 @@ func (r ResponseWriter) VisitExtractMetadataResponse(writer http.ResponseWriter)
 				g.SSEvent("error", "Couldn't marshal the progress json.")
 				return false
 			}
-			g.SSEvent("progress", json)
+			b64json := b64.StdEncoding.EncodeToString([]byte(json))
+			g.SSEvent("progress", b64json)
 			g.Writer.Flush()
 			if !ok {
 				return false

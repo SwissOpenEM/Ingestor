@@ -4,11 +4,12 @@ import (
 	"context"
 	b64 "encoding/base64"
 	"html/template"
-	"log"
 	"os"
 	"path"
 	"reflect"
 	"testing"
+
+	"golang.org/x/exp/slog"
 )
 
 func TestNewExtractorHandler(t *testing.T) {
@@ -272,8 +273,8 @@ func Test_buildCommandline(t *testing.T) {
 	}
 }
 
-func stdout_callback(m string) { log.Print(m) }
-func stderr_callback(m string) { log.Print(m) }
+func stdout_callback(m string) { slog.Info(m) }
+func stderr_callback(m string) { slog.Info(m) }
 
 func Test_runExtractor(t *testing.T) {
 	type args struct {

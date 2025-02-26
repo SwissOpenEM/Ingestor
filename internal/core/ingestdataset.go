@@ -6,7 +6,6 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -15,7 +14,6 @@ import (
 
 	"github.com/SwissOpenEM/Ingestor/internal/s3upload"
 	"github.com/SwissOpenEM/Ingestor/internal/task"
-	"github.com/fatih/color"
 	"github.com/paulscherrerinstitute/scicat-cli/v3/datasetIngestor"
 	"github.com/paulscherrerinstitute/scicat-cli/v3/datasetUtils"
 )
@@ -32,13 +30,13 @@ func createLocalSymlinkCallbackForFileLister(skipSymlinks *string, skippedLinks 
 			if err != nil {
 				return false, err
 			}
-			// log.Printf(" CWD path pointee :%v %v %v", dir, filepath.Dir(path), pointee)
+			// log().Printf(" CWD path pointee :%v %v %v", dir, filepath.Dir(path), pointee)
 			pointeeAbs := filepath.Join(symlinkAbs, pointee)
 			pointee, err = filepath.EvalSymlinks(pointeeAbs)
 			if err != nil {
-				log.Printf("Could not follow symlink for file:%v %v", pointeeAbs, err)
+				log().Error("Could not follow symlink for file:%v %v", pointeeAbs, err)
 				keep = false
-				log.Printf("keep variable set to %v", keep)
+				log().Info(fmt.Sprintf("keep variable set to %t", keep))
 			}
 		}
 		//fmt.Printf("Skip variable:%v\n", *skip)
@@ -49,10 +47,8 @@ func createLocalSymlinkCallbackForFileLister(skipSymlinks *string, skippedLinks 
 		} else if *skipSymlinks == "da" || *skipSymlinks == "dA" {
 			keep = strings.HasPrefix(pointee, sourceFolder)
 		} else {
-			color.Set(color.FgYellow)
-			log.Printf("Warning: the file %s is a link pointing to %v.", symlinkPath, pointee)
-			color.Unset()
-			log.Printf(`
+			log().Warn(fmt.Sprintf("The file %s is a link pointing to %v.", symlinkPath, pointee))
+			log().Warn(fmt.Sprintf(`
 	Please test if this link is meaningful and not pointing 
 	outside the sourceFolder %s. The default behaviour is to
 	keep only internal links within a source folder.
@@ -60,7 +56,7 @@ func createLocalSymlinkCallbackForFileLister(skipSymlinks *string, skippedLinks 
 	subsequent links within the current dataset, by appending an a (dA,ka,sa).
 	If you want to give the same answer even to all subsequent datasets 
 	in this command then specify a capital 'A', e.g. (dA,kA,sA)
-	Do you want to keep the link in dataset or skip it (D(efault)/k(eep)/s(kip) ?`, sourceFolder)
+	Do you want to keep the link in dataset or skip it (D(efault)/k(eep)/s(kip) ?`, sourceFolder))
 			scanner.Scan()
 			*skipSymlinks = scanner.Text()
 			if *skipSymlinks == "" {
@@ -73,14 +69,11 @@ func createLocalSymlinkCallbackForFileLister(skipSymlinks *string, skippedLinks 
 			}
 		}
 		if keep {
-			color.Set(color.FgGreen)
-			log.Printf("You chose to keep the link %v -> %v.\n\n", symlinkPath, pointee)
+			log().Info("You chose to keep the link %v -> %v.\n\n", symlinkPath, pointee)
 		} else {
-			color.Set(color.FgRed)
 			*skippedLinks++
-			log.Printf("You chose to remove the link %v -> %v.\n\n", symlinkPath, pointee)
+			log().Warn(fmt.Sprintf("You chose to remove the link %v -> %v.\n\n", symlinkPath, pointee))
 		}
-		color.Unset()
 		return keep, nil
 	}
 }
@@ -90,9 +83,7 @@ func createLocalFilenameFilterCallback(illegalFileNamesCounter *uint) func(filep
 		keep = true
 		// make sure that filenames do not contain characters like "\" or "*"
 		if strings.ContainsAny(filepath, "*\\") {
-			color.Set(color.FgRed)
-			log.Printf("Warning: the file %s contains illegal characters like *,\\ and will not be archived.", filepath)
-			color.Unset()
+			log().Warn(fmt.Sprintf("The file %s contains illegal characters like *,\\ and will not be archived.", filepath))
 			if illegalFileNamesCounter != nil {
 				*illegalFileNamesCounter++
 			}
@@ -100,9 +91,7 @@ func createLocalFilenameFilterCallback(illegalFileNamesCounter *uint) func(filep
 		}
 		// and check for triple blanks, they are used to separate columns in messages
 		if keep && strings.Contains(filepath, "   ") {
-			color.Set(color.FgRed)
-			log.Printf("Warning: the file %s contains 3 consecutive blanks which is not allowed. The file not be archived.", filepath)
-			color.Unset()
+			log().Warn(fmt.Sprintf("The file %s contains 3 consecutive blanks which is not allowed. The file not be archived.", filepath))
 			if illegalFileNamesCounter != nil {
 				*illegalFileNamesCounter++
 			}
@@ -166,7 +155,6 @@ func AddDatasetToScicat(
 	// collect (local) files
 	fileList, startTime, endTime, owner, numFiles, totalSize, err := datasetIngestor.GetLocalFileList(datasetFolder, DATASETFILELISTTXT, localSymlinkCallback, localFilepathFilterCallback)
 	if err != nil {
-		log.Printf("")
 		return datasetId, totalSize, fileList, err
 	}
 
