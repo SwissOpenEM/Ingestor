@@ -35,12 +35,7 @@ func (p *MetadataExtractionTaskPool) NewTask(ctx context.Context, datasetPath st
 }
 
 func NewTaskPool(queueSize int, maxConcurrency int, handler *metadataextractor.ExtractorHandler) *MetadataExtractionTaskPool {
-	var pondPool pond.Pool
-	if queueSize > 0 {
-		pondPool = pond.NewPool(int(maxConcurrency), pond.WithQueueSize(int(queueSize)))
-	} else {
-		pondPool = pond.NewPool(int(maxConcurrency))
-	}
+	pondPool := pond.NewPool(int(maxConcurrency), pond.WithQueueSize(int(queueSize)))
 	pool := MetadataExtractionTaskPool{
 		p:  pondPool,
 		wg: sync.WaitGroup{},
