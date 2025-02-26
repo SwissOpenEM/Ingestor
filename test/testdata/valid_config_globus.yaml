@@ -82,3 +82,4 @@ WebServer:
     QueueSize: 200
   Other:
     Port: 8888
+    LogLevel: "Info"

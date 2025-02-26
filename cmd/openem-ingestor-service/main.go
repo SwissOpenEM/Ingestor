@@ -49,7 +49,7 @@ func main() {
 	configData, _ := yaml.Marshal(core.GetFullConfig())
 	println(string(configData))
 
-	setupLogging(config.Misc.LogLevel)
+	setupLogging(config.WebServer.LogLevel)
 
 	ctx := context.Background()
 

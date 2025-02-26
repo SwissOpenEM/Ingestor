@@ -84,7 +84,8 @@ func createExpectedValidConfig(transferConfig task.TransferConfig) Config {
 			QueueSize:        200,
 		},
 		OtherConf: wsconfig.OtherConf{
-			Port: 8888,
+			Port:     8888,
+			LogLevel: "Info",
 		},
 	}
 
