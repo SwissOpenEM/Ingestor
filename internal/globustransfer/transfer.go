@@ -1,4 +1,4 @@
-package core
+package globustransfer
 
 import (
 	"context"
@@ -7,19 +7,15 @@ import (
 	"strings"
 	"time"
 
-	"github.com/SwissOpenEM/Ingestor/internal/task"
 	"github.com/SwissOpenEM/globus"
-	"github.com/google/uuid"
-	"github.com/paulscherrerinstitute/scicat-cli/v3/datasetIngestor"
 )
 
-/*func GlobusHealthCheck() error {
-	// NOTE: this is not a proper health check and takes a long time to finish (~900ms)
-	_, err := globusClient.TransferGetTaskList(0, 1)
-	return err
-}*/
+type File struct {
+	Path      string
+	IsSymlink bool
+}
 
-func globusCheckTransfer(client *globus.GlobusClient, globusTaskId string) (bytesTransferred int, filesTransferred int, totalFiles int, completed bool, err error) {
+func checkTransfer(client *globus.GlobusClient, globusTaskId string) (bytesTransferred int, filesTransferred int, totalFiles int, completed bool, err error) {
 	globusTask, err := client.TransferGetTaskByID(globusTaskId)
 	if err != nil {
 		return 0, 0, 1, false, fmt.Errorf("globus: can't continue transfer because an error occured while polling the task \"%s\": %v", globusTaskId, err)
@@ -46,12 +42,18 @@ func globusCheckTransfer(client *globus.GlobusClient, globusTaskId string) (byte
 	}
 }
 
-func GlobusTransfer(globusConf task.GlobusTransferConfig, t *task.TransferTask, taskCtx context.Context, localTaskId uuid.UUID, datasetFolder string, fileList []datasetIngestor.Datafile, notifier task.ProgressNotifier) error {
-	client, ok := t.GetTransferObject("globus_client").(*globus.GlobusClient)
-	if !ok {
-		return fmt.Errorf("globus client is not set for this task")
-	}
-
+// globus transfer task function, uses the notifier to update the status of the transfer
+func TransferFiles(
+	client *globus.GlobusClient,
+	SourceCollection string,
+	SourcePrefixPath string,
+	DestinationCollection string,
+	DestinationPrefixPath string,
+	taskCtx context.Context,
+	datasetFolder string,
+	fileList []File,
+	notifier Notifier,
+) error {
 	// transfer given filelist
 	var filePathList []string
 	var fileIsSymlinkList []bool
@@ -65,10 +67,10 @@ func GlobusTransfer(globusConf task.GlobusTransferConfig, t *task.TransferTask, 
 	datasetFolderName := s[len(s)-1]
 
 	result, err := client.TransferFileList(
-		globusConf.SourceCollection,
-		globusConf.SourcePrefixPath+"/"+datasetFolder,
-		globusConf.DestinationCollection,
-		globusConf.DestinationPrefixPath+"/"+datasetFolderName,
+		SourceCollection,
+		SourcePrefixPath+"/"+datasetFolder,
+		DestinationCollection,
+		DestinationPrefixPath+"/"+datasetFolderName,
 		filePathList,
 		fileIsSymlinkList,
 		true,
@@ -89,28 +91,18 @@ func GlobusTransfer(globusConf task.GlobusTransferConfig, t *task.TransferTask, 
 	//   this can change over the course of the transfer, as Globus succeeds in finding the files
 	//   (recursion, checking their existence...)
 
-	bytesTransferred, filesTransferred, totalFiles, taskCompleted, err = globusCheckTransfer(client, globusTaskId)
+	bytesTransferred, filesTransferred, totalFiles, taskCompleted, err = checkTransfer(client, globusTaskId)
 	if err != nil {
 		return err
 	}
 	if totalFiles == 0 {
 		totalFiles = 1 // needed because percentage meter goes NaN otherwise
 	}
-	status := task.Transferring
+	notifier.OnTransferProgress(bytesTransferred, filesTransferred)
 	if taskCompleted {
-		status = task.Finished
-	}
-	t.UpdateDetails(
-		task.SetBytesTransferred(bytesTransferred),
-		task.SetFilesTransferred(filesTransferred),
-		task.SetFilesTotal(totalFiles),
-		task.SetStatus(status),
-		task.SetMessage("transfering"),
-	)
-	if taskCompleted {
+		notifier.OnTransferFinished()
 		return nil
 	}
-	notifier.OnTaskProgress(localTaskId, 100*filesTransferred/totalFiles)
 
 	transferUpdater := time.After(1 * time.Minute)
 	for {
@@ -124,16 +116,12 @@ func GlobusTransfer(globusConf task.GlobusTransferConfig, t *task.TransferTask, 
 			if result.Code != "Canceled" {
 				return fmt.Errorf("globus: couldn't cancel task - code: \"%s\", message: \"%s\"", result.Code, result.Message)
 			}
-			t.UpdateDetails(
-				task.SetMessage("task was cancelled"),
-				task.SetStatus(task.Cancelled),
-			)
-			notifier.OnTaskCanceled(localTaskId)
+			notifier.OnTransferCancelled()
 			return nil
 		case <-transferUpdater:
 			// check state of transfer
 			transferUpdater = time.After(1 * time.Minute)
-			bytesTransferred, filesTransferred, totalFiles, taskCompleted, err = globusCheckTransfer(client, globusTaskId)
+			bytesTransferred, filesTransferred, totalFiles, taskCompleted, err = checkTransfer(client, globusTaskId)
 			if err != nil {
 				return err // transfer cannot be finished: irrecoverable error
 			}
@@ -141,8 +129,7 @@ func GlobusTransfer(globusConf task.GlobusTransferConfig, t *task.TransferTask, 
 				totalFiles = 1 // needed because percentage meter goes NaN otherwise
 			}
 
-			t.UpdateDetails(task.SetBytesTransferred(bytesTransferred), task.SetFilesTransferred(filesTransferred))
-			notifier.OnTaskProgress(localTaskId, 100*filesTransferred/totalFiles)
+			notifier.OnTransferProgress(bytesTransferred, filesTransferred)
 
 			if taskCompleted {
 				return nil // we're done!
