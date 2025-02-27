@@ -58,6 +58,22 @@ type Error struct {
 	Message string `json:"message"`
 }
 
+// FolderNode a method item describes the method's name and schema
+type FolderNode struct {
+	Children        bool   `json:"children"`
+	Name            string `json:"name"`
+	Path            string `json:"path"`
+	ProbablyDataset *bool  `json:"probablyDataset,omitempty"`
+}
+
+// GetBrowseDatasetResponse defines model for GetBrowseDatasetResponse.
+type GetBrowseDatasetResponse struct {
+	Folders *[]FolderNode `json:"folders,omitempty"`
+
+	// Total Total number of folders.
+	Total *int `json:"total,omitempty"`
+}
+
 // GetDatasetResponse defines model for GetDatasetResponse.
 type GetDatasetResponse struct {
 	Datasets []string `json:"datasets"`
@@ -163,6 +179,13 @@ type DatasetControllerGetDatasetParams struct {
 	PageSize *uint `form:"pageSize,omitempty" json:"pageSize,omitempty"`
 }
 
+// FilesystemControllerBrowseFilesystemParams defines parameters for FilesystemControllerBrowseFilesystem.
+type FilesystemControllerBrowseFilesystemParams struct {
+	Path     string `form:"path" json:"path"`
+	Page     *uint  `form:"page,omitempty" json:"page,omitempty"`
+	PageSize *uint  `form:"pageSize,omitempty" json:"pageSize,omitempty"`
+}
+
 // ExtractorControllerGetExtractorMethodsParams defines parameters for ExtractorControllerGetExtractorMethods.
 type ExtractorControllerGetExtractorMethodsParams struct {
 	Page     *uint `form:"page,omitempty" json:"page,omitempty"`
@@ -208,6 +231,9 @@ type ServerInterface interface {
 	// Ingest a new dataset
 	// (POST /dataset)
 	DatasetControllerIngestDataset(c *gin.Context)
+	// Get a list of folders to a specific path.
+	// (GET /dataset/browse)
+	FilesystemControllerBrowseFilesystem(c *gin.Context, params FilesystemControllerBrowseFilesystemParams)
 	// Get available extraction methods
 	// (GET /extractor)
 	ExtractorControllerGetExtractorMethods(c *gin.Context, params ExtractorControllerGetExtractorMethodsParams)
@@ -346,6 +372,57 @@ func (siw *ServerInterfaceWrapper) DatasetControllerIngestDataset(c *gin.Context
 	}
 
 	siw.Handler.DatasetControllerIngestDataset(c)
+}
+
+// FilesystemControllerBrowseFilesystem operation middleware
+func (siw *ServerInterfaceWrapper) FilesystemControllerBrowseFilesystem(c *gin.Context) {
+
+	var err error
+
+	c.Set(CookieAuthScopes, []string{"ingestor_read"})
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params FilesystemControllerBrowseFilesystemParams
+
+	// ------------- Required query parameter "path" -------------
+
+	if paramValue := c.Query("path"); paramValue != "" {
+
+	} else {
+		siw.ErrorHandler(c, fmt.Errorf("Query argument path is required, but not found"), http.StatusBadRequest)
+		return
+	}
+
+	err = runtime.BindQueryParameter("form", true, true, "path", c.Request.URL.Query(), &params.Path)
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter path: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "page" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "page", c.Request.URL.Query(), &params.Page)
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter page: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "pageSize" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "pageSize", c.Request.URL.Query(), &params.PageSize)
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter pageSize: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.FilesystemControllerBrowseFilesystem(c, params)
 }
 
 // ExtractorControllerGetExtractorMethods operation middleware
@@ -636,6 +713,7 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 	router.GET(options.BaseURL+"/callback", wrapper.GetCallback)
 	router.GET(options.BaseURL+"/dataset", wrapper.DatasetControllerGetDataset)
 	router.POST(options.BaseURL+"/dataset", wrapper.DatasetControllerIngestDataset)
+	router.GET(options.BaseURL+"/dataset/browse", wrapper.FilesystemControllerBrowseFilesystem)
 	router.GET(options.BaseURL+"/extractor", wrapper.ExtractorControllerGetExtractorMethods)
 	router.GET(options.BaseURL+"/globus-callback", wrapper.GetGlobusCallback)
 	router.GET(options.BaseURL+"/health", wrapper.OtherControllerGetHealth)
@@ -737,6 +815,33 @@ func (response DatasetControllerIngestDataset200JSONResponse) VisitDatasetContro
 type DatasetControllerIngestDataset400TextResponse string
 
 func (response DatasetControllerIngestDataset400TextResponse) VisitDatasetControllerIngestDatasetResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "text/plain")
+	w.WriteHeader(400)
+
+	_, err := w.Write([]byte(response))
+	return err
+}
+
+type FilesystemControllerBrowseFilesystemRequestObject struct {
+	Params FilesystemControllerBrowseFilesystemParams
+}
+
+type FilesystemControllerBrowseFilesystemResponseObject interface {
+	VisitFilesystemControllerBrowseFilesystemResponse(w http.ResponseWriter) error
+}
+
+type FilesystemControllerBrowseFilesystem200JSONResponse GetBrowseDatasetResponse
+
+func (response FilesystemControllerBrowseFilesystem200JSONResponse) VisitFilesystemControllerBrowseFilesystemResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type FilesystemControllerBrowseFilesystem400TextResponse string
+
+func (response FilesystemControllerBrowseFilesystem400TextResponse) VisitFilesystemControllerBrowseFilesystemResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(400)
 
@@ -1057,6 +1162,9 @@ type StrictServerInterface interface {
 	// Ingest a new dataset
 	// (POST /dataset)
 	DatasetControllerIngestDataset(ctx context.Context, request DatasetControllerIngestDatasetRequestObject) (DatasetControllerIngestDatasetResponseObject, error)
+	// Get a list of folders to a specific path.
+	// (GET /dataset/browse)
+	FilesystemControllerBrowseFilesystem(ctx context.Context, request FilesystemControllerBrowseFilesystemRequestObject) (FilesystemControllerBrowseFilesystemResponseObject, error)
 	// Get available extraction methods
 	// (GET /extractor)
 	ExtractorControllerGetExtractorMethods(ctx context.Context, request ExtractorControllerGetExtractorMethodsRequestObject) (ExtractorControllerGetExtractorMethodsResponseObject, error)
@@ -1181,6 +1289,33 @@ func (sh *strictHandler) DatasetControllerIngestDataset(ctx *gin.Context) {
 		ctx.Status(http.StatusInternalServerError)
 	} else if validResponse, ok := response.(DatasetControllerIngestDatasetResponseObject); ok {
 		if err := validResponse.VisitDatasetControllerIngestDatasetResponse(ctx.Writer); err != nil {
+			ctx.Error(err)
+		}
+	} else if response != nil {
+		ctx.Error(fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// FilesystemControllerBrowseFilesystem operation middleware
+func (sh *strictHandler) FilesystemControllerBrowseFilesystem(ctx *gin.Context, params FilesystemControllerBrowseFilesystemParams) {
+	var request FilesystemControllerBrowseFilesystemRequestObject
+
+	request.Params = params
+
+	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.FilesystemControllerBrowseFilesystem(ctx, request.(FilesystemControllerBrowseFilesystemRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "FilesystemControllerBrowseFilesystem")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		ctx.Error(err)
+		ctx.Status(http.StatusInternalServerError)
+	} else if validResponse, ok := response.(FilesystemControllerBrowseFilesystemResponseObject); ok {
+		if err := validResponse.VisitFilesystemControllerBrowseFilesystemResponse(ctx.Writer); err != nil {
 			ctx.Error(err)
 		}
 	} else if response != nil {
@@ -1457,58 +1592,60 @@ func (sh *strictHandler) OtherControllerGetVersion(ctx *gin.Context) {
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
-	"AP//0/ZaNl82AAA=",
+	"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",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

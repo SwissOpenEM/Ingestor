@@ -16,6 +16,10 @@ import (
 	"github.com/paulscherrerinstitute/scicat-cli/v3/datasetIngestor"
 )
 
+func (i *IngestorWebServerImplemenation) FilesystemControllerBrowseFilesystem(ctx context.Context, request FilesystemControllerBrowseFilesystemRequestObject) (FilesystemControllerBrowseFilesystemResponseObject, error) {
+	return FilesystemControllerBrowseFilesystem200JSONResponse{}, nil
+}
+
 func (i *IngestorWebServerImplemenation) DatasetControllerIngestDataset(ctx context.Context, request DatasetControllerIngestDatasetRequestObject) (DatasetControllerIngestDatasetResponseObject, error) {
 	// get sourcefolder from metadata
 	var metadata map[string]interface{}
