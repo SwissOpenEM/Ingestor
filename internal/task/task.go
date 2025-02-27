@@ -81,6 +81,10 @@ type Result struct {
 type StatusOption func(t *TransferTask)
 
 func CreateTransferTask(datasetId string, fileList []datasetIngestor.Datafile, datasetFolder DatasetFolder, metadata map[string]interface{}, transferMethod TransferMethod, transferObjects map[string]interface{}, cancel context.CancelFunc) TransferTask {
+	totalBytes := 0
+	for _, file := range fileList {
+		totalBytes += int(file.Size)
+	}
 	return TransferTask{
 		datasetId:       datasetId,
 		fileList:        fileList,
@@ -89,8 +93,11 @@ func CreateTransferTask(datasetId string, fileList []datasetIngestor.Datafile, d
 		TransferMethod:  transferMethod,
 		transferObjects: transferObjects,
 		Cancel:          cancel,
-		details:         &TaskDetails{},
-		statusLock:      &sync.RWMutex{},
+		details: &TaskDetails{
+			BytesTotal: totalBytes,
+			FilesTotal: len(fileList),
+		},
+		statusLock: &sync.RWMutex{},
 	}
 }
 

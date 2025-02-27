@@ -73,23 +73,28 @@ func (w *TaskQueue) executeTransferTask(t *task.TransferTask) {
 			task.SetStatus(task.Failed),
 			task.SetMessage(fmt.Sprintf("failed - error: %s", r.Error.Error())),
 		)
+		w.Notifier.OnTaskFailed(t.DatasetFolder.Id, r.Error)
+		return
 	}
 	t.UpdateDetails(
 		task.SetStatus(task.Finished),
-		task.SetMessage("finished"),
+		task.SetMessage("task was finished successfully"),
 	)
+	w.Notifier.OnTaskCompleted(t.DatasetFolder.Id, r.Elapsed_seconds)
 }
 
 func (w *TaskQueue) CancelTask(id uuid.UUID) {
 	w.taskListLock.RLock()
-	task, ok := w.datasetUploadTasks.Get(id)
+	uploadTask, ok := w.datasetUploadTasks.Get(id)
 	w.taskListLock.RUnlock()
 	if !ok {
 		return
 	}
-	if task.Cancel != nil {
-		task.Cancel()
+	if uploadTask.Cancel != nil {
+		uploadTask.Cancel()
 	}
+
+	uploadTask.UpdateDetails(task.SetStatus(task.Cancelled), task.SetMessage("transfer was cancelled"))
 	w.Notifier.OnTaskCanceled(id)
 }
 
@@ -121,10 +126,13 @@ func (w *TaskQueue) ScheduleTask(id uuid.UUID) error {
 	if !found {
 		return fmt.Errorf("task with id '%s' not found", id.String())
 	}
-	ingestionTask.UpdateDetails(task.SetMessage("queued"))
+
 	task_context, cancel := context.WithCancel(w.AppContext)
 	ingestionTask.Context = task_context
 	ingestionTask.Cancel = cancel
+
+	ingestionTask.UpdateDetails(task.SetMessage("queued"))
+	w.Notifier.OnTaskScheduled(ingestionTask.DatasetFolder.Id)
 
 	w.taskPool.Submit(func() { w.executeTransferTask(ingestionTask) })
 	return nil
