@@ -76,11 +76,15 @@ func (w *TaskQueue) executeTransferTask(t *task.TransferTask) {
 		w.Notifier.OnTaskFailed(t.DatasetFolder.Id, r.Error)
 		return
 	}
-	t.UpdateDetails(
-		task.SetStatus(task.Finished),
-		task.SetMessage("task was finished successfully"),
-	)
-	w.Notifier.OnTaskCompleted(t.DatasetFolder.Id, r.Elapsed_seconds)
+
+	// if not cancelled, mark as finished
+	if t.GetDetails().Status != task.Cancelled {
+		t.UpdateDetails(
+			task.SetStatus(task.Finished),
+			task.SetMessage("task was finished successfully"),
+		)
+		w.Notifier.OnTaskCompleted(t.DatasetFolder.Id, r.Elapsed_seconds)
+	}
 }
 
 func (w *TaskQueue) CancelTask(id uuid.UUID) {
@@ -90,12 +94,11 @@ func (w *TaskQueue) CancelTask(id uuid.UUID) {
 	if !ok {
 		return
 	}
+	uploadTask.UpdateDetails(task.SetStatus(task.Cancelled), task.SetMessage("transfer was cancelled"))
+	w.Notifier.OnTaskCanceled(id)
 	if uploadTask.Cancel != nil {
 		uploadTask.Cancel()
 	}
-
-	uploadTask.UpdateDetails(task.SetStatus(task.Cancelled), task.SetMessage("transfer was cancelled"))
-	w.Notifier.OnTaskCanceled(id)
 }
 
 func (w *TaskQueue) RemoveTask(id uuid.UUID) error {
