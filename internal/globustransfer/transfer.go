@@ -52,7 +52,7 @@ func TransferFiles(
 	taskCtx context.Context,
 	datasetFolder string,
 	fileList []File,
-	notifier Notifier,
+	UpdateProgress func(bytesTransferred int, filesTransferred int),
 ) error {
 	// transfer given filelist
 	var filePathList []string
@@ -65,7 +65,6 @@ func TransferFiles(
 
 	s := strings.Split(strings.Trim(datasetFolder, "/"), "/")
 	datasetFolderName := s[len(s)-1]
-
 	result, err := client.TransferFileList(
 		SourceCollection,
 		SourcePrefixPath+"/"+datasetFolder,
@@ -98,9 +97,8 @@ func TransferFiles(
 	if totalFiles == 0 {
 		totalFiles = 1 // needed because percentage meter goes NaN otherwise
 	}
-	notifier.OnTransferProgress(bytesTransferred, filesTransferred)
+	UpdateProgress(bytesTransferred, filesTransferred)
 	if taskCompleted {
-		notifier.OnTransferFinished()
 		return nil
 	}
 
@@ -116,7 +114,6 @@ func TransferFiles(
 			if result.Code != "Canceled" {
 				return fmt.Errorf("globus: couldn't cancel task - code: \"%s\", message: \"%s\"", result.Code, result.Message)
 			}
-			notifier.OnTransferCancelled()
 			return nil
 		case <-transferUpdater:
 			// check state of transfer
@@ -129,7 +126,7 @@ func TransferFiles(
 				totalFiles = 1 // needed because percentage meter goes NaN otherwise
 			}
 
-			notifier.OnTransferProgress(bytesTransferred, filesTransferred)
+			UpdateProgress(bytesTransferred, filesTransferred)
 
 			if taskCompleted {
 				return nil // we're done!
