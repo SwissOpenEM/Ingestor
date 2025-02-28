@@ -79,7 +79,7 @@ func NewIngestorWebServer(version string, tq *core.TaskQueue, eh *metadataextrac
 		return nil, err
 	}
 
-	metp := metadatatasks.NewTaskPool(ws.QueueSize, ws.ConcurrencyLimit, eh)
+	metadataTaskPool := metadatatasks.NewTaskPool(ws.QueueSize, ws.ConcurrencyLimit, eh)
 
 	globusAuthConf := globus.AuthGenerateOauthClientConfig(
 		context.Background(),
@@ -102,7 +102,7 @@ func NewIngestorWebServer(version string, tq *core.TaskQueue, eh *metadataextrac
 		scopeToRoleMap:   scopeToRoleMap,
 		sessionDuration:  ws.SessionDuration,
 		pathConfig:       ws.PathsConf,
-		metp:             metp,
+		metp:             metadataTaskPool,
 		frontend: struct {
 			origin       string
 			redirectPath string
