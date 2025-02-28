@@ -78,9 +78,13 @@ type Result struct {
 	Error           error
 }
 
-type StatusOption func(t *TransferTask)
+type statusOption func(t *TransferTask)
 
 func CreateTransferTask(datasetId string, fileList []datasetIngestor.Datafile, datasetFolder DatasetFolder, metadata map[string]interface{}, transferMethod TransferMethod, transferObjects map[string]interface{}, cancel context.CancelFunc) TransferTask {
+	totalBytes := 0
+	for _, file := range fileList {
+		totalBytes += int(file.Size)
+	}
 	return TransferTask{
 		datasetId:       datasetId,
 		fileList:        fileList,
@@ -89,8 +93,11 @@ func CreateTransferTask(datasetId string, fileList []datasetIngestor.Datafile, d
 		TransferMethod:  transferMethod,
 		transferObjects: transferObjects,
 		Cancel:          cancel,
-		details:         &TaskDetails{},
-		statusLock:      &sync.RWMutex{},
+		details: &TaskDetails{
+			BytesTotal: totalBytes,
+			FilesTotal: len(fileList),
+		},
+		statusLock: &sync.RWMutex{},
 	}
 }
 
@@ -101,7 +108,7 @@ func (t *TransferTask) GetDetails() TaskDetails {
 	return copy
 }
 
-func (t *TransferTask) UpdateDetails(options ...StatusOption) {
+func (t *TransferTask) UpdateDetails(options ...statusOption) {
 	t.statusLock.Lock()
 	defer t.statusLock.Unlock()
 	for _, option := range options {
@@ -109,37 +116,37 @@ func (t *TransferTask) UpdateDetails(options ...StatusOption) {
 	}
 }
 
-func SetBytesTransferred(b int) StatusOption {
+func SetBytesTransferred(b int) statusOption {
 	return func(t *TransferTask) {
 		t.details.BytesTransferred = b
 	}
 }
 
-func SetBytesTotal(b int) StatusOption {
+func SetBytesTotal(b int) statusOption {
 	return func(t *TransferTask) {
 		t.details.BytesTotal = b
 	}
 }
 
-func SetFilesTransferred(f int) StatusOption {
+func SetFilesTransferred(f int) statusOption {
 	return func(t *TransferTask) {
 		t.details.FilesTransferred = f
 	}
 }
 
-func SetFilesTotal(f int) StatusOption {
+func SetFilesTotal(f int) statusOption {
 	return func(t *TransferTask) {
 		t.details.FilesTotal = f
 	}
 }
 
-func SetStatus(s Status) StatusOption {
+func SetStatus(s Status) statusOption {
 	return func(t *TransferTask) {
 		t.details.Status = s
 	}
 }
 
-func SetMessage(m string) StatusOption {
+func SetMessage(m string) statusOption {
 	return func(t *TransferTask) {
 		t.details.Message = m
 	}

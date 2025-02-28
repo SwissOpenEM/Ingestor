@@ -17,7 +17,7 @@ import (
 type ResponseWriter struct {
 	ctx                context.Context
 	req                ExtractMetadataRequestObject
-	metp               *metadatatasks.MetadataExtractionTaskPool
+	metadataTaskPool   *metadatatasks.MetadataExtractionTaskPool
 	collectionLocation string
 }
 
@@ -48,7 +48,7 @@ func (r ResponseWriter) VisitExtractMetadataResponse(writer http.ResponseWriter)
 				}
 			}
 			var err error
-			progress, err = r.metp.NewTask(cancelCtx, fullPath, r.req.Params.MethodName)
+			progress, err = r.metadataTaskPool.NewTask(cancelCtx, fullPath, r.req.Params.MethodName)
 			if err == nil {
 				g.SSEvent("message", "Your metadata extraction request is in the queue.")
 				queueing = false
@@ -103,7 +103,7 @@ func (r ResponseWriter) VisitExtractMetadataResponse(writer http.ResponseWriter)
 }
 
 func (i *IngestorWebServerImplemenation) ExtractMetadata(ctx context.Context, request ExtractMetadataRequestObject) (ExtractMetadataResponseObject, error) {
-	return ResponseWriter{ctx: ctx, metp: i.metp, req: request, collectionLocation: i.pathConfig.CollectionLocation}, nil
+	return ResponseWriter{ctx: ctx, metadataTaskPool: i.metp, req: request, collectionLocation: i.pathConfig.CollectionLocation}, nil
 }
 
 type progressDto struct {
