@@ -30,7 +30,7 @@ paths:
           - cookieAuth:
             - ingestor_read
         description: Retrieve the folder structure of the given path.
-        operationId: FilesystemController_browseFilesystem
+        operationId: DatasetController_browseFilesystem
         parameters:
           - name: path
             in: query
@@ -676,13 +676,12 @@ components:
             $ref: "#/components/schemas/FolderNode"
         total:
           type: integer
+          format: uint
           description: Total number of folders.
     FolderNode:
       type: object
       properties:
         name:
-          type: string
-        path:
           type: string
         children:
           type: boolean
@@ -690,8 +689,8 @@ components:
           type: boolean
       required:
         - name
-        - path
         - children
+        - probablyDataset
       description: a method item describes the method's name and schema
     UserInfo:
       type: object

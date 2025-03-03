@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"path/filepath"
 	"slices"
 
 	"github.com/SwissOpenEM/Ingestor/internal/core"
@@ -16,8 +17,95 @@ import (
 	"github.com/paulscherrerinstitute/scicat-cli/v3/datasetIngestor"
 )
 
-func (i *IngestorWebServerImplemenation) FilesystemControllerBrowseFilesystem(ctx context.Context, request FilesystemControllerBrowseFilesystemRequestObject) (FilesystemControllerBrowseFilesystemResponseObject, error) {
-	return FilesystemControllerBrowseFilesystem200JSONResponse{}, nil
+func (i *IngestorWebServerImplemenation) DatasetControllerBrowseFilesystem(ctx context.Context, request DatasetControllerBrowseFilesystemRequestObject) (DatasetControllerBrowseFilesystemResponseObject, error) {
+	// an internal function used to determine if a folder has subfolders
+	folderHasFilesOrSubFolders := func(path string) (bool, bool) {
+		folder, err := os.Open(path)
+		if err != nil {
+			return false, false
+		}
+		entries, err := folder.ReadDir(-1) // this could be optimised by doing this in chunks
+		if err != nil {
+			return false, false
+		}
+		hasFiles, hasDirs := false, false
+		for _, entry := range entries {
+			if entry.IsDir() {
+				hasDirs = true
+			} else {
+				hasFiles = true
+			}
+			if hasDirs && hasFiles {
+				break
+			}
+		}
+		return hasFiles, hasDirs
+	}
+
+	// get absolute path in os format
+	// Clean = remove relative paths, Localize = make the path os compatible
+	localizedPath, err := filepath.Localize(filepath.Clean(request.Params.Path))
+	if err != nil {
+		return DatasetControllerBrowseFilesystem400TextResponse(fmt.Sprintf("invalid path was given: %s", err.Error())), nil
+	}
+	absPath := filepath.Join(i.pathConfig.CollectionLocation, localizedPath)
+
+	// check if path is dir
+	folder, err := os.Stat(absPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return DatasetControllerBrowseFilesystem400TextResponse("path does not exist"), nil
+		} else {
+			return nil, err
+		}
+	}
+	if !folder.IsDir() {
+		return DatasetControllerBrowseFilesystem400TextResponse("path does not point to a folder"), nil
+	}
+
+	// get page values
+	page := uint(1)
+	pageSize := uint(10)
+	if request.Params.Page != nil {
+		page = max(*request.Params.Page, 1)
+	}
+	if request.Params.PageSize != nil {
+		pageSize = min(*request.Params.PageSize, 100)
+	}
+
+	start := (page - 1) * pageSize
+	end := page * pageSize
+	folderCounter := uint(0)
+	folders := make([]FolderNode, pageSize)
+
+	// flat directory walk to put a section of folders into the 'folders' slice
+	err = filepath.WalkDir(absPath, func(path string, d os.DirEntry, err error) error {
+		if err != nil {
+			return nil // skip errored elements
+		}
+		if d.IsDir() && path != absPath {
+			if folderCounter >= start && folderCounter < end {
+				hasFiles, hasChildren := folderHasFilesOrSubFolders(path)
+
+				folders[folderCounter-start].Name = d.Name()
+				folders[folderCounter-start].Children = hasChildren
+				folders[folderCounter-start].ProbablyDataset = hasFiles
+			}
+			folderCounter++
+			return filepath.SkipDir
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	folders = folders[0 : min(end, folderCounter)-start]
+
+	return DatasetControllerBrowseFilesystem200JSONResponse{
+		Folders: &folders,
+		Total:   getPointerOrNil(uint(folderCounter)),
+	}, nil
 }
 
 func (i *IngestorWebServerImplemenation) DatasetControllerIngestDataset(ctx context.Context, request DatasetControllerIngestDatasetRequestObject) (DatasetControllerIngestDatasetResponseObject, error) {
