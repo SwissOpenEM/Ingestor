@@ -9,37 +9,37 @@ import (
 )
 
 type MetadataExtractionTaskPool struct {
-	p  pond.Pool
-	wg sync.WaitGroup
-	h  *metadataextractor.ExtractorHandler
+	pool              pond.Pool
+	waitGroup         sync.WaitGroup
+	extractionHandler *metadataextractor.ExtractorHandler
 }
 
 func (p *MetadataExtractionTaskPool) GetAvailableMethods() []metadataextractor.MethodAndSchema {
-	return p.h.AvailableMethods()
+	return p.extractionHandler.AvailableMethods()
 }
 
 func (p *MetadataExtractionTaskPool) NewTask(ctx context.Context, datasetPath string, method string) (*ExtractionProgress, error) {
-	epc := ExtractionProgress{
+	progress := ExtractionProgress{
 		ProgressSignal: make(chan bool, 1),
 	}
 
 	executeTask := func() {
-		epc.setProgress()
+		progress.setProgress()
 		outputFile := metadataextractor.MetadataFilePath(datasetPath)
-		out, err := p.h.ExtractMetadata(ctx, method, datasetPath, outputFile, epc.setStdOut, epc.setStdErr)
-		epc.setExtractorOutputAndErr(out, err)
+		out, err := p.extractionHandler.ExtractMetadata(ctx, method, datasetPath, outputFile, progress.setStdOut, progress.setStdErr)
+		progress.setExtractorOutputAndErr(out, err)
 	}
 
-	p.p.Submit(executeTask)
-	return &epc, nil
+	p.pool.Submit(executeTask)
+	return &progress, nil
 }
 
 func NewTaskPool(queueSize int, maxConcurrency int, handler *metadataextractor.ExtractorHandler) *MetadataExtractionTaskPool {
 	pondPool := pond.NewPool(int(maxConcurrency), pond.WithQueueSize(int(queueSize)))
 	pool := MetadataExtractionTaskPool{
-		p:  pondPool,
-		wg: sync.WaitGroup{},
-		h:  handler,
+		pool:              pondPool,
+		waitGroup:         sync.WaitGroup{},
+		extractionHandler: handler,
 	}
 
 	return &pool

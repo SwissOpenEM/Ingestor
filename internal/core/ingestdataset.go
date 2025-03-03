@@ -12,8 +12,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/SwissOpenEM/Ingestor/internal/globustransfer"
 	"github.com/SwissOpenEM/Ingestor/internal/s3upload"
 	"github.com/SwissOpenEM/Ingestor/internal/task"
+	"github.com/SwissOpenEM/globus"
 	"github.com/paulscherrerinstitute/scicat-cli/v3/datasetIngestor"
 	"github.com/paulscherrerinstitute/scicat-cli/v3/datasetUtils"
 )
@@ -210,11 +212,38 @@ func TransferDataset(
 	case task.TransferGlobus:
 		// globus doesn't work with absolute folders, this library uses sourcePrefix to adapt the path to the globus' own path from a relative path
 		relativeDatasetFolder := strings.TrimPrefix(datasetFolder, config.WebServer.CollectionLocation)
-		err = GlobusTransfer(config.Transfer.Globus, transferTask, task_context, transferTask.DatasetFolder.Id, relativeDatasetFolder, fileList, notifier)
+		files := make([]globustransfer.File, len(fileList))
+		bytesTotal := 0
+		for i, file := range fileList {
+			files[i].IsSymlink = file.IsSymlink
+			files[i].Path = file.Path
+			bytesTotal += int(file.Size)
+		}
+		client, ok := transferTask.GetTransferObject("globus_client").(*globus.GlobusClient)
+		if !ok {
+			return fmt.Errorf("globus client was not set")
+		}
+		transferTask.UpdateDetails(task.SetStatus(task.Transferring), task.SetMessage("the dataset is being transferred"))
+		err = globustransfer.TransferFiles(
+			client,
+			config.Transfer.Globus.SourceCollection,
+			config.Transfer.Globus.SourcePrefixPath,
+			config.Transfer.Globus.DestinationCollection,
+			config.Transfer.Globus.DestinationPrefixPath,
+			task_context,
+			relativeDatasetFolder,
+			files,
+			func(bytesTransferred, filesTransferred int) {
+				progress := bytesTransferred * 100 / bytesTotal
+				notifier.OnTaskProgress(transferTask.DatasetFolder.Id, progress)
+				transferTask.UpdateDetails(task.SetBytesTransferred(bytesTransferred), task.SetFilesTransferred(filesTransferred))
+			},
+		)
 	default:
-		return fmt.Errorf("unknown transfer method: %d", transferTask.TransferMethod)
+		err = fmt.Errorf("unknown transfer method: %d", transferTask.TransferMethod)
 	}
 
+	// transfer failed
 	if err != nil {
 		return err
 	}

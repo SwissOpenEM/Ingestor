@@ -44,6 +44,7 @@ func (i *IngestorWebServerImplemenation) TransferControllerGetTransfer(ctx conte
 			{
 				TransferId:       id,
 				Status:           statusToDto(status.Status),
+				Message:          &status.Message,
 				BytesTransferred: &status.BytesTransferred,
 				BytesTotal:       &status.BytesTotal,
 				FilesTransferred: &status.FilesTransferred,

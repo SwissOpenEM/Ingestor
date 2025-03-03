@@ -18,7 +18,6 @@ import (
 	"github.com/gin-contrib/sessions/cookie"
 	gin "github.com/gin-gonic/gin"
 	middleware "github.com/oapi-codegen/gin-middleware"
-	slogGin "github.com/samber/slog-gin"
 	sloggin "github.com/samber/slog-gin"
 	swaggerfiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
@@ -52,7 +51,7 @@ func NewIngesterServer(ingestor *IngestorWebServerImplemenation, port int) *http
 	swagger.Servers = nil
 	// This is how you set up a basic gin router
 	r := gin.New()
-	r.Use(slogGin.NewWithConfig(slog.Default().With(), config))
+	r.Use(sloggin.NewWithConfig(slog.Default().With(), config))
 	r.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{ingestor.frontend.origin},
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
