@@ -84,18 +84,15 @@ func TransferFiles(
 	// task monitoring
 	globusTaskId := result.TaskId
 	var taskCompleted bool
-	var bytesTransferred, filesTransferred, totalFiles int
+	var bytesTransferred, filesTransferred int
 
 	// note: the totalFiles variable here uses the count returned by Globus
 	//   this can change over the course of the transfer, as Globus succeeds in finding the files
 	//   (recursion, checking their existence...)
 
-	bytesTransferred, filesTransferred, totalFiles, taskCompleted, err = checkTransfer(client, globusTaskId)
+	bytesTransferred, filesTransferred, _, taskCompleted, err = checkTransfer(client, globusTaskId)
 	if err != nil {
 		return err
-	}
-	if totalFiles == 0 {
-		totalFiles = 1 // needed because percentage meter goes NaN otherwise
 	}
 	UpdateProgress(bytesTransferred, filesTransferred)
 	if taskCompleted {
@@ -118,12 +115,9 @@ func TransferFiles(
 		case <-transferUpdater:
 			// check state of transfer
 			transferUpdater = time.After(1 * time.Minute)
-			bytesTransferred, filesTransferred, totalFiles, taskCompleted, err = checkTransfer(client, globusTaskId)
+			bytesTransferred, filesTransferred, _, taskCompleted, err = checkTransfer(client, globusTaskId)
 			if err != nil {
 				return err // transfer cannot be finished: irrecoverable error
-			}
-			if totalFiles == 0 {
-				totalFiles = 1 // needed because percentage meter goes NaN otherwise
 			}
 
 			UpdateProgress(bytesTransferred, filesTransferred)
