@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
-	"path"
+	"path/filepath"
 	"time"
 
 	b64 "encoding/base64"
@@ -29,7 +29,7 @@ func (r ResponseWriter) VisitExtractMetadataResponse(writer http.ResponseWriter)
 	g.Writer.Header().Add("Connection", "keep-alive")
 
 	// append collection path to input and generate extractor output filepath
-	fullPath := path.Join(r.collectionLocation, r.req.Params.FilePath)
+	fullPath := filepath.Join(r.collectionLocation, filepath.Clean(r.req.Params.FilePath))
 
 	// extract metadata
 	cancelCtx, cancel := context.WithCancel(r.ctx)
