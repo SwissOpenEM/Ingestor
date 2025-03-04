@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/url"
 	"slices"
 	"time"
 
@@ -318,9 +319,13 @@ func (i *IngestorWebServerImplemenation) GetGlobusCallback(ctx context.Context, 
 		return GetGlobusCallback400TextResponse(fmt.Sprintf("creating globus session cookie failed: %s", err.Error())), nil
 	}
 
+	redirectUrl := i.frontend.origin + i.frontend.redirectPath
+	if i.taskQueue.Config.WebServer.BackendAddress != "" {
+		redirectUrl += "?backend=" + url.QueryEscape(i.taskQueue.Config.WebServer.BackendAddress) // add connected backend url
+	}
 	return GetGlobusCallback302Response{
 		Headers: GetGlobusCallback302ResponseHeaders{
-			Location: i.frontend.origin + i.frontend.redirectPath,
+			Location: redirectUrl,
 		},
 	}, nil
 }
