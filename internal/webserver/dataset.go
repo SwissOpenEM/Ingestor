@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"path"
 	"path/filepath"
 	"slices"
 
@@ -43,18 +42,14 @@ func (i *IngestorWebServerImplemenation) DatasetControllerBrowseFilesystem(ctx c
 	}
 
 	// get absolute path in os format
-	// Clean = remove relative paths, Localize = make the path os compatible
-	localizedPath, err := filepath.Localize(filepath.Clean(request.Params.Path))
-	if err != nil {
-		return DatasetControllerBrowseFilesystem400TextResponse(fmt.Sprintf("invalid path was given: %s", err.Error())), nil
-	}
-	absPath := filepath.Join(i.pathConfig.CollectionLocation, localizedPath)
+	// Clean = remove relative paths and convert / to \ under Windows (consistent pathstrings across OS's)
+	absPath := filepath.Join(i.pathConfig.CollectionLocation, filepath.Clean(request.Params.Path))
 
 	// check if path is dir
 	folder, err := os.Stat(absPath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return DatasetControllerBrowseFilesystem400TextResponse("path does not exist"), nil
+			return DatasetControllerBrowseFilesystem400TextResponse("path does not exist or is invalid"), nil
 		} else {
 			return nil, err
 		}
@@ -124,7 +119,7 @@ func (i *IngestorWebServerImplemenation) DatasetControllerIngestDataset(ctx cont
 	if !ok {
 		return DatasetControllerIngestDataset400TextResponse("sourceFolder is not a string"), nil
 	}
-	folderPath = path.Join(i.pathConfig.CollectionLocation, folderPath)
+	folderPath = filepath.Join(i.pathConfig.CollectionLocation, filepath.Clean(folderPath))
 
 	// check if folder exists
 	err = core.CheckIfFolderExists(folderPath)
