@@ -97,7 +97,11 @@ func (i *IngestorWebServerImplemenation) DatasetControllerBrowseFilesystem(ctx c
 		return nil, err
 	}
 
-	folders = folders[0 : min(end, folderCounter)-start]
+	if folderCounter >= start {
+		folders = folders[0 : min(end, folderCounter)-start]
+	} else {
+		folders = []FolderNode{}
+	}
 
 	return DatasetControllerBrowseFilesystem200JSONResponse{
 		Folders: folders,
