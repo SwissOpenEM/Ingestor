@@ -321,7 +321,7 @@ func (i *IngestorWebServerImplemenation) GetGlobusCallback(ctx context.Context, 
 
 	redirectUrl := i.frontend.origin + i.frontend.redirectPath
 	if i.taskQueue.Config.WebServer.BackendAddress != "" {
-		redirectUrl += "?backend=" + url.QueryEscape(i.taskQueue.Config.WebServer.BackendAddress) // add connected backend url
+		redirectUrl += "?backendUrl=" + url.QueryEscape(i.taskQueue.Config.WebServer.BackendAddress) // add connected backend url
 	}
 	return GetGlobusCallback302Response{
 		Headers: GetGlobusCallback302ResponseHeaders{
