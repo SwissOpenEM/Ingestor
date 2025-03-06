@@ -81,9 +81,10 @@ func (i *IngestorWebServerImplemenation) DatasetControllerBrowseFilesystem(ctx c
 		if d.IsDir() && path != absPath {
 			if folderCounter >= start && folderCounter < end {
 				hasFiles, hasChildren := folderHasFilesOrSubFolders(path)
+				relativePath, _ := filepath.Rel(i.pathConfig.CollectionLocation, path)
 
 				folders[folderCounter-start].Name = d.Name()
-				folders[folderCounter-start].Path = path
+				folders[folderCounter-start].Path = "/" + relativePath
 				folders[folderCounter-start].Children = hasChildren
 				folders[folderCounter-start].ProbablyDataset = hasFiles
 			}
@@ -99,8 +100,8 @@ func (i *IngestorWebServerImplemenation) DatasetControllerBrowseFilesystem(ctx c
 	folders = folders[0 : min(end, folderCounter)-start]
 
 	return DatasetControllerBrowseFilesystem200JSONResponse{
-		Folders: &folders,
-		Total:   getPointerOrNil(uint(folderCounter)),
+		Folders: folders,
+		Total:   uint(folderCounter),
 	}, nil
 }
 
