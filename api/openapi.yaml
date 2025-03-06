@@ -683,12 +683,15 @@ components:
       properties:
         name:
           type: string
+        path:
+          type: string
         children:
           type: boolean
         probablyDataset:
           type: boolean
       required:
         - name
+        - path
         - children
         - probablyDataset
       description: a method item describes the method's name and schema

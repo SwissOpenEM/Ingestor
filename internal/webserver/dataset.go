@@ -83,11 +83,12 @@ func (i *IngestorWebServerImplemenation) DatasetControllerBrowseFilesystem(ctx c
 				hasFiles, hasChildren := folderHasFilesOrSubFolders(path)
 
 				folders[folderCounter-start].Name = d.Name()
+				folders[folderCounter-start].Path = path
 				folders[folderCounter-start].Children = hasChildren
 				folders[folderCounter-start].ProbablyDataset = hasFiles
 			}
 			folderCounter++
-			return filepath.SkipDir
+			return filepath.SkipDir // prevent recursing into subfolders
 		}
 		return nil
 	})
