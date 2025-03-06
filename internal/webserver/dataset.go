@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"path"
+	"path/filepath"
 	"slices"
 
 	"github.com/SwissOpenEM/Ingestor/internal/core"
@@ -15,6 +15,95 @@ import (
 	"github.com/google/uuid"
 	"github.com/paulscherrerinstitute/scicat-cli/v3/datasetIngestor"
 )
+
+func (i *IngestorWebServerImplemenation) DatasetControllerBrowseFilesystem(ctx context.Context, request DatasetControllerBrowseFilesystemRequestObject) (DatasetControllerBrowseFilesystemResponseObject, error) {
+	// an internal function used to determine if a folder has subfolders
+	folderHasFilesOrSubFolders := func(path string) (bool, bool) {
+		folder, err := os.Open(path)
+		if err != nil {
+			return false, false
+		}
+		entries, err := folder.ReadDir(-1) // this could be optimised by doing this in chunks
+		if err != nil {
+			return false, false
+		}
+		hasFiles, hasDirs := false, false
+		for _, entry := range entries {
+			if entry.IsDir() {
+				hasDirs = true
+			} else {
+				hasFiles = true
+			}
+			if hasDirs && hasFiles {
+				break
+			}
+		}
+		return hasFiles, hasDirs
+	}
+
+	// get absolute path in os format
+	// Clean = remove relative paths and convert / to \ under Windows (consistent pathstrings across OS's)
+	absPath := filepath.Join(i.pathConfig.CollectionLocation, filepath.Clean(request.Params.Path))
+
+	// check if path is dir
+	folder, err := os.Stat(absPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return DatasetControllerBrowseFilesystem400TextResponse("path does not exist or is invalid"), nil
+		} else {
+			return nil, err
+		}
+	}
+	if !folder.IsDir() {
+		return DatasetControllerBrowseFilesystem400TextResponse("path does not point to a folder"), nil
+	}
+
+	// get page values
+	page := uint(1)
+	pageSize := uint(10)
+	if request.Params.Page != nil {
+		page = max(*request.Params.Page, 1)
+	}
+	if request.Params.PageSize != nil {
+		pageSize = min(*request.Params.PageSize, 100)
+	}
+
+	start := (page - 1) * pageSize
+	end := page * pageSize
+	folderCounter := uint(0)
+	folders := make([]FolderNode, pageSize)
+
+	// flat directory walk to put a section of folders into the 'folders' slice
+	err = filepath.WalkDir(absPath, func(path string, d os.DirEntry, err error) error {
+		if err != nil {
+			return nil // skip errored elements
+		}
+		if d.IsDir() && path != absPath {
+			if folderCounter >= start && folderCounter < end {
+				hasFiles, hasChildren := folderHasFilesOrSubFolders(path)
+				relativePath, _ := filepath.Rel(i.pathConfig.CollectionLocation, path)
+
+				folders[folderCounter-start].Name = d.Name()
+				folders[folderCounter-start].Path = "/" + relativePath
+				folders[folderCounter-start].Children = hasChildren
+				folders[folderCounter-start].ProbablyDataset = hasFiles
+			}
+			folderCounter++
+			return filepath.SkipDir // prevent recursing into subfolders
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	folders = folders[0 : min(end, folderCounter)-start]
+
+	return DatasetControllerBrowseFilesystem200JSONResponse{
+		Folders: folders,
+		Total:   uint(folderCounter),
+	}, nil
+}
 
 func (i *IngestorWebServerImplemenation) DatasetControllerIngestDataset(ctx context.Context, request DatasetControllerIngestDatasetRequestObject) (DatasetControllerIngestDatasetResponseObject, error) {
 	// get sourcefolder from metadata
@@ -32,7 +121,7 @@ func (i *IngestorWebServerImplemenation) DatasetControllerIngestDataset(ctx cont
 	if !ok {
 		return DatasetControllerIngestDataset400TextResponse("sourceFolder is not a string"), nil
 	}
-	folderPath = path.Join(i.pathConfig.CollectionLocation, folderPath)
+	folderPath = filepath.Join(i.pathConfig.CollectionLocation, filepath.Clean(folderPath))
 
 	// check if folder exists
 	err = core.CheckIfFolderExists(folderPath)
