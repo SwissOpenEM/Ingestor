@@ -678,6 +678,9 @@ components:
           type: integer
           format: uint
           description: Total number of folders.
+      required:
+        - folders
+        - total
     FolderNode:
       type: object
       properties:
