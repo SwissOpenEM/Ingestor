@@ -23,16 +23,28 @@ type TaskQueue struct {
 	inputChannel       chan *task.TransferTask                               // Requests to upload data are put into this channel
 	taskPool           pond.Pool
 
-	AppContext  context.Context
+	appContext  context.Context
 	Config      Config
-	Notifier    task.ProgressNotifier
-	ServiceUser *UserCreds
+	notifier    task.ProgressNotifier
+	serviceUser *UserCreds
 }
 
-func (w *TaskQueue) Startup() {
-	w.inputChannel = make(chan *task.TransferTask)
-	w.datasetUploadTasks = orderedmap.NewOrderedMap[uuid.UUID, *task.TransferTask]()
-	w.taskPool = pond.NewPool(w.Config.Transfer.ConcurrencyLimit, pond.WithQueueSize(w.Config.Transfer.QueueSize))
+func NewTaskQueue(ctx context.Context, config Config, notifier task.ProgressNotifier, serviceUser *UserCreds) *TaskQueue {
+	pool := pond.NewPool(config.WebServer.ConcurrencyLimit, pond.WithQueueSize(config.WebServer.QueueSize))
+	return NewTaskQueueFromPool(ctx, config, notifier, serviceUser, pool)
+}
+
+func NewTaskQueueFromPool(ctx context.Context, config Config, notifier task.ProgressNotifier, serviceUser *UserCreds, pool pond.Pool) *TaskQueue {
+	return &TaskQueue{
+		inputChannel:       make(chan *task.TransferTask),
+		datasetUploadTasks: orderedmap.NewOrderedMap[uuid.UUID, *task.TransferTask](),
+		taskPool:           pool,
+
+		appContext:  ctx,
+		Config:      config,
+		notifier:    notifier,
+		serviceUser: serviceUser,
+	}
 }
 
 func (w *TaskQueue) AddTransferTask(transferObjects map[string]interface{}, datasetId string, fileList []datasetIngestor.Datafile, totalSize int64, metadataMap map[string]interface{}, taskId uuid.UUID) error {
@@ -59,7 +71,7 @@ func (w *TaskQueue) AddTransferTask(transferObjects map[string]interface{}, data
 }
 
 func (w *TaskQueue) executeTransferTask(t *task.TransferTask) {
-	task_context, cancel := context.WithCancel(w.AppContext)
+	task_context, cancel := context.WithCancel(w.appContext)
 
 	t.Cancel = cancel
 
@@ -69,7 +81,7 @@ func (w *TaskQueue) executeTransferTask(t *task.TransferTask) {
 			task.SetStatus(task.Failed),
 			task.SetMessage(fmt.Sprintf("failed - error: %s", r.Error.Error())),
 		)
-		w.Notifier.OnTaskFailed(t.DatasetFolder.Id, r.Error)
+		w.notifier.OnTaskFailed(t.DatasetFolder.Id, r.Error)
 		return
 	}
 
@@ -79,7 +91,7 @@ func (w *TaskQueue) executeTransferTask(t *task.TransferTask) {
 			task.SetStatus(task.Finished),
 			task.SetMessage("task was finished successfully"),
 		)
-		w.Notifier.OnTaskCompleted(t.DatasetFolder.Id, r.Elapsed_seconds)
+		w.notifier.OnTaskCompleted(t.DatasetFolder.Id, r.Elapsed_seconds)
 	}
 }
 
@@ -93,7 +105,7 @@ func (w *TaskQueue) CancelTask(id uuid.UUID) {
 	if uploadTask.Cancel != nil {
 		// note: the task is marked as cancelled in advance in order for the task executer to not mark it as finished
 		uploadTask.UpdateDetails(task.SetStatus(task.Cancelled), task.SetMessage("transfer was cancelled"))
-		w.Notifier.OnTaskCanceled(id)
+		w.notifier.OnTaskCanceled(id)
 		uploadTask.Cancel()
 	}
 }
@@ -115,7 +127,7 @@ func (w *TaskQueue) RemoveTask(id uuid.UUID) error {
 	}
 
 	unlockOnce.Do(w.taskListLock.Unlock)
-	w.Notifier.OnTaskRemoved(id)
+	w.notifier.OnTaskRemoved(id)
 	return nil
 }
 
@@ -127,12 +139,12 @@ func (w *TaskQueue) ScheduleTask(id uuid.UUID) error {
 		return fmt.Errorf("task with id '%s' not found", id.String())
 	}
 
-	task_context, cancel := context.WithCancel(w.AppContext)
+	task_context, cancel := context.WithCancel(w.appContext)
 	ingestionTask.Context = task_context
 	ingestionTask.Cancel = cancel
 
 	ingestionTask.UpdateDetails(task.SetMessage("queued"))
-	w.Notifier.OnTaskScheduled(ingestionTask.DatasetFolder.Id)
+	w.notifier.OnTaskScheduled(ingestionTask.DatasetFolder.Id)
 
 	w.taskPool.Submit(func() { w.executeTransferTask(ingestionTask) })
 	return nil
@@ -187,7 +199,7 @@ func (w *TaskQueue) GetTaskFolder(id uuid.UUID) string {
 
 func (w *TaskQueue) TransferDataset(taskCtx context.Context, it *task.TransferTask) task.Result {
 	start := time.Now()
-	err := TransferDataset(taskCtx, it, w.ServiceUser, w.Config, w.Notifier)
+	err := TransferDataset(taskCtx, it, w.serviceUser, w.Config, w.notifier)
 	end := time.Now()
 	elapsed := end.Sub(start)
 	return task.Result{Elapsed_seconds: int(elapsed.Seconds()), Error: err}

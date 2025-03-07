@@ -6,10 +6,14 @@ import (
 	"log"
 	"log/slog"
 	"os"
+	"strings"
 
 	core "github.com/SwissOpenEM/Ingestor/internal/core"
 	"github.com/SwissOpenEM/Ingestor/internal/metadataextractor"
+	"github.com/SwissOpenEM/Ingestor/internal/s3upload"
 	"github.com/SwissOpenEM/Ingestor/internal/webserver"
+	"github.com/SwissOpenEM/Ingestor/internal/webserver/metadatatasks"
+	"github.com/alitto/pond/v2"
 	"gopkg.in/yaml.v2"
 )
 
@@ -64,17 +68,20 @@ func main() {
 		}
 	}
 
-	tq := core.TaskQueue{
-		Config:      config,
-		AppContext:  ctx,
-		Notifier:    core.NewLoggingNotifier(),
-		ServiceUser: serviceUser,
+	totalConcurrencyLimit := config.Transfer.ConcurrencyLimit + config.WebServer.MetadataExtJobsConf.ConcurrencyLimit
+	if strings.ToLower(config.Transfer.Method) == "s3" {
+		totalConcurrencyLimit += config.Transfer.S3.PoolSize
 	}
-	tq.Startup()
+	mainPool := pond.NewPool(totalConcurrencyLimit)
 
+	if strings.ToLower(config.Transfer.Method) == "s3" {
+		s3upload.InitHttpUploaderWithPool(mainPool.NewSubpool(config.Transfer.S3.PoolSize))
+	}
+	tq := core.NewTaskQueueFromPool(ctx, config, core.NewLoggingNotifier(), serviceUser, mainPool.NewSubpool(config.Transfer.ConcurrencyLimit, pond.WithQueueSize(config.Transfer.QueueSize)))
 	eh := metadataextractor.NewExtractorHandler(config.MetadataExtractors)
+	metp := metadatatasks.NewTaskPoolFromPool(eh, mainPool.NewSubpool(config.WebServer.MetadataExtJobsConf.ConcurrencyLimit, pond.WithQueueSize(config.WebServer.MetadataExtJobsConf.QueueSize)))
 
-	ingestor, err := webserver.NewIngestorWebServer(version, &tq, eh, config.WebServer)
+	ingestor, err := webserver.NewIngestorWebServer(version, tq, metp, config.WebServer)
 	if err != nil {
 		log.Fatal(err)
 	}
