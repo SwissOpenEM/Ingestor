@@ -34,13 +34,20 @@ func (p *MetadataExtractionTaskPool) NewTask(ctx context.Context, datasetPath st
 	return &progress, nil
 }
 
+func (p *MetadataExtractionTaskPool) GetHandler() *metadataextractor.ExtractorHandler {
+	return p.extractionHandler
+}
+
 func NewTaskPool(queueSize int, maxConcurrency int, handler *metadataextractor.ExtractorHandler) *MetadataExtractionTaskPool {
 	pondPool := pond.NewPool(int(maxConcurrency), pond.WithQueueSize(int(queueSize)))
-	pool := MetadataExtractionTaskPool{
-		pool:              pondPool,
+	return NewTaskPoolFromPool(handler, pondPool)
+}
+
+func NewTaskPoolFromPool(handler *metadataextractor.ExtractorHandler, pool pond.Pool) *MetadataExtractionTaskPool {
+	taskPool := MetadataExtractionTaskPool{
+		pool:              pool,
 		waitGroup:         sync.WaitGroup{},
 		extractionHandler: handler,
 	}
-
-	return &pool
+	return &taskPool
 }

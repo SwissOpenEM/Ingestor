@@ -5,11 +5,15 @@ import (
 	"fmt"
 	"log"
 	"log/slog"
+	"strings"
 
 	core "github.com/SwissOpenEM/Ingestor/internal/core"
 	metadataextractor "github.com/SwissOpenEM/Ingestor/internal/metadataextractor"
+	"github.com/SwissOpenEM/Ingestor/internal/s3upload"
 	task "github.com/SwissOpenEM/Ingestor/internal/task"
 	webserver "github.com/SwissOpenEM/Ingestor/internal/webserver"
+	"github.com/SwissOpenEM/Ingestor/internal/webserver/metadatatasks"
+	"github.com/alitto/pond/v2"
 
 	"github.com/google/uuid"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
@@ -80,18 +84,33 @@ func (b *App) beforeClose(ctx context.Context) (prevent bool) {
 // startup is called when the app starts. The context is saved
 // so we can call the runtime methods
 func (a *App) startup(ctx context.Context) {
-	a.ctx = ctx
-
-	a.extractorHandler = metadataextractor.NewExtractorHandler(a.config.MetadataExtractors)
-
-	a.taskqueue = core.TaskQueue{Config: a.config,
-		AppContext: a.ctx,
-		Notifier:   &WailsNotifier{AppContext: a.ctx},
+	totalConcurrencyLimit := a.config.Transfer.ConcurrencyLimit + a.config.WebServer.ConcurrencyLimit
+	if strings.ToLower(a.config.Transfer.Method) == "s3" {
+		totalConcurrencyLimit += a.config.Transfer.S3.PoolSize
 	}
-	a.taskqueue.Startup()
+	mainTaskPool := pond.NewPool(totalConcurrencyLimit)
+
+	s3upload.InitHttpUploaderWithPool(mainTaskPool.NewSubpool(a.config.Transfer.S3.PoolSize))
+
+	a.ctx = ctx
+	a.extractorHandler = metadataextractor.NewExtractorHandler(a.config.MetadataExtractors)
+	a.taskqueue = *core.NewTaskQueueFromPool(
+		a.ctx,
+		a.config,
+		&WailsNotifier{AppContext: a.ctx},
+		nil,
+		mainTaskPool.NewSubpool(a.config.Transfer.ConcurrencyLimit, pond.WithQueueSize(a.config.Transfer.QueueSize)),
+	)
 
 	go func(port int) {
-		ingestor, err := webserver.NewIngestorWebServer(a.version, &a.taskqueue, a.extractorHandler, a.config.WebServer)
+		extractorPool := metadatatasks.NewTaskPoolFromPool(
+			a.extractorHandler,
+			mainTaskPool.NewSubpool(
+				a.config.WebServer.MetadataExtJobsConf.ConcurrencyLimit,
+				pond.WithQueueSize(a.config.WebServer.MetadataExtJobsConf.QueueSize),
+			),
+		)
+		ingestor, err := webserver.NewIngestorWebServer(a.version, &a.taskqueue, extractorPool, a.config.WebServer)
 		if err != nil {
 			panic(err)
 		}

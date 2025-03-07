@@ -103,7 +103,7 @@ func (r ResponseWriter) VisitExtractMetadataResponse(writer http.ResponseWriter)
 }
 
 func (i *IngestorWebServerImplemenation) ExtractMetadata(ctx context.Context, request ExtractMetadataRequestObject) (ExtractMetadataResponseObject, error) {
-	return ResponseWriter{ctx: ctx, metadataTaskPool: i.metp, req: request, collectionLocation: i.pathConfig.CollectionLocation}, nil
+	return ResponseWriter{ctx: ctx, metadataTaskPool: i.metadataExtPool, req: request, collectionLocation: i.pathConfig.CollectionLocation}, nil
 }
 
 type progressDto struct {
