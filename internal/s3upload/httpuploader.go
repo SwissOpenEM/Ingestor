@@ -13,7 +13,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/SwissOpenEM/Ingestor/internal/task"
+	"github.com/SwissOpenEM/Ingestor/internal/transfertask"
 	"github.com/alitto/pond/v2"
 	"github.com/hashicorp/go-retryablehttp"
 	"golang.org/x/oauth2"
@@ -119,7 +119,7 @@ func completeMultiPartUpload(object_name string, uploadID string, endpoint strin
 	return nil
 }
 
-func uploadFile(ctx context.Context, filePath string, objectName string, options task.S3TransferConfig, notifier *TransferNotifier, tokenSource oauth2.TokenSource) error {
+func uploadFile(ctx context.Context, filePath string, objectName string, options transfertask.S3TransferConfig, notifier *TransferNotifier, tokenSource oauth2.TokenSource) error {
 	file, err := os.Open(filePath)
 	if err != nil {
 		return fmt.Errorf("error opening file: %w", err)
@@ -199,7 +199,7 @@ func doUploadSingleFile(ctx context.Context, objectName string, file *os.File, h
 	return nil
 }
 
-func doUploadMultipart(ctx context.Context, totalSize int64, objectName string, file *os.File, httpClient *HttpUploader, options task.S3TransferConfig, userToken string, notifier *TransferNotifier) (string, error) {
+func doUploadMultipart(ctx context.Context, totalSize int64, objectName string, file *os.File, httpClient *HttpUploader, options transfertask.S3TransferConfig, userToken string, notifier *TransferNotifier) (string, error) {
 	partCount := int(math.Ceil(float64(totalSize) / float64(options.ChunkSizeMB*MiB)))
 
 	uploadID, presignedURLs, err := getPresignedUrls(objectName, partCount, options.Endpoint, userToken)
