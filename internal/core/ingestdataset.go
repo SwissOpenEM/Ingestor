@@ -223,7 +223,7 @@ func TransferDataset(
 		if !ok {
 			return fmt.Errorf("globus client was not set")
 		}
-		transferTask.UpdateDetails(transfertask.SetStatus(transfertask.Transferring), transfertask.SetMessage("the dataset is being transferred"))
+		transferTask.TransferStarted()
 		err = globustransfer.TransferFiles(
 			client,
 			config.Transfer.Globus.SourceCollection,
@@ -236,7 +236,7 @@ func TransferDataset(
 			func(bytesTransferred, filesTransferred int) {
 				progress := bytesTransferred * 100 / bytesTotal
 				notifier.OnTaskProgress(transferTask.DatasetFolder.Id, progress)
-				transferTask.UpdateDetails(transfertask.SetBytesTransferred(bytesTransferred), transfertask.SetFilesTransferred(filesTransferred))
+				transferTask.UpdateProgress(&bytesTransferred, &filesTransferred)
 			},
 		)
 	default:

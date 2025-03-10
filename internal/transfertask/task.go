@@ -78,8 +78,6 @@ type Result struct {
 	Error           error
 }
 
-type statusOption func(t *TransferTask)
-
 func CreateTransferTask(datasetId string, fileList []datasetIngestor.Datafile, datasetFolder DatasetFolder, metadata map[string]interface{}, transferMethod TransferMethod, transferObjects map[string]interface{}, cancel context.CancelFunc) TransferTask {
 	totalBytes := 0
 	for _, file := range fileList {
@@ -94,8 +92,12 @@ func CreateTransferTask(datasetId string, fileList []datasetIngestor.Datafile, d
 		transferObjects: transferObjects,
 		Cancel:          cancel,
 		details: &TaskDetails{
-			BytesTotal: totalBytes,
-			FilesTotal: len(fileList),
+			BytesTransferred: 0,
+			BytesTotal:       totalBytes,
+			FilesTransferred: 0,
+			FilesTotal:       len(fileList),
+			Status:           Waiting,
+			Message:          "in waiting list",
 		},
 		statusLock: &sync.RWMutex{},
 	}
@@ -108,48 +110,71 @@ func (t *TransferTask) GetDetails() TaskDetails {
 	return copy
 }
 
-func (t *TransferTask) UpdateDetails(options ...statusOption) {
+func (t *TransferTask) Queued() {
 	t.statusLock.Lock()
 	defer t.statusLock.Unlock()
-	for _, option := range options {
-		option(t)
+	if t.details.Status != Waiting {
+		return
+	}
+	t.details.Message = "queued"
+}
+
+func (t *TransferTask) TransferStarted() {
+	t.statusLock.Lock()
+	defer t.statusLock.Unlock()
+	if t.details.Status != Waiting {
+		return
+	}
+	t.details.Status = Transferring
+	t.details.Message = "transferring files"
+}
+
+func (t *TransferTask) UpdateProgress(bytesTransferred *int, filesTransferred *int) {
+	t.statusLock.Lock()
+	defer t.statusLock.Unlock()
+	if t.details.Status != Transferring {
+		return
+	}
+	if bytesTransferred != nil {
+		t.details.BytesTransferred = *bytesTransferred
+	}
+	if filesTransferred != nil {
+		t.details.FilesTransferred = *filesTransferred
 	}
 }
 
-func SetBytesTransferred(b int) statusOption {
-	return func(t *TransferTask) {
-		t.details.BytesTransferred = b
+func (t *TransferTask) Finished() {
+	t.statusLock.Lock()
+	defer t.statusLock.Unlock()
+	if t.details.Status != Transferring {
+		return
 	}
+	t.details.Status = Finished
+	t.details.Message = "transfer has finished"
 }
 
-func SetBytesTotal(b int) statusOption {
-	return func(t *TransferTask) {
-		t.details.BytesTotal = b
+func (t *TransferTask) Failed(msg string) {
+	t.statusLock.Lock()
+	defer t.statusLock.Unlock()
+	if t.details.Status == Finished ||
+		t.details.Status == Cancelled ||
+		t.details.Status == Failed {
+		return
 	}
+	t.details.Status = Failed
+	t.details.Message = msg
 }
 
-func SetFilesTransferred(f int) statusOption {
-	return func(t *TransferTask) {
-		t.details.FilesTransferred = f
+func (t *TransferTask) Cancelled(msg string) {
+	t.statusLock.Lock()
+	defer t.statusLock.Unlock()
+	if t.details.Status == Failed ||
+		t.details.Status == Cancelled ||
+		t.details.Status == Finished {
+		return
 	}
-}
-
-func SetFilesTotal(f int) statusOption {
-	return func(t *TransferTask) {
-		t.details.FilesTotal = f
-	}
-}
-
-func SetStatus(s Status) statusOption {
-	return func(t *TransferTask) {
-		t.details.Status = s
-	}
-}
-
-func SetMessage(m string) statusOption {
-	return func(t *TransferTask) {
-		t.details.Message = m
-	}
+	t.details.Status = Cancelled
+	t.details.Message = msg
 }
 
 func (t *TransferTask) GetDatasetId() string {

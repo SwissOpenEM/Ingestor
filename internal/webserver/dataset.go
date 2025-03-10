@@ -130,12 +130,12 @@ func (i *IngestorWebServerImplemenation) DatasetControllerIngestDataset(ctx cont
 	}
 
 	// do catalogue insertion
-	datasetId, totalSize, fileList, err := core.AddDatasetToScicat(metadata, folderPath, request.Body.UserToken, i.taskQueue.Config.Scicat.Host)
+	datasetId, _, fileList, err := core.AddDatasetToScicat(metadata, folderPath, request.Body.UserToken, i.taskQueue.Config.Scicat.Host)
 	if err != nil {
 		return DatasetControllerIngestDataset400TextResponse(err.Error()), nil
 	}
 
-	taskId, err := i.addTransferTask(ctx, datasetId, fileList, totalSize, metadata, request)
+	taskId, err := i.addTransferTask(ctx, datasetId, fileList, metadata, request)
 
 	if err != nil {
 		if _, ok := err.(*os.PathError); ok {
@@ -157,7 +157,7 @@ func (i *IngestorWebServerImplemenation) DatasetControllerIngestDataset(ctx cont
 	}, nil
 }
 
-func (i *IngestorWebServerImplemenation) addTransferTask(ctx context.Context, datasetId string, fileList []datasetIngestor.Datafile, totalSize int64, metadata map[string]interface{}, request DatasetControllerIngestDatasetRequestObject) (uuid.UUID, error) {
+func (i *IngestorWebServerImplemenation) addTransferTask(ctx context.Context, datasetId string, fileList []datasetIngestor.Datafile, metadata map[string]interface{}, request DatasetControllerIngestDatasetRequestObject) (uuid.UUID, error) {
 	taskId := uuid.New()
 	transferObjects := map[string]interface{}{}
 	if i.taskQueue.GetTransferMethod() == transfertask.TransferGlobus {
@@ -179,7 +179,7 @@ func (i *IngestorWebServerImplemenation) addTransferTask(ctx context.Context, da
 		transferObjects["accessToken"] = accessToken
 		transferObjects["refreshToken"] = refreshToken
 	}
-	err := i.taskQueue.AddTransferTask(transferObjects, datasetId, fileList, totalSize, metadata, taskId)
+	err := i.taskQueue.AddTransferTask(transferObjects, datasetId, fileList, metadata, taskId)
 	if err != nil {
 		return uuid.UUID{}, err
 	}

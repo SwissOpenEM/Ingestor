@@ -35,7 +35,7 @@ func (w *TaskQueue) Startup() {
 	w.taskPool = pond.NewPool(w.Config.Transfer.ConcurrencyLimit, pond.WithQueueSize(w.Config.Transfer.QueueSize))
 }
 
-func (w *TaskQueue) AddTransferTask(transferObjects map[string]interface{}, datasetId string, fileList []datasetIngestor.Datafile, totalSize int64, metadataMap map[string]interface{}, taskId uuid.UUID) error {
+func (w *TaskQueue) AddTransferTask(transferObjects map[string]interface{}, datasetId string, fileList []datasetIngestor.Datafile, metadataMap map[string]interface{}, taskId uuid.UUID) error {
 	transferMethod := w.GetTransferMethod()
 	t := task.CreateTransferTask(datasetId, fileList, task.DatasetFolder{Id: taskId}, metadataMap, transferMethod, transferObjects, nil)
 
@@ -46,10 +46,6 @@ func (w *TaskQueue) AddTransferTask(transferObjects map[string]interface{}, data
 	default:
 		return errors.New("sourceFolder in metadata isn't a string")
 	}
-	t.UpdateDetails(
-		task.SetBytesTotal(int(totalSize)),
-		task.SetMessage("added"),
-	)
 
 	w.taskListLock.Lock()
 	defer w.taskListLock.Unlock()
@@ -65,20 +61,14 @@ func (w *TaskQueue) executeTransferTask(t *task.TransferTask) {
 
 	r := w.TransferDataset(task_context, t)
 	if r.Error != nil {
-		t.UpdateDetails(
-			task.SetStatus(task.Failed),
-			task.SetMessage(fmt.Sprintf("failed - error: %s", r.Error.Error())),
-		)
+		t.Failed(fmt.Sprintf("failed - error: %s", r.Error.Error()))
 		w.Notifier.OnTaskFailed(t.DatasetFolder.Id, r.Error)
 		return
 	}
 
 	// if not cancelled, mark as finished
 	if t.GetDetails().Status != task.Cancelled {
-		t.UpdateDetails(
-			task.SetStatus(task.Finished),
-			task.SetMessage("task was finished successfully"),
-		)
+		t.Finished()
 		w.Notifier.OnTaskCompleted(t.DatasetFolder.Id, r.Elapsed_seconds)
 	}
 }
@@ -92,7 +82,7 @@ func (w *TaskQueue) CancelTask(id uuid.UUID) {
 	}
 	if uploadTask.Cancel != nil {
 		// note: the task is marked as cancelled in advance in order for the task executer to not mark it as finished
-		uploadTask.UpdateDetails(task.SetStatus(task.Cancelled), task.SetMessage("transfer was cancelled"))
+		uploadTask.Cancelled("transfer was cancelled by the user")
 		w.Notifier.OnTaskCanceled(id)
 		uploadTask.Cancel()
 	}
@@ -121,20 +111,20 @@ func (w *TaskQueue) RemoveTask(id uuid.UUID) error {
 
 func (w *TaskQueue) ScheduleTask(id uuid.UUID) error {
 	w.taskListLock.RLock()
-	ingestionTask, found := w.datasetUploadTasks.Get(id)
+	transferTask, found := w.datasetUploadTasks.Get(id)
 	w.taskListLock.RUnlock()
 	if !found {
 		return fmt.Errorf("task with id '%s' not found", id.String())
 	}
 
 	task_context, cancel := context.WithCancel(w.AppContext)
-	ingestionTask.Context = task_context
-	ingestionTask.Cancel = cancel
+	transferTask.Context = task_context
+	transferTask.Cancel = cancel
 
-	ingestionTask.UpdateDetails(task.SetMessage("queued"))
-	w.Notifier.OnTaskScheduled(ingestionTask.DatasetFolder.Id)
+	transferTask.Queued()
+	w.Notifier.OnTaskScheduled(transferTask.DatasetFolder.Id)
 
-	w.taskPool.Submit(func() { w.executeTransferTask(ingestionTask) })
+	w.taskPool.Submit(func() { w.executeTransferTask(transferTask) })
 	return nil
 }
 
