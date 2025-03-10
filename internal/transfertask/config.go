@@ -1,4 +1,4 @@
-package task
+package transfertask
 
 type S3TransferConfig struct {
 	ClientID        string `string:"ClientID"`

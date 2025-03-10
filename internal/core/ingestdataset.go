@@ -14,7 +14,7 @@ import (
 
 	"github.com/SwissOpenEM/Ingestor/internal/globustransfer"
 	"github.com/SwissOpenEM/Ingestor/internal/s3upload"
-	"github.com/SwissOpenEM/Ingestor/internal/task"
+	"github.com/SwissOpenEM/Ingestor/internal/transfertask"
 	"github.com/SwissOpenEM/globus"
 	"github.com/paulscherrerinstitute/scicat-cli/v3/datasetIngestor"
 	"github.com/paulscherrerinstitute/scicat-cli/v3/datasetUtils"
@@ -186,10 +186,10 @@ func AddDatasetToScicat(
 
 func TransferDataset(
 	task_context context.Context,
-	transferTask *task.TransferTask,
+	transferTask *transfertask.TransferTask,
 	serviceUser *UserCreds,
 	config Config,
-	notifier task.ProgressNotifier,
+	notifier transfertask.ProgressNotifier,
 ) error {
 	datasetId := transferTask.GetDatasetId()
 	datasetFolder := transferTask.DatasetFolder.FolderPath
@@ -198,7 +198,7 @@ func TransferDataset(
 	var err error
 
 	switch transferTask.TransferMethod {
-	case task.TransferS3:
+	case transfertask.TransferS3:
 		accessToken, ok := transferTask.GetTransferObject("accessToken").(string)
 		if !ok {
 			return fmt.Errorf("missing access token for s3 upload")
@@ -209,7 +209,7 @@ func TransferDataset(
 		}
 
 		err = s3upload.UploadS3(task_context, datasetId, datasetFolder, fileList, transferTask.DatasetFolder.Id, config.Transfer.S3, accessToken, refreshToken, notifier)
-	case task.TransferGlobus:
+	case transfertask.TransferGlobus:
 		// globus doesn't work with absolute folders, this library uses sourcePrefix to adapt the path to the globus' own path from a relative path
 		relativeDatasetFolder := strings.TrimPrefix(datasetFolder, config.WebServer.CollectionLocation)
 		files := make([]globustransfer.File, len(fileList))
@@ -223,7 +223,7 @@ func TransferDataset(
 		if !ok {
 			return fmt.Errorf("globus client was not set")
 		}
-		transferTask.UpdateDetails(task.SetStatus(task.Transferring), task.SetMessage("the dataset is being transferred"))
+		transferTask.UpdateDetails(transfertask.SetStatus(transfertask.Transferring), transfertask.SetMessage("the dataset is being transferred"))
 		err = globustransfer.TransferFiles(
 			client,
 			config.Transfer.Globus.SourceCollection,
@@ -236,7 +236,7 @@ func TransferDataset(
 			func(bytesTransferred, filesTransferred int) {
 				progress := bytesTransferred * 100 / bytesTotal
 				notifier.OnTaskProgress(transferTask.DatasetFolder.Id, progress)
-				transferTask.UpdateDetails(task.SetBytesTransferred(bytesTransferred), task.SetFilesTransferred(filesTransferred))
+				transferTask.UpdateDetails(transfertask.SetBytesTransferred(bytesTransferred), transfertask.SetFilesTransferred(filesTransferred))
 			},
 		)
 	default:

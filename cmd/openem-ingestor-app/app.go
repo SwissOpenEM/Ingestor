@@ -8,7 +8,7 @@ import (
 
 	core "github.com/SwissOpenEM/Ingestor/internal/core"
 	metadataextractor "github.com/SwissOpenEM/Ingestor/internal/metadataextractor"
-	task "github.com/SwissOpenEM/Ingestor/internal/task"
+	task "github.com/SwissOpenEM/Ingestor/internal/transfertask"
 	webserver "github.com/SwissOpenEM/Ingestor/internal/webserver"
 
 	"github.com/google/uuid"

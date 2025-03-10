@@ -6,7 +6,7 @@ import (
 	"path"
 
 	"github.com/SwissOpenEM/Ingestor/internal/metadataextractor"
-	"github.com/SwissOpenEM/Ingestor/internal/task"
+	"github.com/SwissOpenEM/Ingestor/internal/transfertask"
 	"github.com/SwissOpenEM/Ingestor/internal/webserver/wsconfig"
 	"github.com/go-playground/validator/v10"
 	"github.com/spf13/viper"
@@ -18,7 +18,7 @@ type ScicatConfig struct {
 
 type Config struct {
 	Scicat             ScicatConfig                       `mapstructure:"Scicat"`
-	Transfer           task.TransferConfig                `mapstructure:"Transfer"`
+	Transfer           transfertask.TransferConfig        `mapstructure:"Transfer"`
 	WebServer          wsconfig.WebServerConfig           `mapstructure:"WebServer"`
 	MetadataExtractors metadataextractor.ExtractorsConfig `mapstructure:"MetadataExtractors"`
 }

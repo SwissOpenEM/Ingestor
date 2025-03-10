@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	task "github.com/SwissOpenEM/Ingestor/internal/task"
+	task "github.com/SwissOpenEM/Ingestor/internal/transfertask"
 	"github.com/alitto/pond/v2"
 	"github.com/elliotchance/orderedmap/v2"
 	"github.com/google/uuid"

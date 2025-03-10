@@ -6,17 +6,17 @@ import (
 	"time"
 
 	"github.com/SwissOpenEM/Ingestor/internal/metadataextractor"
-	"github.com/SwissOpenEM/Ingestor/internal/task"
+	"github.com/SwissOpenEM/Ingestor/internal/transfertask"
 	"github.com/SwissOpenEM/Ingestor/internal/webserver/wsconfig"
 	"github.com/spf13/viper"
 )
 
-func createExpectedValidConfigS3() task.TransferConfig {
-	return task.TransferConfig{
+func createExpectedValidConfigS3() transfertask.TransferConfig {
+	return transfertask.TransferConfig{
 		Method:           "S3",
 		ConcurrencyLimit: 10,
 		QueueSize:        1000,
-		S3: task.S3TransferConfig{
+		S3: transfertask.S3TransferConfig{
 			Endpoint:        "https://endpoint/api/v1",
 			TokenUrl:        "https://keycloak.localhost/realms/facility/protocol/openid-connect/token",
 			ClientID:        "archiver-service-api",
@@ -27,12 +27,12 @@ func createExpectedValidConfigS3() task.TransferConfig {
 	}
 }
 
-func createExpectedValidConfigGlobus() task.TransferConfig {
-	return task.TransferConfig{
+func createExpectedValidConfigGlobus() transfertask.TransferConfig {
+	return transfertask.TransferConfig{
 		Method:           "Globus",
 		ConcurrencyLimit: 10,
 		QueueSize:        1000,
-		Globus: task.GlobusTransferConfig{
+		Globus: transfertask.GlobusTransferConfig{
 			ClientID:              "clientid_registered_with_globus",
 			RedirectURL:           "https://auth.globus.org/v2/web/auth-code",
 			Scopes:                []string{"urn:globus:auth:scope:transfer.api.globus.org:all[*https://auth.globus.org/scopes/[collection_id1]/data_access]"},
@@ -44,7 +44,7 @@ func createExpectedValidConfigGlobus() task.TransferConfig {
 	}
 }
 
-func createExpectedValidConfig(transferConfig task.TransferConfig) Config {
+func createExpectedValidConfig(transferConfig transfertask.TransferConfig) Config {
 	expected_scicat := ScicatConfig{
 		Host: "http://scicat:8080/api/v3",
 	}
