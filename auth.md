@@ -122,48 +122,68 @@ sequenceDiagram
 
 ## Option C (Proposal Swen)
 
-### Initial thoughts
+### Initial thoughts and running environment
 
 **Ingestor**
 
-- can run anywhere
-- therefore, it cannot contain any secret
-- needs to talk to SciCat and Archiver Service API
-- needs to be authorised with a user token
+- can run _either_ as a
+  - central service
+  - client application
+- if run as a client application:
+  - cannot contain any secret (e.g. service account for SciCat)
+  - app must be authorised by the user
 
 **User**
 
-- does not want to log in all the time
-- is only interested in starting a job
+- does not want to log in all the time (single sign-on preferred)
+- is only interested in _starting_ a job (fire and forget), e.g.
   - archive data
   - unarchive data
-- his authentication token can time out
+- the job itself needs to be able to report when its done, independently of the user
 
 **SciCat**
 
 - only accepts authenticated requests
+  - currently only SciCat tokens
+  - refresh tokens are not supported
+  - Service Accounts
 - issues its own SciCat tokens (JWT with HS256 algorithm, aka «self signed»)
   - after a user has successfully logged in to Keycloak
-- currently only accepts SciCat tokens
-- so it acts as an authority instance
-- offers a self-made mechanism to check if a SciCat token is valid
+- acts as an authority instance
+  - issues SciCat tokens
+  - offers a self-made mechanism to check validity of a SciCat token
 
-**Archiver Service**
+**ETHZ Archiver Service**
 
 - only accepts authenticated requests
-- issues Keycloak service tokens (JWT with RS256, public key signed)
-- currently only accepts JWT tokens issued and signed by Keycloak
+  - JWT RS256 tokens issued and signed by Keycloak
+  - JWT HS256 tokens issued by SciCat
+- can issue a Ingester token for a valid SciCat token
+- has service account for SciCat
+- must be able to report the status of a dataset any time to SciCat
 
-### What needs to be done
+### Use-case: User archives data (MinIO S3 Storage)
 
-- Archiver Service
-  - needs to be able to accept SciCat 🔑 as well (see ScopeMArchiver#146)
-  - needs to be able to create valid SciCat 🔑 (variant A)
-- SciCat
-  - can exchange Ingestor JWT 🔑 for Ingestor SciCat 🔑 (variant B)
-  - accepts all JWT 🔑 issued and signed by Keycloak (variants C+D)
+**Notes**: 
 
-**Note**: the diagram below does not yet include any authorisation information. It only includes authentication. In future we would like to use JWT 🔑 that contain authorisation information, e.g. tokens for every dataset upload.
+- the diagram below does not include any authorisation information, only authentication.
+- In future we would like to use JWT 🔑 that contain authorisation information, e.g. tokens for every dataset upload.
+- ETH use-case:
+  - Ingestor can run as a service or a client application
+    - does not contain any service account
+    - exchanges the User SciCat 🔑 to a Ingestor 🔑 when starting upload (fire and forget)
+  - use of MinIO S3 instead of Globus for upload 
+  - ETHZ Archiver Service has service accounts for:
+     - **S3** to get pre-signed URLs for data upload
+     - **SciCat** to report upload finish and schedule dataset archival
+- PSI use-case:
+  - a) Ingestor is run as a service
+    - Ingestor can contain a service account
+    - Ingestor can report back to SciCat
+  - b) Ingestor is run as a client application
+    - Ingestor _cannot_ contain a service account
+    - Ingestor _cannot_ report back to SciCat
+    - instead, PSI needs to implement something similar like the ETHZ Archiver Service
 
 
 ```mermaid
@@ -171,47 +191,51 @@ sequenceDiagram
   autonumber
   participant B as Browser
   participant S as Scicat Backend
-  participant I as Ingestor Service
-  participant G as Storage (Globus)
+  participant I as Ingestor Application/Service
   participant A as ETHZ Archiver Service
+  participant M as MinIO S3 Storage
   participant K as Keycloak
 
-  B -) S: Access
+  Note over B, K: Authorise User
+  B -) S: request access
   S -) K: User Login (redirect)
-  K --) S: User JWT🔑
-  S ->> S: Exchange User JWT 🔑 for SciCat 🔑
-  S --) B: User SciCat 🔑
-  B --) I: User SciCat 🔑
-  I --) A: User SciCat 🔑
-  alt tbd. ScopeMArchiver issue 146
-    A -) S: verify + request User info (User SciCat 🔑)
-    S -) A: OK + User info
-  end
-  A -) K: request Ingestor JWT 🔑 (user/pw)
-  K --) A: Ingestor JWT 🔑
-  A --) I: Ingestor JWT 🔑
-  I ->> I: store refresh-token of Ingestor JWT 🔑
-  I -) A: request S3 credentials (Ingestor JWT 🔑)
-  A --) I: S3 credentials
-  I ->> I: upload to S3 ⏳
-  I -) A: report S3 upload finished (Ingestor JWT 🔑)
+  K -) S: User JWT🔑
+  S ->> S: Exchange User JWT 🔑 —> User SciCat 🔑
+  S -) B: User SciCat 🔑
+  B -) I: provide User SciCat 🔑 via Cookie
 
-  alt Variant A: Archiver can create Ingestor SciCat 🔑
-    A -) S: request Ingestor SciCat 🔑 (secret/Basic Auth)
-    S --) A: Ingestor SciCat 🔑
-    A --) I: Ingestor SciCat 🔑
-    I -) S: report dataset upload finished (Ingestor SciCat 🔑)
-  else Variant B: SciCat exchanges Ingestor JWT 🔑 for SciCat 🔑
-    I -) S: request Ingestor SciCat 🔑 (Ingestor JWT 🔑)
-    S ->> S: Exchange Ingestor JWT 🔑 for SciCat 🔑
-    S --) I: Ingestor SciCat 🔑
-    I -) S: report dataset upload finished (Ingestor SciCat 🔑)
-  else Variant C: SciCat accepts Ingestor JWT 🔑
-    I -) S: report archiving finished (Ingestor JWT 🔑)
-  else Variant D: Archiver report directly back to SciCat
-    A ->> A: store Ingestor JWT 🔑
-    A ->> A: wait until upload is finished ⏳
-    A -) S: report archiving finshed (Ingestor JWT 🔑)
+  Note over S, I: Metadata exctraction
+  B -) I: extract metadata
+  I -) I: extract metadata
+  I -) S: send metadata to SciCat (User SciCat 🔑)
+
+  Note over B, K: ETH Archiver Service<br/>Authorise Ingestor
+  I -) A: request /token (User SciCat 🔑)
+  A -) S: verify + request User info (User SciCat 🔑)
+  S -) A: OK + User info 📜
+  A -) K: request Ingestor JWT 🔑 (Keycloak Service Account 🔑)
+  K -) A: Ingestor JWT 🔑 + refresh 🔑
+  A -) I: Ingestor JWT 🔑 + refresh 🔑
+
+
+  Note over I, K: Get presigned S3 URLs for upload
+  I -) A: request S3 URLs (Ingestor JWT 🔑)
+  A -) M: request S3 URLs (MinIO 🔑)
+  M -) A: S3 URLs 🔑
+  A -) I: S3 URLs 🔑
+
+  Note over I, K: Upload data (refresh tokens)
+  I -) M: upload data (S3 URLs 🔑) ⏳
+  loop renew Ingestor JWT 🔑 if needed
+    I -) K: request Ingestor JWT (refresh 🔑)
+    K -) I: new Ingestor JWT 🔑 + refresh 🔑
   end
+
+  Note over S, M: Report upload finished
+
+  I -) A: report data upload to MinIO finished (Ingestor JWT 🔑)
+  A -) M: finish upload workflow
+  A -) S: report upload finished (Service Account 🔑)
+  A -) S: schedule archiving (Service Account 🔑)
 
 ```
