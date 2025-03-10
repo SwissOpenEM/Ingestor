@@ -122,7 +122,7 @@ sequenceDiagram
 
 ## Option C (Proposal Swen)
 
-### Initial thoughts
+### Initial thoughts and environment
 
 **Ingestor**
 
@@ -133,7 +133,7 @@ sequenceDiagram
 
 **User**
 
-- does not want to log in all the time
+- does not want to log in all the time (single sign-on)
 - is only interested in starting a job
   - archive data
   - unarchive data
@@ -163,7 +163,13 @@ sequenceDiagram
   - can exchange Ingestor JWT 🔑 for Ingestor SciCat 🔑 (variant B)
   - accepts all JWT 🔑 issued and signed by Keycloak (variants C+D)
 
-**Note**: the diagram below does not yet include any authorisation information. It only includes authentication. In future we would like to use JWT 🔑 that contain authorisation information, e.g. tokens for every dataset upload.
+### Use-case: User archives data (MinIO S3 Storage)
+
+**Notes**: 
+
+- the diagram below does not yet include any authorisation information. It only includes authentication.
+- In future we would like to use JWT 🔑 that contain authorisation information, e.g. tokens for every dataset upload.
+- Instead of Gobus Storage we use MinIO S3
 
 
 ```mermaid
@@ -172,46 +178,66 @@ sequenceDiagram
   participant B as Browser
   participant S as Scicat Backend
   participant I as Ingestor Service
-  participant G as Storage (Globus)
   participant A as ETHZ Archiver Service
+  participant M as MinIO S3 Storage
   participant K as Keycloak
 
+  Note over B, K: Authorise User
   B -) S: Access
   S -) K: User Login (redirect)
   K --) S: User JWT🔑
   S ->> S: Exchange User JWT 🔑 for SciCat 🔑
   S --) B: User SciCat 🔑
+
+  Note over B, K: Authorise Ingestor 
+  Note right of B: still a manual step, needs improvement
   B --) I: User SciCat 🔑
   I --) A: User SciCat 🔑
-  alt tbd. ScopeMArchiver issue 146
-    A -) S: verify + request User info (User SciCat 🔑)
-    S -) A: OK + User info
-  end
+  A -) S: verify + request User info (User SciCat 🔑)
+  S -) A: OK + User info
   A -) K: request Ingestor JWT 🔑 (user/pw)
-  K --) A: Ingestor JWT 🔑
-  A --) I: Ingestor JWT 🔑
-  I ->> I: store refresh-token of Ingestor JWT 🔑
-  I -) A: request S3 credentials (Ingestor JWT 🔑)
-  A --) I: S3 credentials
-  I ->> I: upload to S3 ⏳
-  I -) A: report S3 upload finished (Ingestor JWT 🔑)
+  K --) A: Ingestor JWT+refresh 🔑
+  A --) I: Ingestor JWT+refresh 🔑
+  I ->> I: store Ingestor JWT+refresh 🔑
 
-  alt Variant A: Archiver can create Ingestor SciCat 🔑
-    A -) S: request Ingestor SciCat 🔑 (secret/Basic Auth)
+  Note over I, K: Get presigned S3 URLs for upload
+  I -) A: request S3 URLs (Ingestor JWT 🔑)
+  A -) M: request S3 URLs (MinIO 🔑)
+  M --) A: S3 URLs 🔑
+  A --) I: S3 URLs 🔑
+  I -) I: store S3 URLs
+
+  Note over I, K: Upload data and refresh tokens
+  I -) M: upload data (S3 URLs 🔑) ⏳
+  loop renew Ingestor JWT 🔑 if needed
+    I -) K: request Ingestor JWT (refresh 🔑)
+    K --) I: new Ingestor JWT 🔑
+  end
+
+  Note over S, M: Report upload finished
+
+  alt Variant A1: Ingestor reports to Archiver Service
+    I -) A: report data upload to MinIO finished (Ingestor JWT 🔑)
+    A -) M: finish upload workflow
+    A -) S: report dataset upload finished (Ingestor JWT 🔑)
+  else Variant A2: Ingestor reports to Archiver Service
+    I -) A: report data upload to MinIO finished (Ingestor JWT 🔑)
+    A -) M: finish upload workflow
+    A -) S: request SciCat 🔑 (Ingestor JWT 🔑)
+    S ->> S: Exchange Ingestor JWT 🔑 for SciCat 🔑
     S --) A: Ingestor SciCat 🔑
-    A --) I: Ingestor SciCat 🔑
-    I -) S: report dataset upload finished (Ingestor SciCat 🔑)
-  else Variant B: SciCat exchanges Ingestor JWT 🔑 for SciCat 🔑
-    I -) S: request Ingestor SciCat 🔑 (Ingestor JWT 🔑)
+    A -) S: report dataset upload inished (Ingestor SciCat 🔑)
+  else Variant B1: Ingestor reports to both Archiver Service and SciCat
+    I -) A: report data upload to MinIO finished (Ingestor JWT 🔑)
+    A -) M: finish upload workflow
+    I -) S: report archiving finished (Ingestor JWT 🔑)
+  else Variant B2: Ingestor reports to both Archiver Service and SciCat
+    I -) A: report data upload to MinIO finished (Ingestor JWT 🔑)
+    A -) M: finish upload workflow
+    I -) S: request SciCat 🔑 (Ingestor JWT 🔑)
     S ->> S: Exchange Ingestor JWT 🔑 for SciCat 🔑
     S --) I: Ingestor SciCat 🔑
-    I -) S: report dataset upload finished (Ingestor SciCat 🔑)
-  else Variant C: SciCat accepts Ingestor JWT 🔑
-    I -) S: report archiving finished (Ingestor JWT 🔑)
-  else Variant D: Archiver report directly back to SciCat
-    A ->> A: store Ingestor JWT 🔑
-    A ->> A: wait until upload is finished ⏳
-    A -) S: report archiving finshed (Ingestor JWT 🔑)
+    I -) S: report dataset upload inished (Ingestor SciCat 🔑)
   end
 
 ```
