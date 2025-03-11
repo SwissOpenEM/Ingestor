@@ -4,8 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"path"
-	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -35,20 +33,20 @@ func (w *TaskQueue) Startup() {
 	w.taskPool = pond.NewPool(w.Config.Transfer.ConcurrencyLimit, pond.WithQueueSize(w.Config.Transfer.QueueSize))
 }
 
-func (w *TaskQueue) AddTransferTask(transferObjects map[string]interface{}, datasetId string, fileList []datasetIngestor.Datafile, totalSize int64, metadataMap map[string]interface{}, taskId uuid.UUID) error {
+func (w *TaskQueue) AddTransferTask(datasetId string, fileList []datasetIngestor.Datafile, taskId uuid.UUID, folderPath string, ownerGroup string, autoArchive bool, transferObjects map[string]interface{}) error {
 	transferMethod := w.GetTransferMethod()
-	t := task.CreateTransferTask(datasetId, fileList, task.DatasetFolder{Id: taskId}, metadataMap, transferMethod, transferObjects, nil)
-
-	switch v := metadataMap["sourceFolder"].(type) {
-	case string:
-		// the collection location has to be added to get the absolute path of the dataset
-		t.DatasetFolder.FolderPath = path.Join(w.Config.WebServer.CollectionLocation, filepath.FromSlash(v))
-	default:
-		return errors.New("sourceFolder in metadata isn't a string")
-	}
-	t.UpdateDetails(
-		task.SetBytesTotal(int(totalSize)),
-		task.SetMessage("added"),
+	t := task.CreateTransferTask(
+		datasetId,
+		fileList,
+		task.DatasetFolder{
+			Id:         taskId,
+			FolderPath: folderPath,
+		},
+		ownerGroup,
+		transferMethod,
+		autoArchive,
+		transferObjects,
+		nil,
 	)
 
 	w.taskListLock.Lock()
