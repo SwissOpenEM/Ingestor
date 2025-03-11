@@ -267,8 +267,8 @@ func TransferDataset(
 	// auto archive
 	if transferTask.ToAutoArchive() {
 		copies := 1
-		datasetUtils.CreateArchivalJob(http_client, config.Scicat.Host, user, transferTask.GetDatasetOwnerGroup(), []string{datasetId}, &copies)
+		_, err = datasetUtils.CreateArchivalJob(http_client, config.Scicat.Host, user, transferTask.GetDatasetOwnerGroup(), []string{datasetId}, &copies)
 	}
 
-	return nil
+	return err
 }
