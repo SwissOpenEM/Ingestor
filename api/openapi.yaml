@@ -503,6 +503,9 @@ components:
         userToken:
           type: string
           description: the scicat token for acting on behalf of the user
+        autoArchive:
+          type: boolean
+          description: whether to autoarchive the dataset. Default is TRUE
       required:
         - metaData
         - userToken

@@ -127,6 +127,11 @@ func (i *IngestorWebServerImplemenation) DatasetControllerIngestDataset(ctx cont
 	}
 	folderPath = filepath.Join(i.pathConfig.CollectionLocation, filepath.Clean(folderPath))
 
+	ownerGroup, ok := metadata["ownerGroup"].(string)
+	if !ok {
+		return DatasetControllerIngestDataset400TextResponse("sourceFolder is not present in the metadata"), nil
+	}
+
 	// check if folder exists
 	err = core.CheckIfFolderExists(folderPath)
 	if err != nil {
@@ -139,7 +144,12 @@ func (i *IngestorWebServerImplemenation) DatasetControllerIngestDataset(ctx cont
 		return DatasetControllerIngestDataset400TextResponse(err.Error()), nil
 	}
 
-	taskId, err := i.addTransferTask(ctx, datasetId, fileList, metadata, request)
+	// set auto-archival parameter
+	autoArchive := true
+	if request.Body.AutoArchive != nil {
+		autoArchive = *request.Body.AutoArchive
+	}
+	taskId, err := i.addTransferTask(ctx, datasetId, fileList, folderPath, ownerGroup, autoArchive, request.Body.UserToken)
 
 	if err != nil {
 		if _, ok := err.(*os.PathError); ok {
@@ -161,7 +171,7 @@ func (i *IngestorWebServerImplemenation) DatasetControllerIngestDataset(ctx cont
 	}, nil
 }
 
-func (i *IngestorWebServerImplemenation) addTransferTask(ctx context.Context, datasetId string, fileList []datasetIngestor.Datafile, metadata map[string]interface{}, request DatasetControllerIngestDatasetRequestObject) (uuid.UUID, error) {
+func (i *IngestorWebServerImplemenation) addTransferTask(ctx context.Context, datasetId string, fileList []datasetIngestor.Datafile, folderPath string, ownerGroup string, autoArchive bool, scicatToken string) (uuid.UUID, error) {
 	taskId := uuid.New()
 	transferObjects := map[string]interface{}{}
 	if i.taskQueue.GetTransferMethod() == transfertask.TransferGlobus {
@@ -176,14 +186,14 @@ func (i *IngestorWebServerImplemenation) addTransferTask(ctx context.Context, da
 	} else if i.taskQueue.GetTransferMethod() == transfertask.TransferS3 {
 
 		// access and refresh token need be fetched at this point from the archiver backend since user token could expire
-		accessToken, refreshToken, err := s3upload.GetTokens(ctx, i.taskQueue.Config.Transfer.S3.Endpoint, request.Body.UserToken)
+		accessToken, refreshToken, err := s3upload.GetTokens(ctx, i.taskQueue.Config.Transfer.S3.Endpoint, scicatToken)
 		if err != nil {
 			return uuid.UUID{}, err
 		}
 		transferObjects["accessToken"] = accessToken
 		transferObjects["refreshToken"] = refreshToken
 	}
-	err := i.taskQueue.AddTransferTask(transferObjects, datasetId, fileList, metadata, taskId)
+	err := i.taskQueue.AddTransferTask(datasetId, fileList, taskId, folderPath, ownerGroup, autoArchive, transferObjects)
 	if err != nil {
 		return uuid.UUID{}, err
 	}
