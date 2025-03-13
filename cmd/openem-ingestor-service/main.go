@@ -62,6 +62,8 @@ func main() {
 			Username: u,
 			Password: p,
 		}
+	} else {
+		panic(fmt.Errorf("service user was not set in env vars"))
 	}
 
 	tq := core.TaskQueue{
