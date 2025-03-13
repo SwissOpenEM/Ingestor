@@ -85,7 +85,7 @@ func NewIngestorWebServer(version string, transferQueue *core.TaskQueue, metadat
 		transferQueue.Config.Transfer.Globus.Scopes,
 	)
 
-	if tq.ServiceUser == nil && !ws.DisableServiceAccountCheck {
+	if !transferQueue.IsServiceUserSet() && !serverConf.DisableServiceAccountCheck {
 		panic(fmt.Errorf("no service account was set"))
 	}
 

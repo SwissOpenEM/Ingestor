@@ -74,14 +74,14 @@ func (w *TaskQueue) executeTransferTask(t *task.TransferTask) {
 	r := w.TransferDataset(task_context, t)
 	if r.Error != nil {
 		t.Failed(fmt.Sprintf("failed - error: %s", r.Error.Error()))
-		w.Notifier.OnTaskFailed(t.DatasetFolder.Id, r.Error)
+		w.notifier.OnTaskFailed(t.DatasetFolder.Id, r.Error)
 		return
 	}
 
 	// if not cancelled, mark as finished
 	if t.GetDetails().Status != task.Cancelled {
 		t.Finished()
-		w.Notifier.OnTaskCompleted(t.DatasetFolder.Id, r.Elapsed_seconds)
+		w.notifier.OnTaskCompleted(t.DatasetFolder.Id, r.Elapsed_seconds)
 	}
 }
 
@@ -95,7 +95,7 @@ func (w *TaskQueue) CancelTask(id uuid.UUID) {
 	if uploadTask.Cancel != nil {
 		// note: the task is marked as cancelled in advance in order for the task executer to not mark it as finished
 		uploadTask.Cancelled("transfer was cancelled by the user")
-		w.Notifier.OnTaskCanceled(id)
+		w.notifier.OnTaskCanceled(id)
 		uploadTask.Cancel()
 	}
 }
@@ -129,12 +129,12 @@ func (w *TaskQueue) ScheduleTask(id uuid.UUID) error {
 		return fmt.Errorf("task with id '%s' not found", id.String())
 	}
 
-	task_context, cancel := context.WithCancel(w.AppContext)
+	task_context, cancel := context.WithCancel(w.appContext)
 	transferTask.Context = task_context
 	transferTask.Cancel = cancel
 
 	transferTask.Queued()
-	w.Notifier.OnTaskScheduled(transferTask.DatasetFolder.Id)
+	w.notifier.OnTaskScheduled(transferTask.DatasetFolder.Id)
 
 	w.taskPool.Submit(func() { w.executeTransferTask(transferTask) })
 	return nil
@@ -205,4 +205,8 @@ func (w *TaskQueue) GetTransferMethod() (transferMethod task.TransferMethod) {
 		panic("unknown transfer method")
 	}
 	return transferMethod
+}
+
+func (w *TaskQueue) IsServiceUserSet() bool {
+	return w.serviceUser != nil
 }
