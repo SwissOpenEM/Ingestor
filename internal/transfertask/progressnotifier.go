@@ -1,4 +1,4 @@
-package task
+package transfertask
 
 import "github.com/google/uuid"
 

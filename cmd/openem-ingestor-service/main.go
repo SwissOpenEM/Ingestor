@@ -58,9 +58,10 @@ func main() {
 
 	ctx := context.Background()
 
-	var serviceUser *core.UserCreds = nil
 	u, foundName := os.LookupEnv("INGESTOR_SERVICE_USER_NAME")
 	p, foundPass := os.LookupEnv("INGESTOR_SERVICE_USER_PASS")
+	var serviceUser *core.UserCreds = nil
+
 	if foundName && foundPass {
 		serviceUser = &core.UserCreds{
 			Username: u,

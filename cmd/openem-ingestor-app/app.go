@@ -10,7 +10,7 @@ import (
 	core "github.com/SwissOpenEM/Ingestor/internal/core"
 	metadataextractor "github.com/SwissOpenEM/Ingestor/internal/metadataextractor"
 	"github.com/SwissOpenEM/Ingestor/internal/s3upload"
-	task "github.com/SwissOpenEM/Ingestor/internal/task"
+	task "github.com/SwissOpenEM/Ingestor/internal/transfertask"
 	webserver "github.com/SwissOpenEM/Ingestor/internal/webserver"
 	"github.com/SwissOpenEM/Ingestor/internal/webserver/metadatatasks"
 	"github.com/alitto/pond/v2"

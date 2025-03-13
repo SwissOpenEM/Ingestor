@@ -8,7 +8,7 @@ import (
 	"slices"
 	"time"
 
-	"github.com/SwissOpenEM/Ingestor/internal/task"
+	"github.com/SwissOpenEM/Ingestor/internal/transfertask"
 	"github.com/SwissOpenEM/Ingestor/internal/webserver/globusauth"
 	"github.com/SwissOpenEM/Ingestor/internal/webserver/randomfuncs"
 	"github.com/coreos/go-oidc/v3/oidc"
@@ -167,7 +167,7 @@ func (i *IngestorWebServerImplemenation) GetCallback(ctx context.Context, reques
 	}
 
 	// globus redirect for logging-in (if using globus)
-	if i.taskQueue.GetTransferMethod() == task.TransferGlobus {
+	if i.taskQueue.GetTransferMethod() == transfertask.TransferGlobus {
 		// revoke session with globus, if we have one ongoing
 		if globusauth.TestGlobusCookie(ginCtx) {
 			_ = globusauth.Logout(ginCtx, *i.globusAuthConf) // we don't care if logout fails
@@ -201,7 +201,7 @@ func (i *IngestorWebServerImplemenation) GetLogout(ctx context.Context, request 
 		return GetLogout500TextResponse(err.Error()), nil
 	}
 
-	if i.taskQueue.GetTransferMethod() == task.TransferGlobus {
+	if i.taskQueue.GetTransferMethod() == transfertask.TransferGlobus {
 		err = globusauth.Logout(ginCtx, *i.globusAuthConf)
 		if err != nil {
 			return GetLogout500TextResponse(err.Error()), nil

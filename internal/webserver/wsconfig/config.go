@@ -62,9 +62,10 @@ type MetadataExtJobsConf struct {
 }
 
 type OtherConf struct {
-	BackendAddress string
-	Port           int    `int:"Port" validate:"required,gte=0"`
-	LogLevel       string `string:"LogLevel" validate:"oneof=Debug Info Warning Error"`
+	BackendAddress             string
+	Port                       int    `int:"Port" validate:"required,gte=0"`
+	LogLevel                   string `string:"LogLevel" validate:"oneof=Debug Info Warning Error"`
+	DisableServiceAccountCheck bool
 }
 
 type WebServerConfig struct {

@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/SwissOpenEM/Ingestor/internal/task"
+	"github.com/SwissOpenEM/Ingestor/internal/transfertask"
 	"github.com/SwissOpenEM/Ingestor/internal/webserver/randomfuncs"
 	"github.com/coreos/go-oidc/v3/oidc"
 	"github.com/getkin/kin-openapi/openapi3filter"
@@ -89,7 +89,7 @@ func NewIngesterServer(ingestor *IngestorWebServerImplemenation, port int) *http
 	// Use our validation middleware to check all requests against the
 	// OpenAPI schema.
 	sessionsToCreate := []string{"auth", "user"}
-	if ingestor.taskQueue.GetTransferMethod() == task.TransferGlobus {
+	if ingestor.taskQueue.GetTransferMethod() == transfertask.TransferGlobus {
 		sessionsToCreate = append(sessionsToCreate, "globus")
 	}
 	r.Use(
