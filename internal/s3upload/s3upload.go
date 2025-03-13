@@ -8,7 +8,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/SwissOpenEM/Ingestor/internal/task"
+	"github.com/SwissOpenEM/Ingestor/internal/transfertask"
 	"github.com/google/uuid"
 
 	"github.com/paulscherrerinstitute/scicat-cli/v3/datasetIngestor"
@@ -23,8 +23,8 @@ type TransferNotifier struct {
 	FilesCount       int
 	startTime        time.Time
 	id               uuid.UUID
-	notifier         task.ProgressNotifier
-	TaskStatus       *task.Status
+	notifier         transfertask.ProgressNotifier
+	TaskStatus       *transfertask.Status
 }
 
 func (pn *TransferNotifier) AddUploadedBytes(numBytes int64) {
@@ -71,7 +71,7 @@ func createTokenSource(ctx context.Context, clientID string, tokenUrl string, ac
 }
 
 // Upload all files in a folder using presinged urls
-func UploadS3(ctx context.Context, datasetPID string, datasetSourceFolder string, fileList []datasetIngestor.Datafile, uploadId uuid.UUID, options task.S3TransferConfig, accessToken string, refreshToken string, notifier task.ProgressNotifier) error {
+func UploadS3(ctx context.Context, datasetPID string, datasetSourceFolder string, fileList []datasetIngestor.Datafile, uploadId uuid.UUID, options transfertask.S3TransferConfig, accessToken string, refreshToken string, notifier transfertask.ProgressNotifier) error {
 
 	if len(fileList) == 0 {
 		return fmt.Errorf("empty file list provided")
@@ -92,7 +92,7 @@ func UploadS3(ctx context.Context, datasetPID string, datasetSourceFolder string
 	return uploadFiles(ctx, &s3Objects, options, &transferNotifier, uploadId, tokenSource)
 }
 
-func uploadFiles(ctx context.Context, s3Objects *S3Objects, options task.S3TransferConfig, transferNotifier *TransferNotifier, uploadId uuid.UUID, tokenSource oauth2.TokenSource) error {
+func uploadFiles(ctx context.Context, s3Objects *S3Objects, options transfertask.S3TransferConfig, transferNotifier *TransferNotifier, uploadId uuid.UUID, tokenSource oauth2.TokenSource) error {
 	errorGroup, context := errgroup.WithContext(ctx)
 	objectsChannel := make(chan int, len(s3Objects.Files))
 

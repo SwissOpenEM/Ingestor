@@ -10,7 +10,7 @@ import (
 
 	"github.com/SwissOpenEM/Ingestor/internal/core"
 	"github.com/SwissOpenEM/Ingestor/internal/s3upload"
-	"github.com/SwissOpenEM/Ingestor/internal/task"
+	"github.com/SwissOpenEM/Ingestor/internal/transfertask"
 	"github.com/SwissOpenEM/Ingestor/internal/webserver/globusauth"
 	"github.com/google/uuid"
 	"github.com/paulscherrerinstitute/scicat-cli/v3/datasetIngestor"
@@ -97,7 +97,11 @@ func (i *IngestorWebServerImplemenation) DatasetControllerBrowseFilesystem(ctx c
 		return nil, err
 	}
 
-	folders = folders[0 : min(end, folderCounter)-start]
+	if folderCounter >= start {
+		folders = folders[0 : min(end, folderCounter)-start]
+	} else {
+		folders = []FolderNode{}
+	}
 
 	return DatasetControllerBrowseFilesystem200JSONResponse{
 		Folders: folders,
@@ -170,7 +174,7 @@ func (i *IngestorWebServerImplemenation) DatasetControllerIngestDataset(ctx cont
 func (i *IngestorWebServerImplemenation) addTransferTask(ctx context.Context, datasetId string, fileList []datasetIngestor.Datafile, folderPath string, ownerGroup string, autoArchive bool, scicatToken string) (uuid.UUID, error) {
 	taskId := uuid.New()
 	transferObjects := map[string]interface{}{}
-	if i.taskQueue.GetTransferMethod() == task.TransferGlobus {
+	if i.taskQueue.GetTransferMethod() == transfertask.TransferGlobus {
 		client, err := globusauth.GetClientFromSession(ctx, i.globusAuthConf, i.sessionDuration)
 		if err != nil {
 			return uuid.UUID{}, err
@@ -179,7 +183,7 @@ func (i *IngestorWebServerImplemenation) addTransferTask(ctx context.Context, da
 		// add transfer dependencies to the transferObjects map
 		transferObjects["globus_client"] = client
 
-	} else if i.taskQueue.GetTransferMethod() == task.TransferS3 {
+	} else if i.taskQueue.GetTransferMethod() == transfertask.TransferS3 {
 
 		// access and refresh token need be fetched at this point from the archiver backend since user token could expire
 		accessToken, refreshToken, err := s3upload.GetTokens(ctx, i.taskQueue.Config.Transfer.S3.Endpoint, scicatToken)

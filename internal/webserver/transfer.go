@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/SwissOpenEM/Ingestor/internal/task"
+	"github.com/SwissOpenEM/Ingestor/internal/transfertask"
 	"github.com/google/uuid"
 )
 
@@ -97,17 +97,17 @@ func getPointerOrNil[T comparable](v T) *T {
 	}
 }
 
-func statusToDto(s task.Status) TransferItemStatus {
+func statusToDto(s transfertask.Status) TransferItemStatus {
 	switch s {
-	case task.Waiting:
+	case transfertask.Waiting:
 		return Waiting
-	case task.Transferring:
+	case transfertask.Transferring:
 		return Transferring
-	case task.Finished:
+	case transfertask.Finished:
 		return Finished
-	case task.Failed:
+	case transfertask.Failed:
 		return Failed
-	case task.Cancelled:
+	case transfertask.Cancelled:
 		return Cancelled
 	default:
 		return InvalidStatus

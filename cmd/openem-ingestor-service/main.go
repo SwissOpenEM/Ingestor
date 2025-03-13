@@ -54,11 +54,12 @@ func main() {
 
 	ctx := context.Background()
 
-	var serviceUser *core.UserCreds = nil
 	u, foundName := os.LookupEnv("INGESTOR_SERVICE_USER_NAME")
 	p, foundPass := os.LookupEnv("INGESTOR_SERVICE_USER_PASS")
+	var serviceAcc *core.UserCreds = nil
+
 	if foundName && foundPass {
-		serviceUser = &core.UserCreds{
+		serviceAcc = &core.UserCreds{
 			Username: u,
 			Password: p,
 		}
@@ -68,7 +69,7 @@ func main() {
 		Config:      config,
 		AppContext:  ctx,
 		Notifier:    core.NewLoggingNotifier(),
-		ServiceUser: serviceUser,
+		ServiceUser: serviceAcc,
 	}
 	tq.Startup()
 
