@@ -57,13 +57,13 @@ func main() {
 	var serviceUser *core.UserCreds = nil
 	u, foundName := os.LookupEnv("INGESTOR_SERVICE_USER_NAME")
 	p, foundPass := os.LookupEnv("INGESTOR_SERVICE_USER_PASS")
-	if foundName && foundPass {
-		serviceUser = &core.UserCreds{
-			Username: u,
-			Password: p,
-		}
-	} else {
+	if !(foundName && foundPass) {
 		panic(fmt.Errorf("service user was not set in env vars"))
+	}
+
+	serviceUser = &core.UserCreds{
+		Username: u,
+		Password: p,
 	}
 
 	tq := core.TaskQueue{
