@@ -80,8 +80,6 @@ type Result struct {
 	Error           error
 }
 
-type statusOption func(t *TransferTask)
-
 func CreateTransferTask(datasetId string, fileList []datasetIngestor.Datafile, datasetFolder DatasetFolder, datasetOwnerGroup string, transferMethod TransferMethod, autoArchive bool, transferObjects map[string]interface{}, cancel context.CancelFunc) TransferTask {
 	totalBytes := 0
 	for _, file := range fileList {
