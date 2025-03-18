@@ -9,6 +9,7 @@ import (
 	"slices"
 
 	"github.com/SwissOpenEM/Ingestor/internal/core"
+	"github.com/SwissOpenEM/Ingestor/internal/globustransfer"
 	"github.com/SwissOpenEM/Ingestor/internal/s3upload"
 	"github.com/SwissOpenEM/Ingestor/internal/transfertask"
 	"github.com/SwissOpenEM/Ingestor/internal/webserver/globusauth"
@@ -169,6 +170,22 @@ func (i *IngestorWebServerImplemenation) addTransferTask(ctx context.Context, da
 		if err != nil {
 			return uuid.UUID{}, err
 		}
+
+		sourceFolder, ok := metadata["SourceFolder"].(string)
+		if !ok {
+			return uuid.UUID{}, fmt.Errorf("SourceFolder is not part of the metadata")
+		}
+
+		destParams := globustransfer.DestPathParamsStruct{
+			DatasetFolder: meta,
+			SourceFolder:  metadata["SourceFolder"].(string),
+			Pid:           datasetId,
+			PidShort:      datasetId,
+			PidPrefix:     datasetId,
+			PidEncoded:    datasetId,
+			Username:      request.Body.UserToken,
+		}
+
 		// |-> globus dependencies
 		// add transfer dependencies to the transferObjects map
 		transferObjects["globus_client"] = client
