@@ -33,13 +33,13 @@ func createExpectedValidConfigGlobus() transfertask.TransferConfig {
 		ConcurrencyLimit: 10,
 		QueueSize:        1000,
 		Globus: transfertask.GlobusTransferConfig{
-			ClientID:              "clientid_registered_with_globus",
-			RedirectURL:           "https://auth.globus.org/v2/web/auth-code",
-			Scopes:                []string{"urn:globus:auth:scope:transfer.api.globus.org:all[*https://auth.globus.org/scopes/[collection_id1]/data_access]"},
-			SourceCollection:      "collectionid1",
-			SourcePrefixPath:      "/some/optional/path",
-			DestinationCollection: "collectionid2",
-			DestinationPrefixPath: "/another/optional/path",
+			ClientID:                "clientid_registered_with_globus",
+			RedirectURL:             "https://auth.globus.org/v2/web/auth-code",
+			Scopes:                  []string{"urn:globus:auth:scope:transfer.api.globus.org:all[*https://auth.globus.org/scopes/[collection_id1]/data_access]"},
+			SourceCollectionID:      "collectionid1",
+			SourcePrefixPath:        "/some/optional/path",
+			DestinationCollectionID: "collectionid2",
+			DestinationTemplate:     "/{{ .Username }}/path",
 		},
 	}
 }

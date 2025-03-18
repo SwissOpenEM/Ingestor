@@ -53,6 +53,7 @@ type AuthConf struct {
 
 type PathsConf struct {
 	CollectionLocation      string `validate:"required"`
+	DestinationSchema       string
 	ExtractorOutputLocation string
 }
 

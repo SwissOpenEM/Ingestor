@@ -210,6 +210,16 @@ func TransferDataset(
 
 		err = s3upload.UploadS3(task_context, datasetId, datasetFolder, fileList, transferTask.DatasetFolder.Id, config.Transfer.S3, accessToken, refreshToken, notifier)
 	case transfertask.TransferGlobus:
+		// get transfer objects
+		client, ok := transferTask.GetTransferObject("globus_client").(*globus.GlobusClient)
+		if !ok {
+			return fmt.Errorf("globus client was not set")
+		}
+		destParams, ok := transferTask.GetTransferObject("dest_params").(globustransfer.DestPathParamsStruct)
+		if !ok {
+			return fmt.Errorf("no destination path parameters were set")
+		}
+
 		// globus doesn't work with absolute folders, this library uses sourcePrefix to adapt the path to the globus' own path from a relative path
 		relativeDatasetFolder := strings.TrimPrefix(datasetFolder, config.WebServer.CollectionLocation)
 		files := make([]globustransfer.File, len(fileList))
@@ -219,17 +229,15 @@ func TransferDataset(
 			files[i].Path = file.Path
 			bytesTotal += int(file.Size)
 		}
-		client, ok := transferTask.GetTransferObject("globus_client").(*globus.GlobusClient)
-		if !ok {
-			return fmt.Errorf("globus client was not set")
-		}
+
 		transferTask.TransferStarted()
 		err = globustransfer.TransferFiles(
 			client,
-			config.Transfer.Globus.SourceCollection,
+			config.Transfer.Globus.SourceCollectionID,
 			config.Transfer.Globus.SourcePrefixPath,
-			config.Transfer.Globus.DestinationCollection,
-			config.Transfer.Globus.DestinationPrefixPath,
+			config.Transfer.Globus.DestinationCollectionID,
+			config.Transfer.Globus.DestinationTemplate,
+			destParams,
 			task_context,
 			relativeDatasetFolder,
 			files,
