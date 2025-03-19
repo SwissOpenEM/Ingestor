@@ -5,11 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"path"
-	"path/filepath"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/SwissOpenEM/Ingestor/internal/globustransfer"
 	task "github.com/SwissOpenEM/Ingestor/internal/transfertask"
 	"github.com/alitto/pond/v2"
 	"github.com/elliotchance/orderedmap/v2"
@@ -33,19 +33,22 @@ func (w *TaskQueue) Startup() {
 	w.inputChannel = make(chan *task.TransferTask)
 	w.datasetUploadTasks = orderedmap.NewOrderedMap[uuid.UUID, *task.TransferTask]()
 	w.taskPool = pond.NewPool(w.Config.Transfer.ConcurrencyLimit, pond.WithQueueSize(w.Config.Transfer.QueueSize))
+	globustransfer.SetTemplateForDestinationPath(w.Config.Transfer.Globus.DestinationTemplate)
 }
 
-func (w *TaskQueue) AddTransferTask(transferObjects map[string]interface{}, datasetId string, fileList []datasetIngestor.Datafile, metadataMap map[string]interface{}, taskId uuid.UUID) error {
+func (w *TaskQueue) AddTransferTask(transferObjects map[string]interface{}, datasetId string, fileList []datasetIngestor.Datafile, sourceFolder string, taskId uuid.UUID) error {
 	transferMethod := w.GetTransferMethod()
-	t := task.CreateTransferTask(datasetId, fileList, task.DatasetFolder{Id: taskId}, metadataMap, transferMethod, transferObjects, nil)
-
-	switch v := metadataMap["sourceFolder"].(type) {
-	case string:
-		// the collection location has to be added to get the absolute path of the dataset
-		t.DatasetFolder.FolderPath = path.Join(w.Config.WebServer.CollectionLocation, filepath.FromSlash(v))
-	default:
-		return errors.New("sourceFolder in metadata isn't a string")
-	}
+	t := task.CreateTransferTask(
+		datasetId,
+		fileList,
+		task.DatasetFolder{
+			Id:         taskId,
+			FolderPath: path.Join(w.Config.WebServer.CollectionLocation, sourceFolder),
+		},
+		transferMethod,
+		transferObjects,
+		nil,
+	)
 
 	w.taskListLock.Lock()
 	defer w.taskListLock.Unlock()
