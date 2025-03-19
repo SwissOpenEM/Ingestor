@@ -39,7 +39,7 @@ func createExpectedValidConfigGlobus() transfertask.TransferConfig {
 			SourceCollectionID:      "collectionid1",
 			SourcePrefixPath:        "/some/optional/path",
 			DestinationCollectionID: "collectionid2",
-			DestinationTemplate:     "/{{ .Username }}/path",
+			DestinationTemplate:     "/{{ .Username }}/{{ replace .Pid \".\" \"_\" }}/{{ .DatasetFolder }}",
 		},
 	}
 }
