@@ -117,10 +117,6 @@ func (i *IngestorWebServerImplemenation) DatasetControllerIngestDataset(ctx cont
 		return DatasetControllerIngestDataset400TextResponse(err.Error()), nil
 	}
 
-	username, ok := metadata["owner"].(string)
-	if !ok {
-		return DatasetControllerIngestDataset400TextResponse("owner is not present in the metadata"), nil
-	}
 	sourceFolder, ok := metadata["sourceFolder"].(string)
 	if !ok {
 		return DatasetControllerIngestDataset400TextResponse("sourceFolder is not present in the metadata"), nil
@@ -134,7 +130,7 @@ func (i *IngestorWebServerImplemenation) DatasetControllerIngestDataset(ctx cont
 	}
 
 	// do catalogue insertion
-	datasetId, _, fileList, err := core.AddDatasetToScicat(metadata, folderPath, request.Body.UserToken, i.taskQueue.Config.Scicat.Host)
+	datasetId, _, fileList, username, err := core.AddDatasetToScicat(metadata, folderPath, request.Body.UserToken, i.taskQueue.Config.Scicat.Host)
 	if err != nil {
 		return DatasetControllerIngestDataset400TextResponse(err.Error()), nil
 	}

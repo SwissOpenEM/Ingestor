@@ -120,7 +120,7 @@ func AddDatasetToScicat(
 	datasetFolder string,
 	userToken string,
 	scicatUrl string,
-) (datasetId string, totalSize int64, fileList []datasetIngestor.Datafile, err error) {
+) (datasetId string, totalSize int64, fileList []datasetIngestor.Datafile, username string, err error) {
 	var http_client = &http.Client{
 		Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}},
 		Timeout:   120 * time.Second}
@@ -138,13 +138,13 @@ func AddDatasetToScicat(
 
 	fullUser, accessGroups, err := datasetUtils.GetUserInfoFromToken(http_client, SCICAT_API_URL, userToken)
 	if err != nil {
-		return datasetId, totalSize, fileList, err
+		return datasetId, totalSize, fileList, "", err
 	}
 
 	// check if dataset already exists (identified by source folder)
 	_, _, err = datasetIngestor.CheckMetadata(http_client, SCICAT_API_URL, metaDataMap, fullUser, accessGroups)
 	if err != nil {
-		return datasetId, totalSize, fileList, err
+		return datasetId, totalSize, fileList, "", err
 	}
 
 	var skippedLinks uint = 0
@@ -155,15 +155,15 @@ func AddDatasetToScicat(
 	// collect (local) files
 	fileList, startTime, endTime, owner, numFiles, totalSize, err := datasetIngestor.GetLocalFileList(datasetFolder, DATASETFILELISTTXT, localSymlinkCallback, localFilepathFilterCallback)
 	if err != nil {
-		return datasetId, totalSize, fileList, err
+		return datasetId, totalSize, fileList, "", err
 	}
 
 	// size & filecount checks
 	if totalSize == 0 {
-		return datasetId, totalSize, fileList, errors.New("can't ingest: the total size of the dataset is 0")
+		return datasetId, totalSize, fileList, "", errors.New("can't ingest: the total size of the dataset is 0")
 	}
 	if numFiles > MAX_FILES {
-		return datasetId, totalSize, fileList, fmt.Errorf("can't ingest: the number of files (%d) exceeds the max. allowed (%d)", numFiles, MAX_FILES)
+		return datasetId, totalSize, fileList, "", fmt.Errorf("can't ingest: the number of files (%d) exceeds the max. allowed (%d)", numFiles, MAX_FILES)
 	}
 
 	originalMetaDataMap := map[string]string{}
@@ -179,7 +179,7 @@ func AddDatasetToScicat(
 
 	// TODO: add attachments here if it's going to be needed
 
-	return datasetId, totalSize, fileList, err
+	return datasetId, totalSize, fileList, fullUser["username"], err
 }
 
 func TransferDataset(
