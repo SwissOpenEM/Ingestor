@@ -63,7 +63,6 @@ type TransferTask struct {
 	DatasetFolder   DatasetFolder
 	datasetId       string
 	fileList        []datasetIngestor.Datafile
-	DatasetMetadata map[string]interface{}
 	TransferMethod  TransferMethod
 	Context         context.Context
 	Cancel          context.CancelFunc
@@ -78,7 +77,7 @@ type Result struct {
 	Error           error
 }
 
-func CreateTransferTask(datasetId string, fileList []datasetIngestor.Datafile, datasetFolder DatasetFolder, metadata map[string]interface{}, transferMethod TransferMethod, transferObjects map[string]interface{}, cancel context.CancelFunc) TransferTask {
+func CreateTransferTask(datasetId string, fileList []datasetIngestor.Datafile, datasetFolder DatasetFolder, transferMethod TransferMethod, transferObjects map[string]interface{}, cancel context.CancelFunc) TransferTask {
 	totalBytes := 0
 	for _, file := range fileList {
 		totalBytes += int(file.Size)
@@ -87,7 +86,6 @@ func CreateTransferTask(datasetId string, fileList []datasetIngestor.Datafile, d
 		datasetId:       datasetId,
 		fileList:        fileList,
 		DatasetFolder:   datasetFolder,
-		DatasetMetadata: metadata,
 		TransferMethod:  transferMethod,
 		transferObjects: transferObjects,
 		Cancel:          cancel,

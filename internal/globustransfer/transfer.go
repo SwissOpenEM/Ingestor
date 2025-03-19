@@ -3,6 +3,7 @@ package globustransfer
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"path"
 	"path/filepath"
 	"time"
@@ -49,7 +50,8 @@ func TransferFiles(
 	SourcePrefixPath string,
 	DestinationCollectionID string,
 	DestinationPathTemplate string,
-	DestPathParams DestPathParamsStruct,
+	datasetId string,
+	username string,
 	taskCtx context.Context,
 	datasetPath string,
 	fileList []File,
@@ -64,7 +66,17 @@ func TransferFiles(
 	}
 	datasetPath = filepath.ToSlash(datasetPath)
 
-	finalDestinationPath, err := TemplateDestinationFolder(DestPathParams)
+	destParams := destPathParamsStruct{
+		DatasetFolder: path.Base(datasetPath),
+		SourceFolder:  datasetPath,
+		Pid:           datasetId,
+		PidShort:      path.Base(datasetId),
+		PidPrefix:     path.Dir(datasetId),
+		PidEncoded:    url.PathEscape(datasetId),
+		Username:      username,
+	}
+
+	finalDestinationPath, err := templateDestinationFolder(destParams)
 	if err != nil {
 		return err
 	}

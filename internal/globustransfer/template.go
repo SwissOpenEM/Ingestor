@@ -14,7 +14,7 @@ var datasetDestPathTemplate *template.Template = template.New("dataset destinati
 	},
 )
 
-type DestPathParamsStruct struct {
+type destPathParamsStruct struct {
 	DatasetFolder string
 	SourceFolder  string
 	Pid           string
@@ -24,8 +24,14 @@ type DestPathParamsStruct struct {
 	Username      string
 }
 
-func TemplateDestinationFolder(data DestPathParamsStruct) (string, error) {
+func templateDestinationFolder(data destPathParamsStruct) (string, error) {
 	buffer := bytes.Buffer{}
 	err := datasetDestPathTemplate.Execute(&buffer, data)
 	return buffer.String(), err
+}
+
+func SetTemplateForDestinationPath(template string) error {
+	var err error
+	datasetDestPathTemplate, err = datasetDestPathTemplate.Parse(template)
+	return err
 }

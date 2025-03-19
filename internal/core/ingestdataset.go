@@ -117,7 +117,7 @@ func CheckIfFolderExists(path string) error {
 
 func AddDatasetToScicat(
 	metaDataMap map[string]interface{},
-	folderPath string,
+	datasetFolder string,
 	userToken string,
 	scicatUrl string,
 ) (datasetId string, totalSize int64, fileList []datasetIngestor.Datafile, err error) {
@@ -135,8 +135,6 @@ func AddDatasetToScicat(
 	user := map[string]string{
 		"accessToken": userToken,
 	}
-
-	datasetFolder := folderPath
 
 	fullUser, accessGroups, err := datasetUtils.GetUserInfoFromToken(http_client, SCICAT_API_URL, userToken)
 	if err != nil {
@@ -215,9 +213,13 @@ func TransferDataset(
 		if !ok {
 			return fmt.Errorf("globus client was not set")
 		}
-		destParams, ok := transferTask.GetTransferObject("dest_params").(globustransfer.DestPathParamsStruct)
+		datasetId, ok := transferTask.GetTransferObject("dataset_id").(string)
 		if !ok {
-			return fmt.Errorf("no destination path parameters were set")
+			return fmt.Errorf("dataset id was not set for globus transfer")
+		}
+		username, ok := transferTask.GetTransferObject("username").(string)
+		if !ok {
+			return fmt.Errorf("username was not set for globus transfer")
 		}
 
 		// globus doesn't work with absolute folders, this library uses sourcePrefix to adapt the path to the globus' own path from a relative path
@@ -237,7 +239,8 @@ func TransferDataset(
 			config.Transfer.Globus.SourcePrefixPath,
 			config.Transfer.Globus.DestinationCollectionID,
 			config.Transfer.Globus.DestinationTemplate,
-			destParams,
+			datasetId,
+			username,
 			task_context,
 			relativeDatasetFolder,
 			files,
