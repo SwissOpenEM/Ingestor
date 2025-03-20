@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/SwissOpenEM/Ingestor/internal/globustransfer"
 	task "github.com/SwissOpenEM/Ingestor/internal/transfertask"
 	"github.com/alitto/pond/v2"
 	"github.com/elliotchance/orderedmap/v2"
@@ -31,6 +32,10 @@ func (w *TaskQueue) Startup() {
 	w.inputChannel = make(chan *task.TransferTask)
 	w.datasetUploadTasks = orderedmap.NewOrderedMap[uuid.UUID, *task.TransferTask]()
 	w.taskPool = pond.NewPool(w.Config.Transfer.ConcurrencyLimit, pond.WithQueueSize(w.Config.Transfer.QueueSize))
+	err := globustransfer.SetTemplateForDestinationPath(w.Config.Transfer.Globus.DestinationTemplate)
+	if err != nil {
+		panic(fmt.Sprintf("can't set destination path template for globus due to the following reason: %s", err.Error()))
+	}
 }
 
 func (w *TaskQueue) AddTransferTask(datasetId string, fileList []datasetIngestor.Datafile, taskId uuid.UUID, folderPath string, ownerGroup string, autoArchive bool, transferObjects map[string]interface{}) error {
