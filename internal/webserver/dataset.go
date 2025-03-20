@@ -129,7 +129,7 @@ func (i *IngestorWebServerImplemenation) DatasetControllerIngestDataset(ctx cont
 
 	ownerGroup, ok := metadata["ownerGroup"].(string)
 	if !ok {
-		return DatasetControllerIngestDataset400TextResponse("sourceFolder is not present in the metadata"), nil
+		return DatasetControllerIngestDataset400TextResponse("ownerGroup is not present in the metadata"), nil
 	}
 
 	// check if folder exists
