@@ -12,6 +12,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
  - (CONFIG) Transfer.Globus.SourceCollection becomes Transfer.Globus.SourceCollectionID (no change in expected value)
  - (CONFIG) Transfer.Globus.DestinationCollection becomes Transfer.Globus.DestinationCollectionID (no change in expected value)
- - (CODE) Some refactoring, particularly there's now a separate S3 and Globus add task function
+ - (CODE) Some refactoring, particularly there's now separate S3 and Globus add task functions
 ### Removed
- - (CONFIG) Transfer.Globus.DestinationPrefixPath is removed because Destnation TEmplate akes ovrd
+ - (CONFIG) Transfer.Globus.DestinationPrefixPath is removed because DestinationTemplate replaces it in functionality
