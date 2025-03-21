@@ -10,14 +10,13 @@ type S3TransferConfig struct {
 }
 
 type GlobusTransferConfig struct {
-	ClientID              string   `yaml:"clientId"`
-	ClientSecret          string   `yaml:"clientSecret,omitempty"`
-	RedirectURL           string   `yaml:"redirectUrl"`
-	Scopes                []string `yaml:"scopes,omitempty"`
-	SourceCollection      string   `yaml:"sourceCollection"`
-	SourcePrefixPath      string   `yaml:"sourcePrefixPath,omitempty"`
-	DestinationCollection string   `yaml:"destinationCollection"`
-	DestinationPrefixPath string   `yaml:"destinationPrefixPath,omitempty"`
+	ClientID                string   `yaml:"clientId"`
+	ClientSecret            string   `yaml:"clientSecret,omitempty"`
+	RedirectURL             string   `yaml:"redirectUrl"`
+	Scopes                  []string `yaml:"scopes,omitempty"`
+	SourceCollectionID      string   `yaml:"sourceCollection"`
+	SourcePrefixPath        string   `yaml:"sourcePrefixPath,omitempty"`
+	DestinationCollectionID string   `yaml:"destinationCollection"`
 }
 
 type TransferConfig struct {

@@ -6,6 +6,8 @@ package webserver
 import (
 	"context"
 	"fmt"
+	"strings"
+	"text/template"
 
 	"github.com/SwissOpenEM/Ingestor/internal/core"
 	"github.com/SwissOpenEM/Ingestor/internal/webserver/metadatatasks"
@@ -19,19 +21,20 @@ import (
 var _ StrictServerInterface = (*IngestorWebServerImplemenation)(nil)
 
 type IngestorWebServerImplemenation struct {
-	version         string
-	taskQueue       *core.TaskQueue
-	metadataExtPool *metadatatasks.MetadataExtractionTaskPool
-	oauth2Config    *oauth2.Config
-	globusAuthConf  *oauth2.Config
-	oidcProvider    *oidc.Provider
-	oidcVerifier    *oidc.IDTokenVerifier
-	jwtKeyfunc      jwt.Keyfunc
-	jwtSignMethods  []string
-	sessionDuration uint
-	scopeToRoleMap  map[string]string
-	pathConfig      wsconfig.PathsConf
-	frontend        struct {
+	version            string
+	taskQueue          *core.TaskQueue
+	metadataExtPool    *metadatatasks.MetadataExtractionTaskPool
+	oauth2Config       *oauth2.Config
+	globusAuthConf     *oauth2.Config
+	globusDestTemplate *template.Template
+	oidcProvider       *oidc.Provider
+	oidcVerifier       *oidc.IDTokenVerifier
+	jwtKeyfunc         jwt.Keyfunc
+	jwtSignMethods     []string
+	sessionDuration    uint
+	scopeToRoleMap     map[string]string
+	pathConfig         wsconfig.PathsConf
+	frontend           struct {
 		origin       string
 		redirectPath string
 	}
@@ -85,23 +88,33 @@ func NewIngestorWebServer(version string, transferQueue *core.TaskQueue, metadat
 		transferQueue.Config.Transfer.Globus.Scopes,
 	)
 
+	globusDestTemplate, err := template.New("globus destination template").Funcs(template.FuncMap{
+		"replace": func(s string, query string, repl string) string {
+			return strings.ReplaceAll(s, query, repl)
+		},
+	}).Parse(serverConf.OtherConf.GlobusDestinationTemplate)
+	if err != nil {
+		return nil, err
+	}
+
 	if !transferQueue.IsServiceUserSet() && !serverConf.DisableServiceAccountCheck {
-		panic(fmt.Errorf("no service account was set"))
+		return nil, fmt.Errorf("no service account was set")
 	}
 
 	return &IngestorWebServerImplemenation{
-		version:         version,
-		taskQueue:       transferQueue,
-		oauth2Config:    &oauthConf,
-		globusAuthConf:  &globusAuthConf,
-		oidcProvider:    oidcProvider,
-		oidcVerifier:    oidcVerifier,
-		jwtKeyfunc:      keyfunc,
-		jwtSignMethods:  signMethods,
-		scopeToRoleMap:  scopeToRoleMap,
-		sessionDuration: serverConf.SessionDuration,
-		pathConfig:      serverConf.PathsConf,
-		metadataExtPool: metadataExtPool,
+		version:            version,
+		taskQueue:          transferQueue,
+		oauth2Config:       &oauthConf,
+		globusAuthConf:     &globusAuthConf,
+		globusDestTemplate: globusDestTemplate,
+		oidcProvider:       oidcProvider,
+		oidcVerifier:       oidcVerifier,
+		jwtKeyfunc:         keyfunc,
+		jwtSignMethods:     signMethods,
+		scopeToRoleMap:     scopeToRoleMap,
+		sessionDuration:    serverConf.SessionDuration,
+		pathConfig:         serverConf.PathsConf,
+		metadataExtPool:    metadataExtPool,
 		frontend: struct {
 			origin       string
 			redirectPath string

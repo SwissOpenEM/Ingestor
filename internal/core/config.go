@@ -63,6 +63,7 @@ func (c *ConfigReader) ReadConfig(configFileName string) (Config, error) {
 	c.viperConf.SetConfigName(configFileName) // name of config file (without extension)
 
 	viper.SetDefault("WebServer.Port", 8888)
+	viper.SetDefault("WebServer.Other.GlobusDestinationTemplate", "/{{ .SourceFolder }}")
 
 	err := c.viperConf.ReadInConfig()
 	if err == nil {

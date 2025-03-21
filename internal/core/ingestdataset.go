@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"text/template"
 	"time"
 
 	"github.com/SwissOpenEM/Ingestor/internal/globustransfer"
@@ -117,10 +118,10 @@ func CheckIfFolderExists(path string) error {
 
 func AddDatasetToScicat(
 	metaDataMap map[string]interface{},
-	folderPath string,
+	datasetFolder string,
 	userToken string,
 	scicatUrl string,
-) (datasetId string, totalSize int64, fileList []datasetIngestor.Datafile, err error) {
+) (datasetId string, totalSize int64, fileList []datasetIngestor.Datafile, username string, err error) {
 	var http_client = &http.Client{
 		Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}},
 		Timeout:   120 * time.Second}
@@ -136,17 +137,15 @@ func AddDatasetToScicat(
 		"accessToken": userToken,
 	}
 
-	datasetFolder := folderPath
-
 	fullUser, accessGroups, err := datasetUtils.GetUserInfoFromToken(http_client, SCICAT_API_URL, userToken)
 	if err != nil {
-		return datasetId, totalSize, fileList, err
+		return datasetId, totalSize, fileList, "", err
 	}
 
 	// check if dataset already exists (identified by source folder)
 	_, _, err = datasetIngestor.CheckMetadata(http_client, SCICAT_API_URL, metaDataMap, fullUser, accessGroups)
 	if err != nil {
-		return datasetId, totalSize, fileList, err
+		return datasetId, totalSize, fileList, "", err
 	}
 
 	var skippedLinks uint = 0
@@ -157,15 +156,15 @@ func AddDatasetToScicat(
 	// collect (local) files
 	fileList, startTime, endTime, owner, numFiles, totalSize, err := datasetIngestor.GetLocalFileList(datasetFolder, DATASETFILELISTTXT, localSymlinkCallback, localFilepathFilterCallback)
 	if err != nil {
-		return datasetId, totalSize, fileList, err
+		return datasetId, totalSize, fileList, "", err
 	}
 
 	// size & filecount checks
 	if totalSize == 0 {
-		return datasetId, totalSize, fileList, errors.New("can't ingest: the total size of the dataset is 0")
+		return datasetId, totalSize, fileList, "", errors.New("can't ingest: the total size of the dataset is 0")
 	}
 	if numFiles > MAX_FILES {
-		return datasetId, totalSize, fileList, fmt.Errorf("can't ingest: the number of files (%d) exceeds the max. allowed (%d)", numFiles, MAX_FILES)
+		return datasetId, totalSize, fileList, "", fmt.Errorf("can't ingest: the number of files (%d) exceeds the max. allowed (%d)", numFiles, MAX_FILES)
 	}
 
 	originalMetaDataMap := map[string]string{}
@@ -181,7 +180,7 @@ func AddDatasetToScicat(
 
 	// TODO: add attachments here if it's going to be needed
 
-	return datasetId, totalSize, fileList, err
+	return datasetId, totalSize, fileList, fullUser["username"], err
 }
 
 func TransferDataset(
@@ -210,6 +209,24 @@ func TransferDataset(
 
 		err = s3upload.UploadS3(task_context, datasetId, datasetFolder, fileList, transferTask.DatasetFolder.Id, config.Transfer.S3, accessToken, refreshToken, notifier)
 	case transfertask.TransferGlobus:
+		// get transfer objects
+		client, ok := transferTask.GetTransferObject("globus_client").(*globus.GlobusClient)
+		if !ok {
+			return fmt.Errorf("globus client was not set")
+		}
+		datasetId, ok := transferTask.GetTransferObject("dataset_id").(string)
+		if !ok {
+			return fmt.Errorf("dataset id was not set for globus transfer")
+		}
+		username, ok := transferTask.GetTransferObject("username").(string)
+		if !ok {
+			return fmt.Errorf("username was not set for globus transfer")
+		}
+		destTemplate, ok := transferTask.GetTransferObject("destination_template").(*template.Template)
+		if !ok {
+			return fmt.Errorf("destination template was not set for this globus transfer request")
+		}
+
 		// globus doesn't work with absolute folders, this library uses sourcePrefix to adapt the path to the globus' own path from a relative path
 		relativeDatasetFolder := strings.TrimPrefix(datasetFolder, config.WebServer.CollectionLocation)
 		files := make([]globustransfer.File, len(fileList))
@@ -219,20 +236,20 @@ func TransferDataset(
 			files[i].Path = file.Path
 			bytesTotal += int(file.Size)
 		}
-		client, ok := transferTask.GetTransferObject("globus_client").(*globus.GlobusClient)
-		if !ok {
-			return fmt.Errorf("globus client was not set")
-		}
+
 		transferTask.TransferStarted()
 		err = globustransfer.TransferFiles(
 			client,
-			config.Transfer.Globus.SourceCollection,
+			config.Transfer.Globus.SourceCollectionID,
 			config.Transfer.Globus.SourcePrefixPath,
-			config.Transfer.Globus.DestinationCollection,
-			config.Transfer.Globus.DestinationPrefixPath,
+			config.Transfer.Globus.DestinationCollectionID,
+			destTemplate,
+			datasetId,
+			username,
 			task_context,
 			relativeDatasetFolder,
 			files,
+			destTemplate,
 			func(bytesTransferred, filesTransferred int) {
 				progress := bytesTransferred * 100 / bytesTotal
 				notifier.OnTaskProgress(transferTask.DatasetFolder.Id, progress)

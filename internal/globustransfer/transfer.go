@@ -1,10 +1,13 @@
 package globustransfer
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"net/url"
+	"path"
 	"path/filepath"
-	"strings"
+	"text/template"
 	"time"
 
 	"github.com/SwissOpenEM/globus"
@@ -45,13 +48,16 @@ func checkTransfer(client *globus.GlobusClient, globusTaskId string) (bytesTrans
 // globus transfer task function, uses the notifier to update the status of the transfer
 func TransferFiles(
 	client *globus.GlobusClient,
-	SourceCollection string,
+	SourceCollectionID string,
 	SourcePrefixPath string,
-	DestinationCollection string,
-	DestinationPrefixPath string,
+	DestinationCollectionID string,
+	DestinationPathTemplate *template.Template,
+	datasetId string,
+	username string,
 	taskCtx context.Context,
-	datasetFolder string,
+	datasetPath string,
 	fileList []File,
+	destTemplate *template.Template,
 	UpdateProgress func(bytesTransferred int, filesTransferred int),
 ) error {
 	// transfer given filelist
@@ -61,15 +67,30 @@ func TransferFiles(
 		filePathList = append(filePathList, filepath.ToSlash(file.Path))
 		fileIsSymlinkList = append(fileIsSymlinkList, file.IsSymlink)
 	}
-	datasetFolder = filepath.ToSlash(datasetFolder)
+	datasetPath = filepath.ToSlash(datasetPath)
 
-	s := strings.Split(strings.Trim(datasetFolder, "/"), "/")
-	datasetFolderName := s[len(s)-1]
+	destParams := destPathParamsStruct{
+		DatasetFolder: path.Base(datasetPath),
+		SourceFolder:  datasetPath,
+		Pid:           datasetId,
+		PidShort:      path.Base(datasetId),
+		PidPrefix:     path.Dir(datasetId),
+		PidEncoded:    url.PathEscape(datasetId),
+		Username:      username,
+	}
+
+	destPathBuffer := bytes.Buffer{}
+	err := destTemplate.Execute(&destPathBuffer, destParams)
+	if err != nil {
+		return err
+	}
+	finalDestPath := destPathBuffer.String()
+
 	result, err := client.TransferFileList(
-		SourceCollection,
-		SourcePrefixPath+"/"+datasetFolder,
-		DestinationCollection,
-		DestinationPrefixPath+"/"+datasetFolderName,
+		SourceCollectionID,
+		path.Join(SourcePrefixPath, datasetPath),
+		DestinationCollectionID,
+		finalDestPath,
 		filePathList,
 		fileIsSymlinkList,
 		true,
