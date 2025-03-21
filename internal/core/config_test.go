@@ -90,6 +90,10 @@ func createExpectedValidConfig(transferConfig transfertask.TransferConfig) Confi
 		},
 	}
 
+	if transferConfig.Method == "S3" {
+		expected_ws.OtherConf.GlobusDestinationTemplate = ""
+	}
+
 	expected_LS_methods := []metadataextractor.MethodConfig{
 		{
 			Name:   "Single Particle",
