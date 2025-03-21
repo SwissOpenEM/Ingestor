@@ -123,6 +123,11 @@ func (i *IngestorWebServerImplemenation) DatasetControllerIngestDataset(ctx cont
 	}
 	folderPath := filepath.Join(i.pathConfig.CollectionLocation, filepath.Clean(sourceFolder))
 
+	ownerGroup, ok := metadata["ownerGroup"].(string)
+	if !ok {
+		return DatasetControllerIngestDataset400TextResponse("ownerGroup is not present in the metadata"), nil
+	}
+
 	// check if folder exists
 	err = core.CheckIfFolderExists(folderPath)
 	if err != nil {
@@ -135,13 +140,19 @@ func (i *IngestorWebServerImplemenation) DatasetControllerIngestDataset(ctx cont
 		return DatasetControllerIngestDataset400TextResponse(err.Error()), nil
 	}
 
+	// set auto-archival parameter
+	autoArchive := true
+	if request.Body.AutoArchive != nil {
+		autoArchive = *request.Body.AutoArchive
+	}
+
 	// add transfer job
 	var taskId uuid.UUID
 	switch i.taskQueue.GetTransferMethod() {
 	case transfertask.TransferGlobus:
-		taskId, err = i.addGlobusTransferTask(ctx, datasetId, fileList, sourceFolder, username)
+		taskId, err = i.addGlobusTransferTask(ctx, datasetId, fileList, folderPath, ownerGroup, autoArchive, username)
 	case transfertask.TransferS3:
-		taskId, err = i.addS3TransferTask(ctx, datasetId, fileList, sourceFolder, request.Body.UserToken)
+		taskId, err = i.addS3TransferTask(ctx, datasetId, fileList, folderPath, ownerGroup, autoArchive, request.Body.UserToken)
 	}
 	if err != nil {
 		if _, ok := err.(*os.PathError); ok {
@@ -165,7 +176,7 @@ func (i *IngestorWebServerImplemenation) DatasetControllerIngestDataset(ctx cont
 	}, nil
 }
 
-func (i *IngestorWebServerImplemenation) addGlobusTransferTask(ctx context.Context, datasetId string, fileList []datasetIngestor.Datafile, sourceFolder string, username string) (uuid.UUID, error) {
+func (i *IngestorWebServerImplemenation) addGlobusTransferTask(ctx context.Context, datasetId string, fileList []datasetIngestor.Datafile, folderPath string, ownerGroup string, autoArchive bool, username string) (uuid.UUID, error) {
 	taskId := uuid.New()
 	transferObjects := map[string]interface{}{}
 
@@ -180,14 +191,14 @@ func (i *IngestorWebServerImplemenation) addGlobusTransferTask(ctx context.Conte
 	transferObjects["dataset_id"] = datasetId
 	transferObjects["username"] = username
 
-	err = i.taskQueue.AddTransferTask(transferObjects, datasetId, fileList, sourceFolder, taskId)
+	err = i.taskQueue.AddTransferTask(datasetId, fileList, taskId, folderPath, ownerGroup, autoArchive, transferObjects)
 	if err != nil {
 		return uuid.UUID{}, err
 	}
 	return taskId, nil
 }
 
-func (i *IngestorWebServerImplemenation) addS3TransferTask(ctx context.Context, datasetId string, fileList []datasetIngestor.Datafile, sourceFolder string, scicatToken string) (uuid.UUID, error) {
+func (i *IngestorWebServerImplemenation) addS3TransferTask(ctx context.Context, datasetId string, fileList []datasetIngestor.Datafile, folderPath string, ownerGroup string, autoArchive bool, scicatToken string) (uuid.UUID, error) {
 	taskId := uuid.New()
 	transferObjects := map[string]interface{}{}
 
@@ -199,7 +210,7 @@ func (i *IngestorWebServerImplemenation) addS3TransferTask(ctx context.Context, 
 	transferObjects["accessToken"] = accessToken
 	transferObjects["refreshToken"] = refreshToken
 
-	err = i.taskQueue.AddTransferTask(transferObjects, datasetId, fileList, sourceFolder, taskId)
+	err = i.taskQueue.AddTransferTask(datasetId, fileList, taskId, folderPath, ownerGroup, autoArchive, transferObjects)
 	if err != nil {
 		return uuid.UUID{}, err
 	}

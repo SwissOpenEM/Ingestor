@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"path"
 	"strings"
 	"sync"
 	"time"
@@ -39,16 +38,18 @@ func (w *TaskQueue) Startup() {
 	}
 }
 
-func (w *TaskQueue) AddTransferTask(transferObjects map[string]interface{}, datasetId string, fileList []datasetIngestor.Datafile, sourceFolder string, taskId uuid.UUID) error {
+func (w *TaskQueue) AddTransferTask(datasetId string, fileList []datasetIngestor.Datafile, taskId uuid.UUID, folderPath string, ownerGroup string, autoArchive bool, transferObjects map[string]interface{}) error {
 	transferMethod := w.GetTransferMethod()
 	t := task.CreateTransferTask(
 		datasetId,
 		fileList,
 		task.DatasetFolder{
 			Id:         taskId,
-			FolderPath: path.Join(w.Config.WebServer.CollectionLocation, sourceFolder),
+			FolderPath: folderPath,
 		},
+		ownerGroup,
 		transferMethod,
+		autoArchive,
 		transferObjects,
 		nil,
 	)

@@ -271,5 +271,15 @@ func TransferDataset(
 		return err
 	}
 	err = datasetIngestor.MarkFilesReady(http_client, config.Scicat.Host, datasetId, user)
+	if err != nil {
+		return err
+	}
+
+	// auto archive
+	if transferTask.ToAutoArchive() {
+		copies := 1
+		_, err = datasetUtils.CreateArchivalJob(http_client, config.Scicat.Host, user, transferTask.GetDatasetOwnerGroup(), []string{datasetId}, &copies)
+	}
+
 	return err
 }
