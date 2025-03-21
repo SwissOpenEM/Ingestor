@@ -36,6 +36,18 @@ type HttpUploader struct {
 var instance *HttpUploader
 var once sync.Once
 
+func InitHttpUploaderWithPool(pool pond.Pool) {
+	once.Do(func() {
+		retryClient := retryablehttp.NewClient()
+		retryClient.RetryMax = 10
+		retryClient.Backoff = retryablehttp.DefaultBackoff
+		retryClient.Logger = log()
+
+		standardClient := retryClient.StandardClient()
+		instance = &HttpUploader{Pool: pool, Client: standardClient}
+	})
+}
+
 func GetHttpUploader(poolSize int) *HttpUploader {
 	once.Do(func() {
 		retryClient := retryablehttp.NewClient()

@@ -39,7 +39,6 @@ func createExpectedValidConfigGlobus() transfertask.TransferConfig {
 			SourceCollectionID:      "collectionid1",
 			SourcePrefixPath:        "/some/optional/path",
 			DestinationCollectionID: "collectionid2",
-			DestinationTemplate:     "/{{ .Username }}/{{ replace .Pid \".\" \"_\" }}/{{ .DatasetFolder }}",
 		},
 	}
 }
@@ -85,9 +84,14 @@ func createExpectedValidConfig(transferConfig transfertask.TransferConfig) Confi
 			QueueSize:        200,
 		},
 		OtherConf: wsconfig.OtherConf{
-			Port:     8888,
-			LogLevel: "Info",
+			Port:                      8888,
+			LogLevel:                  "Info",
+			GlobusDestinationTemplate: "/{{ .Username }}/{{ replace .Pid \".\" \"_\" }}/{{ .DatasetFolder }}",
 		},
+	}
+
+	if transferConfig.Method == "S3" {
+		expected_ws.OtherConf.GlobusDestinationTemplate = ""
 	}
 
 	expected_LS_methods := []metadataextractor.MethodConfig{

@@ -66,6 +66,7 @@ type OtherConf struct {
 	Port                       int    `int:"Port" validate:"required,gte=0"`
 	LogLevel                   string `string:"LogLevel" validate:"oneof=Debug Info Warning Error"`
 	DisableServiceAccountCheck bool
+	GlobusDestinationTemplate  string `string:"GlobusDestinationTemplate"`
 }
 
 type WebServerConfig struct {

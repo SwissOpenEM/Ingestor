@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"text/template"
 	"time"
 
 	"github.com/SwissOpenEM/Ingestor/internal/globustransfer"
@@ -221,6 +222,10 @@ func TransferDataset(
 		if !ok {
 			return fmt.Errorf("username was not set for globus transfer")
 		}
+		destTemplate, ok := transferTask.GetTransferObject("destination_template").(*template.Template)
+		if !ok {
+			return fmt.Errorf("destination template was not set for this globus transfer request")
+		}
 
 		// globus doesn't work with absolute folders, this library uses sourcePrefix to adapt the path to the globus' own path from a relative path
 		relativeDatasetFolder := strings.TrimPrefix(datasetFolder, config.WebServer.CollectionLocation)
@@ -238,12 +243,13 @@ func TransferDataset(
 			config.Transfer.Globus.SourceCollectionID,
 			config.Transfer.Globus.SourcePrefixPath,
 			config.Transfer.Globus.DestinationCollectionID,
-			config.Transfer.Globus.DestinationTemplate,
+			destTemplate,
 			datasetId,
 			username,
 			task_context,
 			relativeDatasetFolder,
 			files,
+			destTemplate,
 			func(bytesTransferred, filesTransferred int) {
 				progress := bytesTransferred * 100 / bytesTotal
 				notifier.OnTaskProgress(transferTask.DatasetFolder.Id, progress)

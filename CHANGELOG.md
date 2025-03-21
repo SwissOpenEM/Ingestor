@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [PR #96] (2025-03-21)
+## Added
+ - Implemented pond subpools for all task based systems in the code
+## Changed
+ - (CONFIG) Transfer.Globus.DestinationTemplate was moved to WebServer.Other.GlobusDestinationTemplate because of the way the internal code works.
+
 ## [PR #101] (2025-03-20)
 ### Added
  - Configurable, templated destination path for datasets when using Globus for transfer

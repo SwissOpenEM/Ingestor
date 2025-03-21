@@ -1,11 +1,13 @@
 package globustransfer
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"net/url"
 	"path"
 	"path/filepath"
+	"text/template"
 	"time"
 
 	"github.com/SwissOpenEM/globus"
@@ -49,12 +51,13 @@ func TransferFiles(
 	SourceCollectionID string,
 	SourcePrefixPath string,
 	DestinationCollectionID string,
-	DestinationPathTemplate string,
+	DestinationPathTemplate *template.Template,
 	datasetId string,
 	username string,
 	taskCtx context.Context,
 	datasetPath string,
 	fileList []File,
+	destTemplate *template.Template,
 	UpdateProgress func(bytesTransferred int, filesTransferred int),
 ) error {
 	// transfer given filelist
@@ -76,16 +79,18 @@ func TransferFiles(
 		Username:      username,
 	}
 
-	finalDestinationPath, err := templateDestinationFolder(destParams)
+	destPathBuffer := bytes.Buffer{}
+	err := destTemplate.Execute(&destPathBuffer, destParams)
 	if err != nil {
 		return err
 	}
+	finalDestPath := destPathBuffer.String()
 
 	result, err := client.TransferFileList(
 		SourceCollectionID,
 		path.Join(SourcePrefixPath, datasetPath),
 		DestinationCollectionID,
-		finalDestinationPath,
+		finalDestPath,
 		filePathList,
 		fileIsSymlinkList,
 		true,

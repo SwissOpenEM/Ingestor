@@ -17,7 +17,6 @@ type GlobusTransferConfig struct {
 	SourceCollectionID      string   `yaml:"sourceCollection"`
 	SourcePrefixPath        string   `yaml:"sourcePrefixPath,omitempty"`
 	DestinationCollectionID string   `yaml:"destinationCollection"`
-	DestinationTemplate     string   `yaml:"destinationTemplate"`
 }
 
 type TransferConfig struct {

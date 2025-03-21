@@ -10,7 +10,6 @@ Transfer:
     SourceCollectionID: "collectionid1"
     SourcePrefixPath: "/some/optional/path"
     DestinationCollectionID: "collectionid2"
-    DestinationTemplate: "/{{ .Username }}/{{ replace .Pid \".\" \"_\" }}/{{ .DatasetFolder }}"
     Scopes:
       - "urn:globus:auth:scope:transfer.api.globus.org:all[*https://auth.globus.org/scopes/[collection_id1]/data_access]"
 MetadataExtractors:
@@ -83,3 +82,4 @@ WebServer:
   Other:
     Port: 8888
     LogLevel: "Info"
+    GlobusDestinationTemplate: "/{{ .Username }}/{{ replace .Pid \".\" \"_\" }}/{{ .DatasetFolder }}"
