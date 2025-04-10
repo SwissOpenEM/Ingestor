@@ -20,8 +20,12 @@ type GlobusTransferConfig struct {
 	DestinationTemplate     string   `yaml:"destinationTemplate"`
 }
 
+type GlobusExternTransferConfig struct {
+	TransferServiceUrl string `string:"TransferServiceUrl" validate:"http_url"`
+}
+
 type TransferConfig struct {
-	Method           string               `string:"Method" validate:"oneof=S3 Globus"`
+	Method           string               `string:"Method" validate:"oneof=S3 Globus Globus-External"`
 	ConcurrencyLimit int                  `int:"ConcurrencyLimit" validate:"gte=0"`
 	QueueSize        int                  `int:"QueueSize"`
 	S3               S3TransferConfig     `mapstructure:"S3" validate:"required_if=Method S3,omitempty"`

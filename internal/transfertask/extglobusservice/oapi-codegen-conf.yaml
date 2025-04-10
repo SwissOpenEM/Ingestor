@@ -1,0 +1,5 @@
+package: extglobusservice
+output: taskrequest.gen.go
+generate:
+  client: true
+  models: true

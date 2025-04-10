@@ -151,6 +151,9 @@ func (i *IngestorWebServerImplemenation) DatasetControllerIngestDataset(ctx cont
 	switch i.taskQueue.GetTransferMethod() {
 	case transfertask.TransferGlobus:
 		taskId, err = i.addGlobusTransferTask(ctx, datasetId, fileList, folderPath, ownerGroup, autoArchive, username)
+	case transfertask.TransferGlobusExtern:
+		// TODO
+		break
 	case transfertask.TransferS3:
 		taskId, err = i.addS3TransferTask(ctx, datasetId, fileList, folderPath, ownerGroup, autoArchive, request.Body.UserToken)
 	}
