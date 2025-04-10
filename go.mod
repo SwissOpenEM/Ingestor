@@ -1,13 +1,13 @@
 module github.com/SwissOpenEM/Ingestor
 
-go 1.23
+go 1.23.1
 
 toolchain go1.23.6
 
 require (
-	github.com/SwissOpenEM/globus v0.1.1
-	github.com/alitto/pond/v2 v2.2.0
-	github.com/getkin/kin-openapi v0.124.0
+	github.com/SwissOpenEM/globus v0.1.2
+	github.com/alitto/pond/v2 v2.3.2
+	github.com/getkin/kin-openapi v0.127.0
 	github.com/gin-contrib/cors v1.7.2
 	github.com/gin-gonic/gin v1.10.0
 	github.com/golang-jwt/jwt/v5 v5.2.1
@@ -17,14 +17,14 @@ require (
 	github.com/oapi-codegen/gin-middleware v1.0.2
 	github.com/oapi-codegen/oapi-codegen/v2 v2.3.0
 	github.com/oapi-codegen/runtime v1.1.1
-	github.com/paulscherrerinstitute/scicat-cli/v3 v3.0.0-alpha3.0.20250213083245-6a1f075267fd
+	github.com/paulscherrerinstitute/scicat-cli/v3 v3.0.0-alpha3.0.20250404090922-5771cbbc3b6e
 	github.com/samber/slog-gin v1.14.1
 	github.com/spf13/viper v1.19.0
 	github.com/swaggo/files v1.0.1
 	github.com/swaggo/gin-swagger v1.6.0
 	github.com/swaggo/swag v1.16.3
 	github.com/wailsapp/wails/v2 v2.9.2
-	golang.org/x/oauth2 v0.23.0
+	golang.org/x/oauth2 v0.25.0
 	golift.io/xtractr v0.2.2
 )
 
@@ -79,6 +79,7 @@ require (
 	github.com/KyleBanks/depth v1.2.1 // indirect
 	github.com/MicahParks/keyfunc/v3 v3.3.5
 	github.com/Netflix/go-expect v0.0.0-20220104043353-73e0943537d2 // indirect
+	github.com/SwissOpenEM/globus-transfer-service v0.0.0-20250410152818-f995985b523e
 	github.com/apapsch/go-jsonmerge/v2 v2.0.0 // indirect
 	github.com/bep/debounce v1.2.1 // indirect
 	github.com/bytedance/sonic v1.12.6 // indirect
@@ -101,7 +102,7 @@ require (
 	github.com/go-playground/validator/v10 v10.23.0
 	github.com/goccy/go-json v0.10.4 // indirect
 	github.com/godbus/dbus/v5 v5.1.0 // indirect
-	github.com/invopop/yaml v0.2.0 // indirect
+	github.com/invopop/yaml v0.3.1 // indirect
 	github.com/jchv/go-winloader v0.0.0-20210711035445-715c2860da7e // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
@@ -135,12 +136,12 @@ require (
 	github.com/wailsapp/go-webview2 v1.0.16 // indirect
 	github.com/wailsapp/mimetype v1.4.1 // indirect
 	golang.org/x/arch v0.12.0 // indirect
-	golang.org/x/crypto v0.31.0 // indirect
+	golang.org/x/crypto v0.32.0 // indirect
 	golang.org/x/exp v0.0.0-20241009180824-f66d83c29e7c
 	golang.org/x/mod v0.21.0 // indirect
 	golang.org/x/net v0.33.0 // indirect
 	golang.org/x/sync v0.10.0
-	golang.org/x/sys v0.28.0 // indirect
+	golang.org/x/sys v0.29.0 // indirect
 	golang.org/x/text v0.21.0 // indirect
 	golang.org/x/tools v0.26.0 // indirect
 	google.golang.org/protobuf v1.36.1 // indirect
