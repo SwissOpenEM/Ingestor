@@ -79,7 +79,7 @@ require (
 	github.com/KyleBanks/depth v1.2.1 // indirect
 	github.com/MicahParks/keyfunc/v3 v3.3.5
 	github.com/Netflix/go-expect v0.0.0-20220104043353-73e0943537d2 // indirect
-	github.com/SwissOpenEM/globus-transfer-service v0.0.0-20250410152818-f995985b523e
+	github.com/SwissOpenEM/globus-transfer-service v0.0.0-20250411135212-dff6233a0f3b
 	github.com/apapsch/go-jsonmerge/v2 v2.0.0 // indirect
 	github.com/bep/debounce v1.2.1 // indirect
 	github.com/bytedance/sonic v1.12.6 // indirect

@@ -3,8 +3,11 @@ package webserver
 import (
 	"context"
 	"fmt"
+	"net/url"
 
+	"github.com/SwissOpenEM/Ingestor/internal/extglobusservice"
 	"github.com/SwissOpenEM/Ingestor/internal/transfertask"
+	"github.com/SwissOpenEM/globus-transfer-service/jobs"
 	"github.com/google/uuid"
 )
 
@@ -29,6 +32,9 @@ func (i *IngestorWebServerImplemenation) TransferControllerDeleteTransfer(ctx co
 
 func (i *IngestorWebServerImplemenation) TransferControllerGetTransfer(ctx context.Context, request TransferControllerGetTransferRequestObject) (TransferControllerGetTransferResponseObject, error) {
 	if request.Params.TransferId != nil {
+		if i.taskQueue.GetTransferMethod() == transfertask.TransferExtGlobus {
+			return GetTaskByJobIdFromScicat(i.taskQueue.Config.Scicat.Host, "", *request.Params.TransferId)
+		}
 		id := *request.Params.TransferId
 		uid, err := uuid.Parse(id)
 		if err != nil {
@@ -66,6 +72,10 @@ func (i *IngestorWebServerImplemenation) TransferControllerGetTransfer(ctx conte
 		pageSize = min(*request.Params.PageSize, 100)
 	}
 
+	if i.taskQueue.GetTransferMethod() == transfertask.TransferExtGlobus {
+		return GetTasksFromScicat(i.taskQueue.Config.Scicat.Host, "", "", (page-1)*pageSize, page*pageSize)
+	}
+
 	resultNo := i.taskQueue.GetTaskCount()
 	ids, statuses, err := i.taskQueue.GetTaskDetailsList((page-1)*pageSize, page*pageSize)
 	if err != nil {
@@ -86,6 +96,54 @@ func (i *IngestorWebServerImplemenation) TransferControllerGetTransfer(ctx conte
 		Total:     &resultNo,
 		Transfers: &transferItems,
 	}, nil
+}
+
+func GetTaskByJobIdFromScicat(scicatServer string, scicatToken string, jobId string) (TransferControllerGetTransferResponseObject, error) {
+	scicatUrl, _ := url.Parse(scicatServer)
+	job, err := jobs.GetJobById(fmt.Sprintf("%s://%s", scicatUrl.Scheme, scicatUrl.Host), scicatToken, jobId)
+	if err != nil {
+		return TransferControllerGetTransfer400TextResponse(err.Error()), nil
+	}
+	return TransferControllerGetTransfer200JSONResponse{
+		Transfers: &[]TransferItem{
+			JobToTransferItem(job),
+		},
+	}, nil
+}
+
+func GetTasksFromScicat(scicatServer string, scicatToken string, ownerUser string, skip uint, limit uint) (TransferControllerGetTransferResponseObject, error) {
+	scicatUrl, _ := url.Parse(scicatServer)
+	jobs, err := extglobusservice.GetGlobusTransferJobsFromScicat(fmt.Sprintf("%s://%s", scicatUrl.Scheme, scicatUrl.Host), scicatToken, ownerUser, skip, limit)
+	if err != nil {
+		return TransferControllerGetTransfer400TextResponse(err.Error()), nil
+	}
+	tasks := make([]TransferItem, len(jobs))
+	for i, job := range jobs {
+		tasks[i] = JobToTransferItem(job)
+	}
+	return TransferControllerGetTransfer200JSONResponse{
+		Transfers: &tasks,
+		Total:     getPointerOrNil(len(tasks)),
+	}, nil
+}
+
+func JobToTransferItem(job jobs.ScicatJob) TransferItem {
+	var status TransferItemStatus
+	if job.JobResultObject.Completed {
+		status = Finished
+	} else if job.JobResultObject.Error != "" {
+		status = Failed
+	} else {
+		status = Transferring
+	}
+	return TransferItem{
+		BytesTransferred: getPointerOrNil(int(job.JobResultObject.BytesTransferred)),
+		FilesTransferred: getPointerOrNil(int(job.JobResultObject.FilesTransferred)),
+		FilesTotal:       getPointerOrNil(int(job.JobResultObject.FilesTotal)),
+		Status:           status,
+		Message:          &job.StatusMessage,
+		TransferId:       job.ID,
+	}
 }
 
 func getPointerOrNil[T comparable](v T) *T {
