@@ -87,3 +87,18 @@ When installing extractors manually, the executable is expected to be in the fol
   
 Alternatively, the ingestor can download metadata extractors from github releases if `DownloadMissingExtractors` is set to `true`. It will download and unpack the respective package into the correct folder, as well as verify the checksum of the downloaded package.
 The packages needs to contain the architecture designator in their name, e.g. `LS_Metadata_reader_Linux_x86_64.tar.gz`
+
+
+### Metadata Schemas
+
+Methods in the metadata extractor depend on schemas which are downloaded from a Url during installation of the extractors.
+
+Example config:
+
+```yaml
+    Methods:
+      - Name: Single Particle
+        Schema: oscem_schemas_spa.schema.json
+        Url: https://raw.githubusercontent.com/osc-em/OSCEM_Schemas/refs/heads/main/project/spa/jsonschema/oscem_schemas_spa.schema.json
+     
+```

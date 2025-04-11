@@ -127,7 +127,28 @@ func NewExtractorHandler(config ExtractorsConfig) *ExtractorHandler {
 				continue
 			}
 
+			response, err := http.Get(m.Url)
+			if err != nil {
+				fmt.Println(err)
+				log().Error("Failed to download schema for method. Skipping.", "method", m.Name, "url", m.Url)
+				continue
+			}
+
 			schemaPath := path.Join(config.SchemasLocation, m.Schema)
+
+			os.Mkdir(config.SchemasLocation, os.ModePerm)
+
+			defer response.Body.Close()
+			outFile, err := os.Create(schemaPath)
+			if err != nil {
+				log().Error("Failed to create schema file for method. Skipping.", "method", m.Name, "url", schemaPath)
+				continue
+			}
+			_, err = io.Copy(outFile, response.Body)
+			if err != nil {
+				log().Error("Failed to create schema file for method. Skipping.", "method", m.Name, "url", schemaPath)
+				continue
+			}
 
 			if _, err := os.Stat(schemaPath); errors.Is(err, os.ErrNotExist) {
 				log().Error("Schema file not found. Skipping.", "method", m.Name, "file", schemaPath)
@@ -160,6 +181,7 @@ func NewExtractorHandler(config ExtractorsConfig) *ExtractorHandler {
 			templ:          tmpl,
 		}
 	}
+
 	return &h
 }
 
