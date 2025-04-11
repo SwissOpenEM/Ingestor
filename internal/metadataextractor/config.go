@@ -5,6 +5,7 @@ import "time"
 type MethodConfig struct {
 	Name   string `string:"Name" validate:"required"`
 	Schema string `string:"Schema" validate:"required"`
+	Url    string `string:"Url" validate:"required,http_url"`
 }
 
 type ExtractorConfig struct {
