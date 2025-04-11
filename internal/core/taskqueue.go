@@ -194,6 +194,8 @@ func (w *TaskQueue) GetTransferMethod() (transferMethod task.TransferMethod) {
 	switch strings.ToLower(w.Config.Transfer.Method) {
 	case "globus":
 		transferMethod = task.TransferGlobus
+	case "extglobus":
+		transferMethod = task.TransferExtGlobus
 	case "s3":
 		transferMethod = task.TransferS3
 	default:
