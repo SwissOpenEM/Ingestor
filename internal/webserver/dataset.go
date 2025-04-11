@@ -9,6 +9,7 @@ import (
 	"slices"
 
 	"github.com/SwissOpenEM/Ingestor/internal/core"
+	"github.com/SwissOpenEM/Ingestor/internal/extglobusservice"
 	"github.com/SwissOpenEM/Ingestor/internal/s3upload"
 	"github.com/SwissOpenEM/Ingestor/internal/transfertask"
 	"github.com/SwissOpenEM/Ingestor/internal/webserver/globusauth"
@@ -151,9 +152,21 @@ func (i *IngestorWebServerImplemenation) DatasetControllerIngestDataset(ctx cont
 	switch i.taskQueue.GetTransferMethod() {
 	case transfertask.TransferGlobus:
 		taskId, err = i.addGlobusTransferTask(ctx, datasetId, fileList, folderPath, ownerGroup, autoArchive, username)
-	case transfertask.TransferGlobusExtern:
+	case transfertask.TransferExtGlobus:
 		// TODO
-		break
+		jobId, err := i.addExtGlobusTransferTask(ctx, datasetId, fileList, autoArchive, request.Body.UserToken)
+		if err != nil {
+			if reqErr, ok := err.(*extglobusservice.RequestError); ok {
+				if reqErr.Code() < 500 {
+					return DatasetControllerIngestDataset400TextResponse(fmt.Sprintf("Transfer request server refused with Code: '%d', Message: '%s'", reqErr.Code(), reqErr.Error())), nil
+				}
+			}
+			return nil, err
+		}
+		return DatasetControllerIngestDataset200JSONResponse{
+			TransferId: jobId,
+			Status:     getStrPointerOrNil("started"),
+		}, nil
 	case transfertask.TransferS3:
 		taskId, err = i.addS3TransferTask(ctx, datasetId, fileList, folderPath, ownerGroup, autoArchive, request.Body.UserToken)
 	}
@@ -199,6 +212,23 @@ func (i *IngestorWebServerImplemenation) addGlobusTransferTask(ctx context.Conte
 		return uuid.UUID{}, err
 	}
 	return taskId, nil
+}
+
+func (i *IngestorWebServerImplemenation) addExtGlobusTransferTask(ctx context.Context, datasetId string, fileList []datasetIngestor.Datafile, autoArchive bool, scicatToken string) (string, error) {
+	filesToTransfer := make([]extglobusservice.FileToTransfer, len(fileList))
+	for i, file := range fileList {
+		filesToTransfer[i].Path = file.Path
+		filesToTransfer[i].IsSymlink = file.IsSymlink
+	}
+	return extglobusservice.RequestExternalTransferTask(
+		ctx,
+		i.taskQueue.Config.Transfer.ExtGlobus.TransferServiceUrl,
+		scicatToken,
+		i.taskQueue.Config.Transfer.ExtGlobus.SrcFacility,
+		i.taskQueue.Config.Transfer.ExtGlobus.DstFacility,
+		datasetId,
+		&filesToTransfer,
+	)
 }
 
 func (i *IngestorWebServerImplemenation) addS3TransferTask(ctx context.Context, datasetId string, fileList []datasetIngestor.Datafile, folderPath string, ownerGroup string, autoArchive bool, scicatToken string) (uuid.UUID, error) {

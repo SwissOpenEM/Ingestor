@@ -4,42 +4,40 @@ package extglobusservice
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net/http"
 )
 
-type RequestError4xx struct {
-	msg string
+type RequestError struct {
+	code    uint
+	message string
+	details string
 }
 
-func (e *RequestError4xx) Error() string {
-	return e.msg
+func (e *RequestError) Error() string {
+	return e.message
 }
 
-type RequestError5xx struct {
-	msg string
+func (e *RequestError) Details() string {
+	return e.details
 }
 
-func (e *RequestError5xx) Error() string {
-	return e.msg
+func (e *RequestError) Code() uint {
+	return e.code
 }
 
-func newError(errType string, msg string) error {
-	switch errType {
-	case "req4xx":
-		return &RequestError4xx{msg: msg}
-	case "req5xx":
-		return &RequestError5xx{msg: msg}
-	default:
-		return errors.New(msg)
+func newRequestError(code uint, message string, details string) error {
+	return &RequestError{
+		code:    code,
+		message: message,
+		details: details,
 	}
 }
 
-func RequestExternalTransferTask(ctx context.Context, serviceUrl string, scicatToken string, srcFacility string, dstFacility string, scicatPid string, fileList *[]FileToTransfer) error {
+func RequestExternalTransferTask(ctx context.Context, serviceUrl string, scicatToken string, srcFacility string, dstFacility string, scicatPid string, fileList *[]FileToTransfer) (string, error) {
 	client, err := NewClient(serviceUrl)
 	if err != nil {
-		return newError("system", err.Error())
+		return "", err
 	}
 
 	scicatKeyAuth := func(ctx context.Context, req *http.Request) error {
@@ -60,27 +58,27 @@ func RequestExternalTransferTask(ctx context.Context, serviceUrl string, scicatT
 		scicatKeyAuth,
 	)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	parsedResp, err := ParsePostTransferTaskResponse(rawResp)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	switch parsedResp.StatusCode() {
 	case 200:
-		return nil
+		return *parsedResp.JSON200.JobId, nil
 	case 400:
-		return newError("req4xx", "Error: 400, Message: '"+*parsedResp.JSON400.Message+"', Details: '"+*parsedResp.JSON400.Message+"'")
+		return "", newRequestError(400, *parsedResp.JSON400.Message, *parsedResp.JSON400.Details)
 	case 401:
-		return newError("req4xx", "Error: 401, Message: '"+*parsedResp.JSON401.Message+"', Details: '"+*parsedResp.JSON401.Message+"'")
+		return "", newRequestError(401, *parsedResp.JSON401.Message, *parsedResp.JSON401.Details)
 	case 403:
-		return newError("req4xx", "Error: 403, Message: '"+*parsedResp.JSON403.Message+"', Details: '"+*parsedResp.JSON403.Message+"'")
+		return "", newRequestError(403, *parsedResp.JSON403.Message, *parsedResp.JSON403.Details)
 	case 500:
-		return newError("req5xx", "Error: 500, Message: '"+*parsedResp.JSON500.Message+"', Details: '"+*parsedResp.JSON500.Message+"'")
+		return "", newRequestError(500, *parsedResp.JSON500.Message, *parsedResp.JSON500.Details)
 	case 503:
-		return newError("req5xx", "Error: 503, Message: '"+*parsedResp.JSON503.Message+"', Details: '"+*parsedResp.JSON503.Message+"'")
+		return "", newRequestError(503, *parsedResp.JSON503.Message, *parsedResp.JSON503.Details)
 	}
-	return fmt.Errorf("unexpected status code: %d", parsedResp.StatusCode())
+	return "", fmt.Errorf("unexpected status code: %d", parsedResp.StatusCode())
 }
