@@ -1,11 +1,13 @@
 services:
   ingestor:
-    image: ghcr.io/swissopenem/ingestor:pr-79
+    image: ghcr.io/swissopenem/ingestor:latest
     build: ./
     ports:
       - 8001:8080
     environment:
       - GIN_MODE=debug
+      - INGESTOR_SERVICE_USER_NAME=
+      - INGESTOR_SERVICE_USER_PASS=
     user: "${UID:-0}:${GID:-0}"
     configs:
       - source: openem-ingestor-config.yaml
@@ -30,10 +32,12 @@ configs:
       Transfer:
         Method: S3
         S3:
-          Endpoint: s3:9000
-      Misc:
-        ConcurrencyLimit: 2
-        Port: 8080
+          Endpoint: http://scopem-openem.ethz.ch/api/v1
+          TokenUrl: https://keycloak.localhost/realms/facility/protocol/openid-connect/token
+          ClientID: archiver-service-api
+          ChunkSizeMB: 64
+          ConcurrentFiles: 4
+          PoolSize: 8
       MetadataExtractors:
         InstallationPath: ./extractors/
         SchemasLocation: ./schemas/
@@ -49,14 +53,18 @@ configs:
           ChecksumAlg: sha256
           CommandLineTemplate: "-i '{{.SourceFolder}}' -o '{{.OutputFile}}'"
           Methods:
-            - Name: Single Particle
-              Schema: oscem_schemas.schema.json
-            - Name: Cellular Tomography
-              Schema: oscem_schemas.schema.json
-            - Name: Tomography
-              Schema: oscem_schemas.schema.json
-            - Name: EnvironmentalTomography
-              Schema: oscem_schemas.schema.json
+          - Name: Single Particle
+            Schema: oscem_schemas_spa.schema.json
+            Url: https://raw.githubusercontent.com/osc-em/OSCEM_Schemas/refs/heads/any_fix/project/spa/jsonschema/oscem_schemas_spa.schema.json
+          - Name: Cellular Tomography
+            Schema: oscem_cellular_tomo.json
+            Url: https://raw.githubusercontent.com/osc-em/OSCEM_Schemas/refs/heads/any_fix/project/cellular_tomo/jsonschema/oscem_schemas_cellular_tomo.schema.json      
+          - Name: Tomography
+            Schema: oscem_tomo.json
+            Url: https://raw.githubusercontent.com/osc-em/OSCEM_Schemas/refs/heads/any_fix/project/subtomo/jsonschema/oscem_schemas_subtomo.schema.json
+          - Name: EnvironmentalTomography
+            Schema: oscem_env_tomo.json
+            Url: https://raw.githubusercontent.com/osc-em/OSCEM_Schemas/refs/heads/any_fix/project/env_tomo/jsonschema/oscem_schemas_env_tomo.schema.json
       WebServer:
         Auth:
           Disable: true
@@ -83,5 +91,8 @@ configs:
         Paths:
           CollectionLocation: "/mnt/collection_location"
         MetadataExtJobs:
-          NoWorkers: 100
+          ConcurrencyLimit: 4
           QueueSize: 200
+        Other:
+          Port: 8080
+          LogLevel: Info
