@@ -12,10 +12,16 @@ import (
 )
 
 func (i *IngestorWebServerImplemenation) TransferControllerDeleteTransfer(ctx context.Context, request TransferControllerDeleteTransferRequestObject) (TransferControllerDeleteTransferResponseObject, error) {
-	id := request.Body.TransferId
-	uuid, err := uuid.Parse(id)
+	if i.taskQueue.GetTransferMethod() == transfertask.TransferExtGlobus {
+		if request.Body.ScicatToken == nil {
+			return TransferControllerDeleteTransfer400TextResponse("scicat token is required to process this request"), nil
+		}
+		extglobusservice.CancelTask(ctx, i.taskQueue.Config.Transfer.ExtGlobus.TransferServiceUrl, *request.Body.ScicatToken, request.Body.TransferId, true)
+	}
+
+	uuid, err := uuid.Parse(request.Body.TransferId)
 	if err != nil {
-		return TransferControllerDeleteTransfer400TextResponse(fmt.Sprintf("Ingest ID '%s' could not be parsed as uuid: %s", id, err.Error())), nil
+		return TransferControllerDeleteTransfer400TextResponse(fmt.Sprintf("Ingest ID '%s' could not be parsed as uuid: %s", request.Body.TransferId, err.Error())), nil
 	}
 
 	err = i.taskQueue.RemoveTask(uuid)
@@ -25,7 +31,7 @@ func (i *IngestorWebServerImplemenation) TransferControllerDeleteTransfer(ctx co
 
 	status := "gone"
 	return TransferControllerDeleteTransfer200JSONResponse{
-		TransferId: id,
+		TransferId: request.Body.TransferId,
 		Status:     &status,
 	}, nil
 }
@@ -35,6 +41,7 @@ func (i *IngestorWebServerImplemenation) TransferControllerGetTransfer(ctx conte
 		if i.taskQueue.GetTransferMethod() == transfertask.TransferExtGlobus {
 			return GetTaskByJobIdFromScicat(i.taskQueue.Config.Scicat.Host, "", *request.Params.TransferId)
 		}
+
 		id := *request.Params.TransferId
 		uid, err := uuid.Parse(id)
 		if err != nil {
