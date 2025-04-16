@@ -12,11 +12,18 @@ import (
 )
 
 func (i *IngestorWebServerImplemenation) TransferControllerDeleteTransfer(ctx context.Context, request TransferControllerDeleteTransferRequestObject) (TransferControllerDeleteTransferResponseObject, error) {
+	//deleteEntry := false
+	//if request.Body.
+
 	if i.taskQueue.GetTransferMethod() == transfertask.TransferExtGlobus {
 		if request.Body.ScicatToken == nil {
 			return TransferControllerDeleteTransfer400TextResponse("scicat token is required to process this request"), nil
 		}
-		extglobusservice.CancelTask(ctx, i.taskQueue.Config.Transfer.ExtGlobus.TransferServiceUrl, *request.Body.ScicatToken, request.Body.TransferId, true)
+		delete := false
+		if request.Body.DeleteTask != nil {
+			delete = *request.Body.DeleteTask
+		}
+		extglobusservice.CancelTask(ctx, i.taskQueue.Config.Transfer.ExtGlobus.TransferServiceUrl, *request.Body.ScicatToken, request.Body.TransferId, delete)
 	}
 
 	uuid, err := uuid.Parse(request.Body.TransferId)
