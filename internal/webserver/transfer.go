@@ -143,12 +143,15 @@ func GetTasksFromScicat(scicatServer string, scicatToken string, ownerUser strin
 
 func JobToTransferItem(job jobs.ScicatJob) TransferItem {
 	var status TransferItemStatus
-	if job.JobResultObject.Completed {
+	switch job.JobResultObject.Status {
+	case jobs.Finished:
 		status = Finished
-	} else if job.JobResultObject.Error != "" {
-		status = Failed
-	} else {
+	case jobs.Transferring:
 		status = Transferring
+	case jobs.Cancelled:
+		status = Cancelled
+	case jobs.Failed:
+		status = Failed
 	}
 	return TransferItem{
 		BytesTransferred: getPointerOrNil(int(job.JobResultObject.BytesTransferred)),

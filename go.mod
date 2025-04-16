@@ -17,7 +17,7 @@ require (
 	github.com/oapi-codegen/gin-middleware v1.0.2
 	github.com/oapi-codegen/oapi-codegen/v2 v2.4.1
 	github.com/oapi-codegen/runtime v1.1.1
-	github.com/paulscherrerinstitute/scicat-cli/v3 v3.0.0-alpha3.0.20250404090922-5771cbbc3b6e
+	github.com/paulscherrerinstitute/scicat-cli/v3 v3.0.0-alpha3.0.20250416155101-64158adebeb3
 	github.com/samber/slog-gin v1.14.1
 	github.com/spf13/viper v1.19.0
 	github.com/swaggo/files v1.0.1
@@ -84,7 +84,7 @@ require (
 	github.com/KyleBanks/depth v1.2.1 // indirect
 	github.com/MicahParks/keyfunc/v3 v3.3.5
 	github.com/Netflix/go-expect v0.0.0-20220104043353-73e0943537d2 // indirect
-	github.com/SwissOpenEM/globus-transfer-service v0.0.0-20250411135212-dff6233a0f3b
+	github.com/SwissOpenEM/globus-transfer-service v0.0.0-20250416155307-c91353515abb
 	github.com/apapsch/go-jsonmerge/v2 v2.0.0 // indirect
 	github.com/bep/debounce v1.2.1 // indirect
 	github.com/bytedance/sonic v1.12.6 // indirect
