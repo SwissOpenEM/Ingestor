@@ -560,6 +560,9 @@ components:
         scicatToken:
           type: string
           description: if the ingestor is configured to use ExtGlobusService for transfer, this endpoint needs a SciCat token
+        deleteTask:
+          type: boolean
+          description: if the entry needs to be deleted or not, in addition to cancelling it (by default false)
       required:
         - transferId
     DeleteTransferResponse:
