@@ -20,6 +20,7 @@ Misc:
 MetadataExtractors:
   InstallationPath: ./parentPathToAllExtractors/
   DownloadMissingExtractors: false
+  DownloadSchemas: false
   SchemasLocation: ./ExtractorSchemas
   Timeout: 4m
   Extractors:

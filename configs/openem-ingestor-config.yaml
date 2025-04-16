@@ -23,6 +23,7 @@ MetadataExtractors:
   InstallationPath: ./extractors/
   SchemasLocation: ./schemas/
   DownloadMissingExtractors: true
+  DownloadSchemas: true
   Timeout: 2m
   Extractors:
   - Name: LS

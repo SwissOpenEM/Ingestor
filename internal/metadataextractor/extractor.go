@@ -129,7 +129,7 @@ func NewExtractorHandler(config ExtractorsConfig) *ExtractorHandler {
 
 			schemaPath := path.Join(config.SchemasLocation, m.Schema)
 
-			if config.DownloadMissingExtractors {
+			if config.DownloadSchemas {
 				response, err := http.Get(m.Url)
 				if err != nil {
 					fmt.Println(err)

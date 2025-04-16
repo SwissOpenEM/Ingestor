@@ -42,6 +42,7 @@ configs:
         InstallationPath: ./extractors/
         SchemasLocation: ./schemas/
         DownloadMissingExtractors:  true
+        DownloadSchemas: true
         Timeout: 10m
         Extractors:
         - Name: LS

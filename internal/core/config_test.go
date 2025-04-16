@@ -147,6 +147,7 @@ func createExpectedValidConfig(transferConfig transfertask.TransferConfig) Confi
 		},
 		InstallationPath:          "./parentPathToAllExtractors/",
 		DownloadMissingExtractors: false,
+		DownloadSchemas:           false,
 		SchemasLocation:           "./ExtractorSchemas",
 		Timeout:                   time.Minute * 4,
 	}

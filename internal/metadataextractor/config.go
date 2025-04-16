@@ -5,7 +5,7 @@ import "time"
 type MethodConfig struct {
 	Name   string `string:"Name" validate:"required"`
 	Schema string `string:"Schema" validate:"required"`
-	Url    string `string:"Url" validate:"required,http_url"`
+	Url    string `string:"Url" validate:"http_url"`
 }
 
 type ExtractorConfig struct {
@@ -25,6 +25,7 @@ type ExtractorsConfig struct {
 	Extractors                []ExtractorConfig `[]ExtractorConfig:"Extractors" validate:"dive"` // Enable validation for min=1 again, https://github.com/SwissOpenEM/Ingestor/issues/38
 	InstallationPath          string            `string:"InstallationPath" validate:"required"`
 	SchemasLocation           string            `string:"SchemasLocation" validate:"required"`
-	DownloadMissingExtractors bool              `bool:"DownloadMissingExtractors"`
+	DownloadMissingExtractors bool              `json:"DownloadMissingExtractors" binding:"required,boolean"`
+	DownloadSchemas           bool              `json:"DownloadSchemas" binding:"required,boolean"`
 	Timeout                   time.Duration     `string:"Timeout"`
 }
