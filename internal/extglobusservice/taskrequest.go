@@ -88,5 +88,5 @@ func RequestExternalTransferTask(ctx context.Context, serviceUrl string, scicatT
 	case 503:
 		return "", newRequestError(503, parsedResp.JSON503.Message, parsedResp.JSON503.Details)
 	}
-	return "", fmt.Errorf("unexpected status code: %d", parsedResp.StatusCode())
+	return "", fmt.Errorf("external globus task request error - unexpected status code: %d", parsedResp.StatusCode())
 }
