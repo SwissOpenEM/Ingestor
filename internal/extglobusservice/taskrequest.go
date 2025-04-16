@@ -26,11 +26,19 @@ func (e *RequestError) Code() uint {
 	return e.code
 }
 
-func newRequestError(code uint, message string, details string) error {
+func newRequestError(code uint, message *string, details *string) error {
+	retMsg := ""
+	retDetails := ""
+	if message != nil {
+		retMsg = *message
+	}
+	if details != nil {
+		retDetails = *details
+	}
 	return &RequestError{
 		code:    code,
-		message: message,
-		details: details,
+		message: retMsg,
+		details: retDetails,
 	}
 }
 
@@ -68,17 +76,17 @@ func RequestExternalTransferTask(ctx context.Context, serviceUrl string, scicatT
 
 	switch parsedResp.StatusCode() {
 	case 200:
-		return *parsedResp.JSON200.JobId, nil
+		return parsedResp.JSON200.JobId, nil
 	case 400:
-		return "", newRequestError(400, *parsedResp.JSON400.Message, *parsedResp.JSON400.Details)
+		return "", newRequestError(400, parsedResp.JSON400.Message, parsedResp.JSON400.Details)
 	case 401:
-		return "", newRequestError(401, *parsedResp.JSON401.Message, *parsedResp.JSON401.Details)
+		return "", newRequestError(401, parsedResp.JSON401.Message, parsedResp.JSON401.Details)
 	case 403:
-		return "", newRequestError(403, *parsedResp.JSON403.Message, *parsedResp.JSON403.Details)
+		return "", newRequestError(403, parsedResp.JSON403.Message, parsedResp.JSON403.Details)
 	case 500:
-		return "", newRequestError(500, *parsedResp.JSON500.Message, *parsedResp.JSON500.Details)
+		return "", newRequestError(500, parsedResp.JSON500.Message, parsedResp.JSON500.Details)
 	case 503:
-		return "", newRequestError(503, *parsedResp.JSON503.Message, *parsedResp.JSON503.Details)
+		return "", newRequestError(503, parsedResp.JSON503.Message, parsedResp.JSON503.Details)
 	}
 	return "", fmt.Errorf("unexpected status code: %d", parsedResp.StatusCode())
 }

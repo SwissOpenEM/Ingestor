@@ -557,6 +557,9 @@ components:
         transferId:
           type: string
           description: id of the transfer that should be cancelled
+        scicatToken:
+          type: string
+          description: if the ingestor is configured to use ExtGlobusService for transfer, this endpoint needs a SciCat token
       required:
         - transferId
     DeleteTransferResponse:
