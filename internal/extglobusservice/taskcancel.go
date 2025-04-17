@@ -3,6 +3,7 @@ package extglobusservice
 import (
 	"context"
 	"fmt"
+	"net/http"
 )
 
 func CancelTask(ctx context.Context, serviceUrl string, scicatToken string, jobId string, deleteEntry bool) error {
@@ -11,7 +12,12 @@ func CancelTask(ctx context.Context, serviceUrl string, scicatToken string, jobI
 		return err
 	}
 
-	rawResp, err := client.DeleteTransferTask(ctx, jobId, &DeleteTransferTaskParams{&deleteEntry})
+	scicatKeyAuth := func(ctx context.Context, req *http.Request) error {
+		req.Header.Set("SciCat-API-Key", scicatToken)
+		return nil
+	}
+
+	rawResp, err := client.DeleteTransferTask(ctx, jobId, &DeleteTransferTaskParams{&deleteEntry}, scicatKeyAuth)
 	if err != nil {
 		return err
 	}
