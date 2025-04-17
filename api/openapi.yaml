@@ -163,6 +163,11 @@ paths:
             type: integer
             format: uint
             description: Number of transfers per page.
+        - name: Scicat-API-Token
+          in: header
+          schema:
+            type: string
+          required: false
       responses:
         "200":
           description: Get Transfer status retrieved successfully

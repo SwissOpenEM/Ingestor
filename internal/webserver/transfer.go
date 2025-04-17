@@ -95,7 +95,10 @@ func (i *IngestorWebServerImplemenation) TransferControllerGetTransfer(ctx conte
 	}
 
 	if i.taskQueue.GetTransferMethod() == transfertask.TransferExtGlobus {
-		return GetTasksFromScicat(i.taskQueue.Config.Scicat.Host, "", "", (page-1)*pageSize, page*pageSize)
+		if request.Params.ScicatAPIToken == nil {
+			return TransferControllerGetTransfer400TextResponse("no scicat token was provided"), nil
+		}
+		return GetTasksFromScicat(i.taskQueue.Config.Scicat.Host, *request.Params.ScicatAPIToken, (page-1)*pageSize, page*pageSize)
 	}
 
 	resultNo := i.taskQueue.GetTaskCount()
@@ -133,9 +136,10 @@ func GetTaskByJobIdFromScicat(scicatServer string, scicatToken string, jobId str
 	}, nil
 }
 
-func GetTasksFromScicat(scicatServer string, scicatToken string, ownerUser string, skip uint, limit uint) (TransferControllerGetTransferResponseObject, error) {
+func GetTasksFromScicat(scicatServer string, scicatToken string, skip uint, limit uint) (TransferControllerGetTransferResponseObject, error) {
 	scicatUrl, _ := url.Parse(scicatServer)
-	jobs, err := extglobusservice.GetGlobusTransferJobsFromScicat(fmt.Sprintf("%s://%s", scicatUrl.Scheme, scicatUrl.Host), scicatToken, ownerUser, skip, limit)
+
+	jobs, err := extglobusservice.GetGlobusTransferJobsFromScicat(fmt.Sprintf("%s://%s", scicatUrl.Scheme, scicatUrl.Host), scicatToken, skip, limit)
 	if err != nil {
 		return TransferControllerGetTransfer400TextResponse(err.Error()), nil
 	}
