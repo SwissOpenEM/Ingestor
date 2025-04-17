@@ -23,7 +23,15 @@ func (i *IngestorWebServerImplemenation) TransferControllerDeleteTransfer(ctx co
 		if request.Body.DeleteTask != nil {
 			delete = *request.Body.DeleteTask
 		}
-		extglobusservice.CancelTask(ctx, i.taskQueue.Config.Transfer.ExtGlobus.TransferServiceUrl, *request.Body.ScicatToken, request.Body.TransferId, delete)
+		err := extglobusservice.CancelTask(ctx, i.taskQueue.Config.Transfer.ExtGlobus.TransferServiceUrl, *request.Body.ScicatToken, request.Body.TransferId, delete)
+		if err != nil {
+			return TransferControllerDeleteTransfer400TextResponse(fmt.Sprintf("Couldn't cancel or delete task: %s", err.Error())), nil
+		}
+		status := "gone"
+		return TransferControllerDeleteTransfer200JSONResponse{
+			TransferId: request.Body.TransferId,
+			Status:     &status,
+		}, nil
 	}
 
 	uuid, err := uuid.Parse(request.Body.TransferId)
