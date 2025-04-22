@@ -22,6 +22,5 @@ func GetGlobusTransferJobsFromScicat(scicatUrl string, scicatToken string, skip 
 		filter += `}`
 	}
 	filter += `}`
-	fmt.Printf("DEBUG LOL: %s\n", filter)
 	return jobs.GetJobList(scicatUrl, scicatToken, filter)
 }
