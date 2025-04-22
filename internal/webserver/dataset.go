@@ -161,7 +161,6 @@ func (i *IngestorWebServerImplemenation) DatasetControllerIngestDataset(ctx cont
 					return DatasetControllerIngestDataset400TextResponse(fmt.Sprintf("Transfer request server refused with Code: '%d', Message: '%s'", reqErr.Code(), reqErr.Error())), nil
 				}
 			}
-			fmt.Printf("DEBUG LOL: %s\n", err.Error())
 			return DatasetControllerIngestDataset400TextResponse(fmt.Sprintf("Transfer request - unknown error: %s", err.Error())), nil
 		}
 		return DatasetControllerIngestDataset200JSONResponse{
