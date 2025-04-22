@@ -54,7 +54,10 @@ func (i *IngestorWebServerImplemenation) TransferControllerDeleteTransfer(ctx co
 func (i *IngestorWebServerImplemenation) TransferControllerGetTransfer(ctx context.Context, request TransferControllerGetTransferRequestObject) (TransferControllerGetTransferResponseObject, error) {
 	if request.Params.TransferId != nil {
 		if i.taskQueue.GetTransferMethod() == transfertask.TransferExtGlobus {
-			return GetTaskByJobIdFromScicat(i.taskQueue.Config.Scicat.Host, "", *request.Params.TransferId)
+			if request.Params.ScicatAPIToken == nil {
+				return TransferControllerGetTransfer400TextResponse("Scicat API token is required"), nil
+			}
+			return GetTaskByJobIdFromScicat(i.taskQueue.Config.Scicat.Host, *request.Params.ScicatAPIToken, *request.Params.TransferId)
 		}
 
 		id := *request.Params.TransferId
