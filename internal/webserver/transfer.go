@@ -55,7 +55,7 @@ func (i *IngestorWebServerImplemenation) TransferControllerGetTransfer(ctx conte
 	if request.Params.TransferId != nil {
 		if i.taskQueue.GetTransferMethod() == transfertask.TransferExtGlobus {
 			if request.Params.ScicatAPIToken == nil {
-				return TransferControllerGetTransfer400TextResponse("Scicat API token is required"), nil
+				return TransferControllerGetTransfer400TextResponse("no Scicat API token was provided"), nil
 			}
 			return GetTaskByJobIdFromScicat(i.taskQueue.Config.Scicat.Host, *request.Params.ScicatAPIToken, *request.Params.TransferId)
 		}
@@ -99,7 +99,7 @@ func (i *IngestorWebServerImplemenation) TransferControllerGetTransfer(ctx conte
 
 	if i.taskQueue.GetTransferMethod() == transfertask.TransferExtGlobus {
 		if request.Params.ScicatAPIToken == nil {
-			return TransferControllerGetTransfer400TextResponse("no scicat token was provided"), nil
+			return TransferControllerGetTransfer400TextResponse("no Scicat API token was provided"), nil
 		}
 		return GetTasksFromScicat(i.taskQueue.Config.Scicat.Host, *request.Params.ScicatAPIToken, (page-1)*pageSize, page*pageSize)
 	}
