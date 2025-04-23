@@ -101,7 +101,7 @@ func (i *IngestorWebServerImplemenation) TransferControllerGetTransfer(ctx conte
 		if request.Params.ScicatAPIToken == nil {
 			return TransferControllerGetTransfer400TextResponse("no Scicat API token was provided"), nil
 		}
-		return GetTasksFromScicat(i.taskQueue.Config.Scicat.Host, *request.Params.ScicatAPIToken, (page-1)*pageSize, page*pageSize)
+		return GetTasksFromScicat(i.taskQueue.Config.Scicat.Host, *request.Params.ScicatAPIToken, (page-1)*pageSize, pageSize)
 	}
 
 	resultNo := i.taskQueue.GetTaskCount()
@@ -152,12 +152,11 @@ func GetTasksFromScicat(scicatServer string, scicatToken string, skip uint, limi
 	}
 	return TransferControllerGetTransfer200JSONResponse{
 		Transfers: &tasks,
-		Total:     getPointerOrNil(len(tasks)),
 	}, nil
 }
 
 func JobToTransferItem(job jobs.ScicatJob) TransferItem {
-	var status TransferItemStatus
+	var status TransferItemStatus = InvalidStatus
 	switch job.JobResultObject.Status {
 	case jobs.Finished:
 		status = Finished
