@@ -32,6 +32,10 @@ github.com/SwissOpenEM/globus-transfer-service v0.0.0-20250416155307-c91353515ab
 github.com/SwissOpenEM/globus-transfer-service v0.0.0-20250416155307-c91353515abb/go.mod h1:fE6GuOyc7FBusuua+azAublbfOxnwufW2bqyD4zqWgI=
 github.com/SwissOpenEM/globus-transfer-service v0.0.0-20250417134430-256ec31061bc h1:iM5c8hhNZPtDPWXHX8mxoXWB3GW+cN81YiM86gEp1yE=
 github.com/SwissOpenEM/globus-transfer-service v0.0.0-20250417134430-256ec31061bc/go.mod h1:fE6GuOyc7FBusuua+azAublbfOxnwufW2bqyD4zqWgI=
+github.com/SwissOpenEM/globus-transfer-service v0.0.0-20250424093438-8b53b0d34c20 h1:ASn4knQ5HkJuF2NPrhMeuPKw5sEE2YrsPFvCq/iMd/U=
+github.com/SwissOpenEM/globus-transfer-service v0.0.0-20250424093438-8b53b0d34c20/go.mod h1:fE6GuOyc7FBusuua+azAublbfOxnwufW2bqyD4zqWgI=
+github.com/SwissOpenEM/globus-transfer-service v0.0.0-20250424094725-4d3f951a7e7e h1:03UPxGms8JKWbTnFocYg9B1oTzyFrZKKDItAUxElRII=
+github.com/SwissOpenEM/globus-transfer-service v0.0.0-20250424094725-4d3f951a7e7e/go.mod h1:fE6GuOyc7FBusuua+azAublbfOxnwufW2bqyD4zqWgI=
 github.com/alitto/pond/v2 v2.3.2 h1:EAwwpi4Re7OE7poKDHqIUhJlq/mUBmtZN2PmDYCgRLE=
 github.com/alitto/pond/v2 v2.3.2/go.mod h1:xkjYEgQ05RSpWdfSd1nM3OVv7TBhLdy7rMp3+2Nq+yE=
 github.com/andybalholm/brotli v1.0.5 h1:8uQZIdzKmjc/iuPu7O2ioW48L81FgatrcpfFmiq/cCs=

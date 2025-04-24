@@ -30,6 +30,7 @@ require (
 
 require (
 	github.com/MicahParks/jwkset v0.5.19 // indirect
+	github.com/SwissOpenEM/globus-transfer-service v0.0.0-20250424094725-4d3f951a7e7e // indirect
 	github.com/andybalholm/brotli v1.0.5 // indirect
 	github.com/bodgit/plumbing v1.3.0 // indirect
 	github.com/bodgit/sevenzip v1.4.0 // indirect
@@ -84,7 +85,6 @@ require (
 	github.com/KyleBanks/depth v1.2.1 // indirect
 	github.com/MicahParks/keyfunc/v3 v3.3.5
 	github.com/Netflix/go-expect v0.0.0-20220104043353-73e0943537d2 // indirect
-	github.com/SwissOpenEM/globus-transfer-service v0.0.0-20250417134430-256ec31061bc
 	github.com/apapsch/go-jsonmerge/v2 v2.0.0 // indirect
 	github.com/bep/debounce v1.2.1 // indirect
 	github.com/bytedance/sonic v1.12.6 // indirect
