@@ -142,7 +142,7 @@ func GetTaskByJobIdFromScicat(scicatServer string, scicatToken string, jobId str
 func GetTasksFromScicat(scicatServer string, scicatToken string, skip uint, limit uint) (TransferControllerGetTransferResponseObject, error) {
 	scicatUrl, _ := url.Parse(scicatServer)
 
-	jobs, err := extglobusservice.GetGlobusTransferJobsFromScicat(fmt.Sprintf("%s://%s", scicatUrl.Scheme, scicatUrl.Host), scicatToken, skip, limit)
+	jobs, total, err := extglobusservice.GetGlobusTransferJobsFromScicat(fmt.Sprintf("%s://%s", scicatUrl.Scheme, scicatUrl.Host), scicatToken, skip, limit)
 	if err != nil {
 		return TransferControllerGetTransfer400TextResponse(err.Error()), nil
 	}
@@ -152,6 +152,7 @@ func GetTasksFromScicat(scicatServer string, scicatToken string, skip uint, limi
 	}
 	return TransferControllerGetTransfer200JSONResponse{
 		Transfers: &tasks,
+		Total:     getPointerOrNil(int(total)),
 	}, nil
 }
 
