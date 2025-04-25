@@ -19,7 +19,7 @@
       "program": "${workspaceFolder}/cmd/openem-ingestor-service/build/bin/openem-ingestor-service",
       "preLaunchTask": "build service",
       "cwd": "${workspaceFolder}/cmd/openem-ingestor-service/build/bin",
-      "env": {"INGESTOR_SERVICE_USER_NAME":"admin", "INGESTOR_SERVICE_USER_PASS": "2jf70TPNZsS"}
+      "env": {}
     }
   ]
 }
