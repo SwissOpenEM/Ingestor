@@ -62,3 +62,11 @@ MetadataExtractors:
       - Name: Material Science
         Schema: some.json
         Url: "https://url.com/some.json"
+Webserver:
+  Auth:
+    OAuth2:
+      ClientID: "FACILITY_SPECIFIC_CLIENT_ID"
+    RBAC:
+      AdminRole: "FACILITY-ingestor-admin"
+      CreateModifyTasksRole: "FACILITY-ingestor-write"
+      ViewTasksRole: "FACILITY-ingestor-read"
