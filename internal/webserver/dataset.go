@@ -153,7 +153,6 @@ func (i *IngestorWebServerImplemenation) DatasetControllerIngestDataset(ctx cont
 	case transfertask.TransferGlobus:
 		taskId, err = i.addGlobusTransferTask(ctx, datasetId, fileList, folderPath, ownerGroup, autoArchive, username)
 	case transfertask.TransferExtGlobus:
-		// TODO
 		jobId, err := i.addExtGlobusTransferTask(ctx, datasetId, fileList, autoArchive, request.Body.UserToken)
 		if err != nil {
 			if reqErr, ok := err.(*extglobusservice.RequestError); ok {
