@@ -67,43 +67,6 @@ paths:
                   type: string
 
   /dataset:
-    get:
-      tags:
-        - dataset
-      summary: Get the available datasets.
-      security:
-        - cookieAuth:
-          - ingestor_read
-      description: Retrieve the folder structure of the available datasets.
-      operationId: DatasetController_getDataset
-      parameters:
-        - name: page
-          in: query
-          required: false
-          schema:
-            type: integer
-            format: uint
-            description: Page number for pagination.
-        - name: pageSize
-          in: query
-          required: false
-          schema:
-            type: integer
-            format: uint
-            description: Number of transfers per page.
-      responses:
-        "200":
-          description: Dataset successfully retrieved.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/GetDatasetResponse"
-        "400":
-          description: Invalid request
-          content:
-            text/plain:
-              schema:
-                type: string
     post:
       tags:
         - dataset
@@ -668,19 +631,6 @@ components:
         - name
         - schema
       description: a method item describes the method's name and schema
-    GetDatasetResponse:
-      type: object
-      properties:
-        datasets:
-          type: array
-          items:
-            type: string
-        total:
-          type: integer
-          description: Total number of datasets.
-      required:
-        - datasets
-        - total
     GetBrowseDatasetResponse:
       type: object
       properties:
