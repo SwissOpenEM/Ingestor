@@ -78,7 +78,7 @@ func createExpectedValidConfig(transferConfig transfertask.TransferConfig) Confi
 			},
 		},
 		PathsConf: wsconfig.PathsConf{
-			CollectionLocation: "/some/path",
+			CollectionLocations: map[string]string{"path": "/some/path"},
 		},
 		MetadataExtJobsConf: wsconfig.MetadataExtJobsConf{
 			ConcurrencyLimit: 100,
