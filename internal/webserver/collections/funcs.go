@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"sort"
+	"strings"
 )
 
 func GetCollectionList(collectionLocations map[string]string) []string {
@@ -19,7 +20,7 @@ func GetCollectionList(collectionLocations map[string]string) []string {
 
 // returns: collection name, collection path, the remainder of the path
 func GetPathDetails(collectionLocations map[string]string, path string) (string, string, string, error) {
-	splitSourceFolder := filepath.SplitList(path)
+	splitSourceFolder := strings.Split(strings.TrimPrefix(path, string(filepath.Separator)), string(filepath.Separator))
 	if len(splitSourceFolder) <= 0 {
 		return "", "", "", fmt.Errorf("sourceFolder contains an invalid path")
 	}
