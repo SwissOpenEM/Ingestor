@@ -7,6 +7,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strings"
 
 	"github.com/SwissOpenEM/Ingestor/internal/core"
 	"github.com/SwissOpenEM/Ingestor/internal/extglobusservice"
@@ -155,6 +156,12 @@ func (i *IngestorWebServerImplemenation) DatasetControllerIngestDataset(ctx cont
 	folderPath, err := collections.GetDatasetAbsolutePath(i.pathConfig.CollectionLocations, cleanedSourceFolder)
 	if err != nil {
 		return DatasetControllerIngestDataset400TextResponse(err.Error()), nil
+	}
+
+	// adapt source folder attribute to Globus collection path **only if** using external Globus transfer request service
+	//   as the service uses it to find the dataset's folder (due to security concerns)
+	if i.taskQueue.GetTransferMethod() == transfertask.TransferExtGlobus {
+		metadata["sourceFolder"] = strings.TrimPrefix(folderPath, i.taskQueue.Config.Transfer.ExtGlobus.CollectionRootPath)
 	}
 
 	ownerGroup, ok := metadata["ownerGroup"].(string)
