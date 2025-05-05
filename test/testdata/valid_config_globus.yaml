@@ -4,6 +4,7 @@ Transfer:
   ConcurrencyLimit: 10
   QueueSize: 1000
   Method: Globus
+  StorageLocation: "SomeFacility"
   Globus:
     ClientId: "clientid_registered_with_globus"
     RedirectUrl: "https://auth.globus.org/v2/web/auth-code"
