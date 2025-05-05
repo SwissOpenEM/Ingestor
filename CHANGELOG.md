@@ -15,3 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  - (CODE) Some refactoring, particularly there's now separate S3 and Globus add task functions
 ### Removed
  - (CONFIG) Transfer.Globus.DestinationPrefixPath is removed because DestinationTemplate replaces it in functionality
+
+## [PR #127] (2025-05-05)
+### Added
+ - (CONFIG) Transfer.StorageLocation sets an ID string in the dataset lifecycle that specifies to which facility we're transmitting the dataset's data

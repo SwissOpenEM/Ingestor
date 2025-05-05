@@ -118,6 +118,7 @@ func CheckIfFolderExists(path string) error {
 func AddDatasetToScicat(
 	metaDataMap map[string]interface{},
 	datasetFolder string,
+	storageLocation string,
 	userToken string,
 	scicatUrl string,
 ) (datasetId string, totalSize int64, fileList []datasetIngestor.Datafile, username string, err error) {
@@ -173,6 +174,7 @@ func AddDatasetToScicat(
 	metaDataMap["datasetlifecycle"].(map[string]interface{})["isOnCentralDisk"] = false
 	metaDataMap["datasetlifecycle"].(map[string]interface{})["archiveStatusMessage"] = "filesNotYetAvailable"
 	metaDataMap["datasetlifecycle"].(map[string]interface{})["archivable"] = false
+	metaDataMap["datasetlifecycle"].(map[string]interface{})["storageLocation"] = storageLocation
 
 	// NOTE: scicat-cli considers "ingestion" as just inserting the dataset into scicat and adding the orig datablocks
 	datasetId, err = datasetIngestor.IngestDataset(http_client, SCICAT_API_URL, metaDataMap, fileList, user)
