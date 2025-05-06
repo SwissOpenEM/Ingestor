@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/SwissOpenEM/Ingestor/internal/transfertask"
 	"github.com/SwissOpenEM/globus"
 )
 
@@ -55,7 +56,7 @@ func TransferFiles(
 	taskCtx context.Context,
 	datasetPath string,
 	fileList []File,
-	UpdateProgress func(bytesTransferred int, filesTransferred int),
+	transferNotifier *transfertask.TransferNotifier,
 ) error {
 	// transfer given filelist
 	var filePathList []string
@@ -110,7 +111,11 @@ func TransferFiles(
 	if err != nil {
 		return err
 	}
-	UpdateProgress(bytesTransferred, filesTransferred)
+
+	transferNotifier.AddUploadedBytes(int64(bytesTransferred))
+	transferNotifier.IncreaseFileCount(int32(filesTransferred))
+	transferNotifier.UpdateTaskProgress()
+
 	if taskCompleted {
 		return nil
 	}
@@ -136,7 +141,9 @@ func TransferFiles(
 				return err // transfer cannot be finished: irrecoverable error
 			}
 
-			UpdateProgress(bytesTransferred, filesTransferred)
+			transferNotifier.AddUploadedBytes(int64(bytesTransferred))
+			transferNotifier.IncreaseFileCount(int32(filesTransferred))
+			transferNotifier.UpdateTaskProgress()
 
 			if taskCompleted {
 				return nil // we're done!
