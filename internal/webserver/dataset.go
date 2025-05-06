@@ -205,6 +205,7 @@ func (i *IngestorWebServerImplemenation) addGlobusTransferTask(ctx context.Conte
 	transferObjects["globus_client"] = client
 	transferObjects["dataset_id"] = datasetId
 	transferObjects["username"] = username
+	transferObjects["destination_template"] = i.globusDestTemplate
 
 	err = i.taskQueue.AddTransferTask(datasetId, fileList, taskId, folderPath, ownerGroup, autoArchive, transferObjects)
 	if err != nil {
