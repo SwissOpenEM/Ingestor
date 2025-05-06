@@ -76,6 +76,7 @@ WebServer:
   Paths:
     CollectionLocations: 
       path: "/some/path"
+      folder: "/another/folder"
   MetadataExtJobs:
     ConcurrencyLimit: 100
     QueueSize: 200
