@@ -228,7 +228,6 @@ func TransferDataset(
 		if err != nil {
 			return err
 		}
-		//relativeDatasetFolder := strings.TrimPrefix(datasetFolder, config.WebServer.CollectionLocation)
 
 		files := make([]globustransfer.File, len(fileList))
 		bytesTotal := 0
