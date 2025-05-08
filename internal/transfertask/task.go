@@ -12,6 +12,7 @@ type TransferMethod int
 const (
 	TransferS3 TransferMethod = iota + 1
 	TransferGlobus
+	TransferExtGlobus
 )
 
 type TransferOptions struct {

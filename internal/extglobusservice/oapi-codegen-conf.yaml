@@ -1,0 +1,5 @@
+package: extglobusservice
+output: api.gen.go
+generate:
+  client: true
+  models: true

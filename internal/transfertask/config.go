@@ -20,10 +20,18 @@ type GlobusTransferConfig struct {
 	DestinationTemplate     string   `yaml:"destinationTemplate"`
 }
 
+type ExtGlobusTransferConfig struct {
+	TransferServiceUrl string `string:"TransferServiceUrl" validate:"http_url"`
+	CollectionRootPath string `string:"CollectionRootPath"`
+	SrcFacility        string `string:"SourceFacility" validate:"required"`
+	DstFacility        string `string:"DestinationFacility" validate:"required"`
+}
+
 type TransferConfig struct {
-	Method           string               `string:"Method" validate:"oneof=S3 Globus"`
-	ConcurrencyLimit int                  `int:"ConcurrencyLimit" validate:"gte=0"`
-	QueueSize        int                  `int:"QueueSize"`
-	S3               S3TransferConfig     `mapstructure:"S3" validate:"required_if=Method S3,omitempty"`
-	Globus           GlobusTransferConfig `mapstructure:"Globus" validate:"required_if=Method Globus,omitempty"`
+	Method           string                  `string:"Method" validate:"oneof=S3 Globus ExtGlobus"`
+	ConcurrencyLimit int                     `int:"ConcurrencyLimit" validate:"gte=0"`
+	QueueSize        int                     `int:"QueueSize"`
+	S3               S3TransferConfig        `mapstructure:"S3" validate:"required_if=Method S3,omitempty"`
+	Globus           GlobusTransferConfig    `mapstructure:"Globus" validate:"required_if=Method Globus,omitempty"`
+	ExtGlobus        ExtGlobusTransferConfig `mapstrcuture:"ExtGlobus" validate:"required_if=Method ExtGlobus,omitempty"`
 }

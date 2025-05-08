@@ -42,4 +42,11 @@ WebServer:
       CreateModifyTasksRole: "FACILITY-ingestor-write"
       ViewTasksRole: "FACILITY-ingestor-read"
   Paths:
-    CollectionLocation: "/some/paths"
+    CollectionLocations: 
+      "path": "/some/paths"
+  MetadataExtJobs:
+    ConcurrencyLimit: 4
+    QueueSize: 200
+  Other:
+    Port: 8888
+    LogLevel: Info
