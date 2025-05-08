@@ -5,13 +5,15 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path"
 	"path/filepath"
-	"slices"
+	"strings"
 
 	"github.com/SwissOpenEM/Ingestor/internal/core"
 	"github.com/SwissOpenEM/Ingestor/internal/extglobusservice"
 	"github.com/SwissOpenEM/Ingestor/internal/s3upload"
 	"github.com/SwissOpenEM/Ingestor/internal/transfertask"
+	"github.com/SwissOpenEM/Ingestor/internal/webserver/collections"
 	"github.com/SwissOpenEM/Ingestor/internal/webserver/globusauth"
 	"github.com/google/uuid"
 	"github.com/paulscherrerinstitute/scicat-cli/v3/datasetIngestor"
@@ -24,6 +26,8 @@ func (i *IngestorWebServerImplemenation) DatasetControllerBrowseFilesystem(ctx c
 		if err != nil {
 			return false, false
 		}
+
+		defer folder.Close()
 		entries, err := folder.ReadDir(-1) // this could be optimised by doing this in chunks
 		if err != nil {
 			return false, false
@@ -42,9 +46,33 @@ func (i *IngestorWebServerImplemenation) DatasetControllerBrowseFilesystem(ctx c
 		return hasFiles, hasDirs
 	}
 
-	// get absolute path in os format
-	// Clean = remove relative paths and convert / to \ under Windows (consistent pathstrings across OS's)
-	absPath := filepath.Join(i.pathConfig.CollectionLocation, filepath.Clean(request.Params.Path))
+	// if we're at the root, return list of collection locations
+	if path.Clean(request.Params.Path) == "/" {
+		collections := collections.GetCollectionList(i.pathConfig.CollectionLocations)
+		folders := make([]FolderNode, len(collections))
+
+		for c, collection := range collections {
+			path := i.pathConfig.CollectionLocations[collection]
+			_, hasChildren := folderHasFilesOrSubFolders(path)
+			folders[c] = FolderNode{
+				Children:        hasChildren,
+				Name:            collection,
+				Path:            "/" + collection,
+				ProbablyDataset: false,
+			}
+		}
+
+		return DatasetControllerBrowseFilesystem200JSONResponse{
+			Folders: folders,
+			Total:   uint(len(collections)),
+		}, nil
+	}
+
+	collectionName, collectionPath, relPath, err := collections.GetPathDetails(i.pathConfig.CollectionLocations, filepath.Clean(request.Params.Path))
+	if err != nil {
+		return DatasetControllerBrowseFilesystem400TextResponse(err.Error()), nil
+	}
+	absPath := filepath.Join(collectionPath, relPath)
 
 	// check if path is dir
 	folder, err := os.Stat(absPath)
@@ -75,17 +103,17 @@ func (i *IngestorWebServerImplemenation) DatasetControllerBrowseFilesystem(ctx c
 	folders := make([]FolderNode, pageSize)
 
 	// flat directory walk to put a section of folders into the 'folders' slice
-	err = filepath.WalkDir(absPath, func(path string, d os.DirEntry, err error) error {
+	err = filepath.WalkDir(absPath, func(currPath string, d os.DirEntry, err error) error {
 		if err != nil {
 			return nil // skip errored elements
 		}
-		if d.IsDir() && path != absPath {
+		if d.IsDir() && currPath != absPath {
 			if folderCounter >= start && folderCounter < end {
-				hasFiles, hasChildren := folderHasFilesOrSubFolders(path)
-				relativePath, _ := filepath.Rel(i.pathConfig.CollectionLocation, path)
+				hasFiles, hasChildren := folderHasFilesOrSubFolders(currPath)
+				relativePath, _ := filepath.Rel(collectionPath, currPath)
 
 				folders[folderCounter-start].Name = d.Name()
-				folders[folderCounter-start].Path = "/" + relativePath
+				folders[folderCounter-start].Path = "/" + collectionName + "/" + filepath.ToSlash(relativePath)
 				folders[folderCounter-start].Children = hasChildren
 				folders[folderCounter-start].ProbablyDataset = hasFiles
 			}
@@ -122,7 +150,19 @@ func (i *IngestorWebServerImplemenation) DatasetControllerIngestDataset(ctx cont
 	if !ok {
 		return DatasetControllerIngestDataset400TextResponse("sourceFolder is not present in the metadata"), nil
 	}
-	folderPath := filepath.Join(i.pathConfig.CollectionLocation, filepath.Clean(sourceFolder))
+	cleanedSourceFolder := filepath.Clean(sourceFolder)
+
+	// the sourceFolder attribute's first folder indicates the collection location 'key' (should be the collection's base directory name)
+	folderPath, err := collections.GetDatasetAbsolutePath(i.pathConfig.CollectionLocations, cleanedSourceFolder)
+	if err != nil {
+		return DatasetControllerIngestDataset400TextResponse(err.Error()), nil
+	}
+
+	// adapt source folder attribute to Globus collection path **only if** using external Globus transfer request service
+	//   as the service uses it to find the dataset's folder (due to security concerns)
+	if i.taskQueue.GetTransferMethod() == transfertask.TransferExtGlobus {
+		metadata["sourceFolder"] = strings.TrimPrefix(folderPath, i.taskQueue.Config.Transfer.ExtGlobus.CollectionRootPath)
+	}
 
 	ownerGroup, ok := metadata["ownerGroup"].(string)
 	if !ok {
@@ -248,40 +288,6 @@ func (i *IngestorWebServerImplemenation) addS3TransferTask(ctx context.Context, 
 	}
 	return taskId, nil
 }
-
-func (i *IngestorWebServerImplemenation) DatasetControllerGetDataset(ctx context.Context, request DatasetControllerGetDatasetRequestObject) (DatasetControllerGetDatasetResponseObject, error) {
-	files, err := os.ReadDir(i.pathConfig.CollectionLocation)
-	if err != nil {
-		return nil, err
-	}
-
-	var datasets []string
-	for _, file := range files {
-		if file.IsDir() {
-			datasets = append(datasets, file.Name())
-		}
-	}
-	slices.Sort(datasets)
-
-	page := uint(1)
-	pageSize := uint(10)
-	if request.Params.Page != nil {
-		page = max(*request.Params.Page, 1)
-	}
-	if request.Params.PageSize != nil {
-		pageSize = min(*request.Params.PageSize, 100)
-	}
-
-	return DatasetControllerGetDataset200JSONResponse{
-		Datasets: safeSubslice(datasets, (page-1)*pageSize, page*pageSize),
-		Total:    len(datasets),
-	}, nil
-}
-
-//func ptr[T any](v T) *T {
-//	var temp T = v
-//	return &temp
-//}
 
 func safeSubslice[T any](s []T, start, end uint) []T {
 	sLen := uint(len(s))

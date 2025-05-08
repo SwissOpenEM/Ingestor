@@ -10,6 +10,7 @@ import (
 
 	b64 "encoding/base64"
 
+	"github.com/SwissOpenEM/Ingestor/internal/webserver/collections"
 	"github.com/SwissOpenEM/Ingestor/internal/webserver/metadatatasks"
 	"github.com/gin-gonic/gin"
 )
@@ -103,7 +104,20 @@ func (r ResponseWriter) VisitExtractMetadataResponse(writer http.ResponseWriter)
 }
 
 func (i *IngestorWebServerImplemenation) ExtractMetadata(ctx context.Context, request ExtractMetadataRequestObject) (ExtractMetadataResponseObject, error) {
-	return ResponseWriter{ctx: ctx, metadataTaskPool: i.metp, req: request, collectionLocation: i.pathConfig.CollectionLocation}, nil
+	// get collection location and relative path from input path
+	_, colPath, relPath, err := collections.GetPathDetails(i.pathConfig.CollectionLocations, filepath.Clean(request.Params.FilePath))
+	if err != nil {
+		return ExtractMetadatadefaultJSONResponse{
+			Body: Error{
+				Code:    "400",
+				Message: err.Error(),
+			},
+			StatusCode: 400}, nil
+	}
+	request.Params.FilePath = relPath
+
+	// start streaming the extraction process
+	return ResponseWriter{ctx: ctx, metadataTaskPool: i.metp, req: request, collectionLocation: colPath}, nil
 }
 
 type progressDto struct {

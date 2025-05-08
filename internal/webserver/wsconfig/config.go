@@ -52,7 +52,7 @@ type AuthConf struct {
 }
 
 type PathsConf struct {
-	CollectionLocation      string `validate:"required"`
+	CollectionLocations     map[string]string `validate:"required"`
 	ExtractorOutputLocation string
 }
 

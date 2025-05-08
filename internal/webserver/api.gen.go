@@ -80,14 +80,6 @@ type GetBrowseDatasetResponse struct {
 	Total uint `json:"total"`
 }
 
-// GetDatasetResponse defines model for GetDatasetResponse.
-type GetDatasetResponse struct {
-	Datasets []string `json:"datasets"`
-
-	// Total Total number of datasets.
-	Total int `json:"total"`
-}
-
 // GetExtractorResponse defines model for GetExtractorResponse.
 type GetExtractorResponse struct {
 	// Methods List of the metadata extraction method names configured in the ingestor
@@ -182,12 +174,6 @@ type GetCallbackParams struct {
 	State string `form:"state" json:"state"`
 }
 
-// DatasetControllerGetDatasetParams defines parameters for DatasetControllerGetDataset.
-type DatasetControllerGetDatasetParams struct {
-	Page     *uint `form:"page,omitempty" json:"page,omitempty"`
-	PageSize *uint `form:"pageSize,omitempty" json:"pageSize,omitempty"`
-}
-
 // DatasetControllerBrowseFilesystemParams defines parameters for DatasetControllerBrowseFilesystem.
 type DatasetControllerBrowseFilesystemParams struct {
 	Path     string `form:"path" json:"path"`
@@ -235,9 +221,6 @@ type ServerInterface interface {
 	// OIDC callback
 	// (GET /callback)
 	GetCallback(c *gin.Context, params GetCallbackParams)
-	// Get the available datasets.
-	// (GET /dataset)
-	DatasetControllerGetDataset(c *gin.Context, params DatasetControllerGetDatasetParams)
 	// Ingest a new dataset
 	// (POST /dataset)
 	DatasetControllerIngestDataset(c *gin.Context)
@@ -331,42 +314,6 @@ func (siw *ServerInterfaceWrapper) GetCallback(c *gin.Context) {
 	}
 
 	siw.Handler.GetCallback(c, params)
-}
-
-// DatasetControllerGetDataset operation middleware
-func (siw *ServerInterfaceWrapper) DatasetControllerGetDataset(c *gin.Context) {
-
-	var err error
-
-	c.Set(CookieAuthScopes, []string{"ingestor_read"})
-
-	// Parameter object where we will unmarshal all parameters from the context
-	var params DatasetControllerGetDatasetParams
-
-	// ------------- Optional query parameter "page" -------------
-
-	err = runtime.BindQueryParameter("form", true, false, "page", c.Request.URL.Query(), &params.Page)
-	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter page: %w", err), http.StatusBadRequest)
-		return
-	}
-
-	// ------------- Optional query parameter "pageSize" -------------
-
-	err = runtime.BindQueryParameter("form", true, false, "pageSize", c.Request.URL.Query(), &params.PageSize)
-	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter pageSize: %w", err), http.StatusBadRequest)
-		return
-	}
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		middleware(c)
-		if c.IsAborted() {
-			return
-		}
-	}
-
-	siw.Handler.DatasetControllerGetDataset(c, params)
 }
 
 // DatasetControllerIngestDataset operation middleware
@@ -742,7 +689,6 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 	}
 
 	router.GET(options.BaseURL+"/callback", wrapper.GetCallback)
-	router.GET(options.BaseURL+"/dataset", wrapper.DatasetControllerGetDataset)
 	router.POST(options.BaseURL+"/dataset", wrapper.DatasetControllerIngestDataset)
 	router.GET(options.BaseURL+"/dataset/browse", wrapper.DatasetControllerBrowseFilesystem)
 	router.GET(options.BaseURL+"/extractor", wrapper.ExtractorControllerGetExtractorMethods)
@@ -794,33 +740,6 @@ type GetCallback500TextResponse string
 func (response GetCallback500TextResponse) VisitGetCallbackResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(500)
-
-	_, err := w.Write([]byte(response))
-	return err
-}
-
-type DatasetControllerGetDatasetRequestObject struct {
-	Params DatasetControllerGetDatasetParams
-}
-
-type DatasetControllerGetDatasetResponseObject interface {
-	VisitDatasetControllerGetDatasetResponse(w http.ResponseWriter) error
-}
-
-type DatasetControllerGetDataset200JSONResponse GetDatasetResponse
-
-func (response DatasetControllerGetDataset200JSONResponse) VisitDatasetControllerGetDatasetResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
-
-	return json.NewEncoder(w).Encode(response)
-}
-
-type DatasetControllerGetDataset400TextResponse string
-
-func (response DatasetControllerGetDataset400TextResponse) VisitDatasetControllerGetDatasetResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "text/plain")
-	w.WriteHeader(400)
 
 	_, err := w.Write([]byte(response))
 	return err
@@ -1187,9 +1106,6 @@ type StrictServerInterface interface {
 	// OIDC callback
 	// (GET /callback)
 	GetCallback(ctx context.Context, request GetCallbackRequestObject) (GetCallbackResponseObject, error)
-	// Get the available datasets.
-	// (GET /dataset)
-	DatasetControllerGetDataset(ctx context.Context, request DatasetControllerGetDatasetRequestObject) (DatasetControllerGetDatasetResponseObject, error)
 	// Ingest a new dataset
 	// (POST /dataset)
 	DatasetControllerIngestDataset(ctx context.Context, request DatasetControllerIngestDatasetRequestObject) (DatasetControllerIngestDatasetResponseObject, error)
@@ -1260,33 +1176,6 @@ func (sh *strictHandler) GetCallback(ctx *gin.Context, params GetCallbackParams)
 		ctx.Status(http.StatusInternalServerError)
 	} else if validResponse, ok := response.(GetCallbackResponseObject); ok {
 		if err := validResponse.VisitGetCallbackResponse(ctx.Writer); err != nil {
-			ctx.Error(err)
-		}
-	} else if response != nil {
-		ctx.Error(fmt.Errorf("unexpected response type: %T", response))
-	}
-}
-
-// DatasetControllerGetDataset operation middleware
-func (sh *strictHandler) DatasetControllerGetDataset(ctx *gin.Context, params DatasetControllerGetDatasetParams) {
-	var request DatasetControllerGetDatasetRequestObject
-
-	request.Params = params
-
-	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
-		return sh.ssi.DatasetControllerGetDataset(ctx, request.(DatasetControllerGetDatasetRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "DatasetControllerGetDataset")
-	}
-
-	response, err := handler(ctx, request)
-
-	if err != nil {
-		ctx.Error(err)
-		ctx.Status(http.StatusInternalServerError)
-	} else if validResponse, ok := response.(DatasetControllerGetDatasetResponseObject); ok {
-		if err := validResponse.VisitDatasetControllerGetDatasetResponse(ctx.Writer); err != nil {
 			ctx.Error(err)
 		}
 	} else if response != nil {
@@ -1623,63 +1512,62 @@ func (sh *strictHandler) OtherControllerGetVersion(ctx *gin.Context) {
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
-	"Qo1WqPaZT7Me6/3+9v5/AwAA///PRk4d2T0AAA==",
+	"H4sIAAAAAAAC/+xbW3MbN7L+K11zTpXtKorSSXLOg94UWXZ41rey7K3aslQOONMkEYPAGMCIZlL671uN",
+	"BubCGd7WVjap7Js4g0E3+vLh6wb0W5abZWk0au+y898yly9wKcKfT1Ghx3dWaDdD+xY/V+g8vSitKdF6",
+	"iWFYwcOE+8S/XG5l6aXR2XkmZ+AXCKi9XYNGLBx4A1ME/qgAY0EbPwKpQRSFpM9oRC50jkpJPQfp4fF0",
+	"DQXORKU8zIRy+CQbZX5dYnaeTY1RKHR2P8pcLnPh35lPqLdqIvUcnTcWpIPc6JmcVxYLElk5hKsv/rky",
+	"08pdo72TOcLMWPDRACPwC+kAdVEaqX1cjoDrXF4KDz7IrfVy3ko9J7XS95NiQKsCDCuWRoFfCA9uYSpV",
+	"kKGiJbDoT30/yix+rqTFIjv/0JZzW481018w96TGpjddabTDvjudF75yfVVf4Qr43abK42NXnZQAWYCY",
+	"zTD3X7+8K2uN7a8mN0VYY0+/JTon5kPvNuSGGZrxQ7KfGVWgfRVFddcqYIl+YQqQHpfA76boggH5zSMH",
+	"WiwRhC6Asy8bba5iIVVhOaz7cU9fD66xFH4x/MKaqZiq9VPhhUM/NO2GFYKMOOOo0ac/1ZB9nqP/0ZqV",
+	"wzhoe/DNgiXDn2Sv8Md/W5xl59l/nTZAdRpR6rRl+ftasLBWrMNv44UaCD96DLpaTtFSLEehFMYzY5fC",
+	"Z+dZJbVvQlJqj3O0PaskdZOoLYu/+uKtyL3ZkXUcCgNp90I6nxJuiV4UwgtAnpDAMkYX+aeDaFJ38C4b",
+	"HWbQl2G6icflVxg0LWav/VoDd9lvP2gdqFjCEDce0K3BrMPjL2k2bLD7geW0DPwwWLEVDeL4vYAXUz0O",
+	"H3LJa79A+xMK5RfbXYIEyOGvtLEL9abrtN6esSlo21503dmHUoyP9+4hcb5EFa7Tzzlv+vxz64r/jtZJ",
+	"o7cv+Y4H9PWNXx6mcE/4G+N8jZxbSJiovLmw+ULeDexBqwWS/sRyaJzgcUGVgucdw9PIr6SDd2/fXw0S",
+	"LMIfUmQg0droFFeZph5iB5VDu4Wo0afsHqZUgYMR2Ok5GA1TXAg1SzJonr1er9Vuy73dZ+hj+RGZYAs/",
+	"gktBipO2gWo61AVQsgdKAVORf6LHYUHyeDZFn2n5uWqRyIZXRi80r34x0/HXkq0O7PUsNF17dO8SIvdh",
+	"lt/HKYLAoVEzqXbOwu/3zbKd5rXRBXW1pGWvhKQ4yxqDW/45k1q6RWCpMyGZjbeZudR3QskiBkDLZttc",
+	"eLD5azWH/PDeoZ3omRlA36WQanDV+KWUFt1H4ZlwRcJTCI8nXgbo730zE0up1h+3bi1zeYd6+2tl5nMs",
+	"Psqj+atF9u1HytsdwwwFw+A7axR2t/Ntu05NclzF9t3rpWZZfd/QPJhXVvr1NW2kqRoxnyReVEzLyR7x",
+	"UZaskHURTZTyb0hM4p5ijB3dzf636DxcvJkEmMzNcllpwk4ZoNKvEJkHTlLd+34SyEP9m8CH4MhxxTsG",
+	"gpONh6150cFK+kWY8+rlSax9649vNH1O6gilzMp1S1szC3A0CrvQUniZD1LaQG4YSRNEfq7QSmTaJj35",
+	"Ooui64VcvJlko2YLzv5nfDY+I3+aErUoZXaefT8+G38fq5jgj9NcKEWLpR9zLoQoi4L9KFGJfV6mMfSh",
+	"FUv0gSF+2PTEM2NhIXQRuha0blH5hbHyV/YG1ZFgMUd5hwXMrFmGQa8nTy+htOZOFsHxIShouesmJmIJ",
+	"2sSetxXuJHSbutWKhzC5vH77jGR6DAbfIpVccJzYWxrM+2Yw7/dn3/UDNiw42R1clefo3KxS2ShboEjV",
+	"nzIcxP3vLRbSYu7h/dsX2S5tKGd+ODvjvNMeNac0fvGnpRIMRju+Hu3Um3cBKGjTNZDgP/jYWGDT3Y+y",
+	"//128ifaEwYquEZ7hxa44dEGmuz8wy3B13Ip7HpTY8ocMae4Ja64QO0jTGS3NMdp0bQCSsMMsyv/0qLw",
+	"CKJmFKhwidpTpRlzMSQu4UYiHmQbfkeZ282sSLQujfbWKEUbGWVy6iNw3KHzP5pivWFDUZYqan/6izMb",
+	"ltxVrw1Q6fsurFOM32/E8Xc9L34jDSLHHPB2HBJLBcKPVqZ828CexOC1tUE6IdXdtT5kqXj5uLLSY3Z7",
+	"34k5diII0LhKkdIKvfSkE3On09AcamHw5hbnrcRYsHDLBZy3Ve4ri4nnBgoChOwHhBp3o54Rg1w74rA9",
+	"aB8CxNj82o6HXbXfCL9I2kWt16aCldA+NMGDDoNUfJv4OWa7xM0xtToI5EsxlzrY4LDG1nah1/LXXYJf",
+	"9dsrUGJQAA8SffuA6ba19TiQCKnVFrt6rYxTa7AxCIvxHyT9LIpiM/ueI6We2lgHlf3gSszlTOZ1igyn",
+	"JKZW5WHZKO6EVGKqsN+S3NWN7Kdo3SJtkrTdOH1ZNwoPytP/JMq/kij9NvVAuF5setxY1yQH5UxKma+P",
+	"5B3B1QrgJmQ5hLmZd3IItefDvocj+Dz/X4HV80r/jLx+U/M/A7NvlDUW5inIdvL7RWjX70d1qRmGQiE+",
+	"NZUPkd40NqmavlpCgyB9LA/N8g6O81lB9oDwNXQkMWBqHpGW04GtFm79nvt7D/XI3Iu2mu3N2tAyo0eV",
+	"mbMygw6daOll6NfUXYYuXM2UWfV99xz9izDvIUn/NqWsN90+BvfsfdUOwyNhYA8E7Ct7VVzEzpxQZm4q",
+	"v2uDeMEjDjEGD+VIwgKLEdSIlhr8C7NEiOzkOEyMpcduUHwISHIMSbgXkqjsrxxVZugc+3un7VPjb2sA",
+	"X3thvQvHJP0WoRfuE5guqQQnCxxxe1LJO4SqLEICNDBWWjO36BxUjvbwiLfXskC4uiM8gcfX11dPxjd6",
+	"4mEllYJcGcdUNzda887adEBnkmyUmpRkeCF1Yge13oRk4xu9jfO+TJY4iNzOpMI3xxWi74KmCkMUpYrU",
+	"oQr3brhPYzE3tjiiGGUa9oqPio9RpJbbzBDQYsPDQ6rsp78h3pE8eeK8RREOp/CLWJahZRzenCd/3WiS",
+	"eQ7/MJUdDLKI2CBdql8+V1ghu/KIZLoIkSF1ZSoHrBd5gVPrxKH2EDRzY7gS+YJ/xPDjkAK/Mqnf5s5B",
+	"aPg5DPoZvJiHtpuAn0n98GDMXfj2kO5dAtKYNGBB4cLZSjgImkzXMTxIOT4N4Jl5oq5WxIFzXwkV3Hej",
+	"Y2wlL/HnwazSO1Qz/nyKINRKrB2gJl4VysOpcPh/P4zCYqR3wCwECixRFy7lerhMyFqvS/LET2jxkWsV",
+	"vaVxToaaoR7mwqScw5Z1KyhJg2Isx53faDiBzQABAI4RAeze5iYOp/yQySb+kYOlCep41Hzqu3E6o+cJ",
+	"WSMVeayNhyDQohKez4nDalN1E034pK1ogOUhNYNPu04PY4PFKwJ3LMg70kU7CeUMaLKFUmtYotCOJ2H2",
+	"F2I2OS9gYgHCBckAsi1KwEx4oVjcuK1sAt+OvoSNLCgGlUv9MmVWtJKZRFW4c7jJnC8+msrfZKP4A63l",
+	"HxZdpfxNBo9NyRdNntDj8L71LKoLJxCniidNYSYQFjcMjl8wrzwVoI8ob4UuhC2g+S4+YMOyjVyIfdom",
+	"7lCtx41EVjF8mISJgkJ/tYgndI3ceNjsRvTSYvo23gltJ19niwm5kyRCELPxidDrtncCAa6sxiKFcKPD",
+	"Y74vazEgg9DrJ2OYhEe0Ha5M9AstpBEpda6qQH08r0r4OpQGFljEvJSuDi0ap4SLgFjvVcG2jLst3nQp",
+	"8gWexEJjoN1iIBf5ItwhdnweGRMxiIyTZrsvRl3Wu35fwEVxJ13MrlxJ5L7uJ8RykzBQ0XSAJNrGTt6F",
+	"N0Nb58vJy6sau1troOX1dr7xXroYb1R/sxIsla29/e+9xi8lb/qDPPKoxtAcfeemUX0eFWY9TZ215mJ6",
+	"n9enSyNNidq9G/1AZ0/D1+l/5+OnLbfAB7xWX9Lmey7/1iL5uDOoy6BwjIy619oqSOpHt/ejPe0QkdrD",
+	"WNQUo+nehkIg7S/EsT3SCvtldT/kWtdaDyP+3TtBu5qEf6meeBLN+0Ij+zpcITy5eDM5eRf/M+PwFuc3",
+	"bqwfkm7P0UOdcn+g/tTRXftelozhdcqQKtbSTSxD08P2BoxWayCENxrDJejxcNYS0leOco2vRG1r37xP",
+	"Yx7Qv/UdvAHbhoaIdMA3xcI/OYVa7f+vX7+i5zX/qjsK9aq+rZMDyxSVX5DUQjoitQURxshefzg7ozeO",
+	"C0+/aG6nfuNetzy6scQ2ctxcItPw/4cRhu7rMbXuY+8/yswra2n5d9vvau9rc8dr3g/e5968iD6Y1bEp",
+	"lpbzh+11h/JYbqg71PI+BpdGmxRhlIliKTUDVpy6dzMtude1i/BIL12ztdSEc3T4DA0c9nf0gycaaFI1",
+	"szXHoP3pnlU2/AOAaaYNJ0eo0QrVPvNp5mO739/e/zMAAP///lEbSCI6AAA=",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

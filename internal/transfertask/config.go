@@ -22,6 +22,7 @@ type GlobusTransferConfig struct {
 
 type ExtGlobusTransferConfig struct {
 	TransferServiceUrl string `string:"TransferServiceUrl" validate:"http_url"`
+	CollectionRootPath string `string:"CollectionRootPath"`
 	SrcFacility        string `string:"SourceFacility" validate:"required"`
 	DstFacility        string `string:"DestinationFacility" validate:"required"`
 }

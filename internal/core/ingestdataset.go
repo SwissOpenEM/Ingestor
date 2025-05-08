@@ -15,6 +15,7 @@ import (
 	"github.com/SwissOpenEM/Ingestor/internal/globustransfer"
 	"github.com/SwissOpenEM/Ingestor/internal/s3upload"
 	"github.com/SwissOpenEM/Ingestor/internal/transfertask"
+	"github.com/SwissOpenEM/Ingestor/internal/webserver/collections"
 	"github.com/SwissOpenEM/globus"
 	"github.com/paulscherrerinstitute/scicat-cli/v3/datasetIngestor"
 	"github.com/paulscherrerinstitute/scicat-cli/v3/datasetUtils"
@@ -225,7 +226,11 @@ func TransferDataset(
 		}
 
 		// globus doesn't work with absolute folders, this library uses sourcePrefix to adapt the path to the globus' own path from a relative path
-		relativeDatasetFolder := strings.TrimPrefix(datasetFolder, config.WebServer.CollectionLocation)
+		_, _, relativeDatasetFolder, err := collections.GetPathDetails(config.WebServer.CollectionLocations, filepath.Clean(datasetFolder))
+		if err != nil {
+			return err
+		}
+
 		files := make([]globustransfer.File, len(fileList))
 		bytesTotal := 0
 		for i, file := range fileList {
@@ -252,6 +257,9 @@ func TransferDataset(
 				transferTask.UpdateProgress(&bytesTransferred, &filesTransferred)
 			},
 		)
+		if err != nil {
+			return err
+		}
 	default:
 		err = fmt.Errorf("unknown transfer method: %d", transferTask.TransferMethod)
 	}

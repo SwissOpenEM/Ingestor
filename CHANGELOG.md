@@ -16,6 +16,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
  - (CONFIG) Transfer.Globus.DestinationPrefixPath is removed because DestinationTemplate replaces it in functionality
 
+## [PR #126] (2025-04-29)
+### Added
+ - (Config) Transfer.ExtGlobus.CollectionRootPath is the path at which the Globus Collection is rooted. This value is used to convert absolute paths to Globus paths
+### Changed
+ - (Config) Webserver.Paths.CollectionLocation is now WebServer.Paths.CollectionLocations (plural), and its contents are now a map that maps collection location names (strings) to paths (strings).
+ - (Code) the API now expects dataset paths to have their first path node to contain the collection location 'name'.  
+
+A recommendation is to have the name of the collection's root folder to be the same as its "name" in the map. For example,  "example_collection" is  mapped to "/some/location/example_collection".
+
 ## [PR #127] (2025-05-05)
 ### Added
  - (CONFIG) Transfer.StorageLocation sets an ID string in the dataset lifecycle that specifies to which facility we're transmitting the dataset's data
