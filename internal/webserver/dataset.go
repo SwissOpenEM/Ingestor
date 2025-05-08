@@ -26,6 +26,8 @@ func (i *IngestorWebServerImplemenation) DatasetControllerBrowseFilesystem(ctx c
 		if err != nil {
 			return false, false
 		}
+
+		defer folder.Close()
 		entries, err := folder.ReadDir(-1) // this could be optimised by doing this in chunks
 		if err != nil {
 			return false, false
