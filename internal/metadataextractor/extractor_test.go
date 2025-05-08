@@ -161,6 +161,7 @@ func TestExtractorHandler_Methods(t *testing.T) {
 			fields: fields{
 				config: ExtractorsConfig{
 					DownloadMissingExtractors: false,
+					DownloadSchemas:           false,
 					SchemasLocation:           path.Dir(schemaPath),
 					InstallationPath:          extractorsPath,
 					Extractors: []ExtractorConfig{
