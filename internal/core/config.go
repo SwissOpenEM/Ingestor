@@ -62,7 +62,31 @@ func DefaultConfigFileName() string {
 func (c *ConfigReader) ReadConfig(configFileName string) (Config, error) {
 	c.viperConf.SetConfigName(configFileName) // name of config file (without extension)
 
-	viper.SetDefault("WebServer.Port", 8888)
+	c.viperConf.SetDefault("Scicat.Host", "https://datcat.psi.ch/api/v3")
+
+	c.viperConf.SetDefault("MetadataExtractors.InstallationPath", "./extractors/")
+	c.viperConf.SetDefault("MetadataExtractors.SchemasLocation", "./schemas/")
+	c.viperConf.SetDefault("MetadataExtractors.DownloadSchemas", true)
+	c.viperConf.SetDefault("MetadataExtractors.DownloadMissingExtractors", true)
+	c.viperConf.SetDefault("MetadataExtractors.Timeout", "10m")
+
+	c.viperConf.SetDefault("WebServer.Auth.Disable", false)
+	c.viperConf.SetDefault("WebServer.Auth.Frontend.Origin", "https://discovery.psi.ch")
+	c.viperConf.SetDefault("WebServer.Auth.Frontend.RedirectPath", "/ingestor")
+	c.viperConf.SetDefault("WebServer.Auth.OAuth2.ClientID", "ingestor")
+	c.viperConf.SetDefault("WebServer.Auth.OAuth2.RedirectURL", "https://keycloak.psi.ch/callback")
+	c.viperConf.SetDefault("WebServer.Auth.OAuth2.Scopes", []string{"email"})
+	c.viperConf.SetDefault("WebServer.Auth.OIDC.IssuerURL", "http://keycloak.psi.ch/realms/facility")
+	c.viperConf.SetDefault("WebServer.Auth.JWT.UseJWKS", true)
+	c.viperConf.SetDefault("WebServer.Auth.JWT.JwksURL", "https://keycloak.psi.ch/realms/facility/protocol/openid-connect/certs")
+	c.viperConf.SetDefault("WebServer.Auth.JWT.JwksSignatureMethods", []string{"RS256"})
+
+	c.viperConf.SetDefault("WebServer.MetadataExtJobs.ConcurrencyLimit", 100)
+	c.viperConf.SetDefault("WebServer.MetadataExtJobs.QueueSize", 200)
+
+	c.viperConf.SetDefault("WebServer.Other.Port", 8888)
+	c.viperConf.SetDefault("WebServer.Other.LogLevel", "Info")
+	c.viperConf.SetDefault("WebServer.Other.DisableServiceAccountCheck", false)
 
 	err := c.viperConf.ReadInConfig()
 	if err == nil {

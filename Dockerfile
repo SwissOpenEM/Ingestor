@@ -12,7 +12,6 @@ RUN go mod download
 COPY ./api ./api
 COPY ./cmd ./cmd
 COPY ./internal ./internal
-COPY configs/schemas /app/schemas
 
 ARG VERSION=1.2.3
 # Build
@@ -21,7 +20,6 @@ RUN CGO_ENABLED=0 GOOS=linux go build -C ./cmd/openem-ingestor-service/ -v -o /a
 
 FROM alpine
 COPY --from=builder /app/ingestor /app/ingestor
-COPY --from=builder /app/schemas /app/schemas
 
 EXPOSE 8080
 WORKDIR /app

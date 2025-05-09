@@ -99,18 +99,22 @@ func createExpectedValidConfig(transferConfig transfertask.TransferConfig) Confi
 		{
 			Name:   "Single Particle",
 			Schema: "singleParticleSchema.json",
+			Url:    "https://raw.githubusercontent.com/osc-em/OSCEM_Schemas/refs/heads/main/project/spa/jsonschema/oscem_schemas_spa.schema.json",
 		},
 		{
 			Name:   "Cellular Tomography",
 			Schema: "cellularTomographySchema.json",
+			Url:    "https://raw.githubusercontent.com/osc-em/OSCEM_Schemas/refs/heads/main/project/cellular_tomo/jsonschema/oscem_schemas_cellular_tomo.schema.json",
 		},
 		{
 			Name:   "Tomography",
 			Schema: "tomographySchema.json",
+			Url:    "https://raw.githubusercontent.com/osc-em/OSCEM_Schemas/refs/heads/main/project/subtomo/jsonschema/oscem_schemas_subtomo.schema.json",
 		},
 		{
 			Name:   "Environmental Tomography",
 			Schema: "environmentalTomographySchema.json",
+			Url:    "https://raw.githubusercontent.com/osc-em/OSCEM_Schemas/refs/heads/main/project/env_tomo/jsonschema/oscem_schemas_env_tomo.schema.json",
 		},
 	}
 
@@ -141,12 +145,14 @@ func createExpectedValidConfig(transferConfig transfertask.TransferConfig) Confi
 					{
 						Name:   "Material Science",
 						Schema: "some.json",
+						Url:    "https://url.com/some.json",
 					},
 				},
 			},
 		},
 		InstallationPath:          "./parentPathToAllExtractors/",
 		DownloadMissingExtractors: false,
+		DownloadSchemas:           false,
 		SchemasLocation:           "./ExtractorSchemas",
 		Timeout:                   time.Minute * 4,
 	}

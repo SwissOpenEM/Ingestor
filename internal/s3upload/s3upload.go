@@ -79,8 +79,11 @@ func UploadS3(ctx context.Context, datasetPID string, datasetSourceFolder string
 
 	s3Objects := S3Objects{}
 	for _, f := range fileList {
-		s, _ := os.Stat(path.Join(datasetSourceFolder, f.Path))
-		s3Objects.TotalBytes += s.Size()
+		info, _ := os.Stat(path.Join(datasetSourceFolder, f.Path))
+		if info.IsDir() {
+			continue
+		}
+		s3Objects.TotalBytes += info.Size()
 		s3Objects.Files = append(s3Objects.Files, path.Join(datasetSourceFolder, f.Path))
 		s3Objects.ObjectNames = append(s3Objects.ObjectNames, "openem-network/datasets/"+datasetPID+"/raw_files/"+f.Path)
 	}
