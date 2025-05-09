@@ -207,7 +207,7 @@ func TransferDataset(
 			return fmt.Errorf("missing refresh token for s3 upload")
 		}
 
-		err = s3upload.UploadS3(task_context, datasetId, datasetFolder, fileList, transferTask.DatasetFolder.Id, config.Transfer.S3, accessToken, refreshToken, notifier)
+		err = s3upload.UploadS3(task_context, transferTask, config.Transfer.S3, accessToken, refreshToken, notifier)
 	case transfertask.TransferGlobus:
 		// get transfer objects
 		client, ok := transferTask.GetTransferObject("globus_client").(*globus.GlobusClient)
@@ -230,12 +230,13 @@ func TransferDataset(
 		}
 
 		files := make([]globustransfer.File, len(fileList))
-		bytesTotal := 0
+		bytesTotal := int64(0)
 		for i, file := range fileList {
 			files[i].IsSymlink = file.IsSymlink
 			files[i].Path = file.Path
-			bytesTotal += int(file.Size)
+			bytesTotal += int64(file.Size)
 		}
+		transferNotifier := transfertask.NewTransferNotifier(bytesTotal, transferTask.DatasetFolder.Id, notifier, transferTask)
 
 		transferTask.TransferStarted()
 		err = globustransfer.TransferFiles(
@@ -249,11 +250,7 @@ func TransferDataset(
 			task_context,
 			relativeDatasetFolder,
 			files,
-			func(bytesTransferred, filesTransferred int) {
-				progress := bytesTransferred * 100 / bytesTotal
-				notifier.OnTaskProgress(transferTask.DatasetFolder.Id, progress)
-				transferTask.UpdateProgress(&bytesTransferred, &filesTransferred)
-			},
+			&transferNotifier,
 		)
 		if err != nil {
 			return err

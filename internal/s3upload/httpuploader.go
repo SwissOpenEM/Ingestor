@@ -119,7 +119,7 @@ func completeMultiPartUpload(object_name string, uploadID string, endpoint strin
 	return nil
 }
 
-func uploadFile(ctx context.Context, filePath string, objectName string, options transfertask.S3TransferConfig, notifier *TransferNotifier, tokenSource oauth2.TokenSource) error {
+func uploadFile(ctx context.Context, filePath string, objectName string, options transfertask.S3TransferConfig, notifier *transfertask.TransferNotifier, tokenSource oauth2.TokenSource) error {
 	file, err := os.Open(filePath)
 	if err != nil {
 		return fmt.Errorf("error opening file: %w", err)
@@ -173,7 +173,7 @@ func abortMultipartUpload(uploadID string, objectName string, endpoint string, u
 	return nil
 }
 
-func doUploadSingleFile(ctx context.Context, objectName string, file *os.File, httpClient *HttpUploader, endpoint string, userToken string, notifier *TransferNotifier) error {
+func doUploadSingleFile(ctx context.Context, objectName string, file *os.File, httpClient *HttpUploader, endpoint string, userToken string, notifier *transfertask.TransferNotifier) error {
 
 	_, urls, err := getPresignedUrls(objectName, 1, endpoint, userToken)
 	if err != nil {
@@ -195,11 +195,12 @@ func doUploadSingleFile(ctx context.Context, objectName string, file *os.File, h
 		return ctx.Err()
 	}
 	notifier.AddUploadedBytes(int64(n))
+	notifier.IncreaseFileCount(1)
 	notifier.UpdateTaskProgress()
 	return nil
 }
 
-func doUploadMultipart(ctx context.Context, totalSize int64, objectName string, file *os.File, httpClient *HttpUploader, options transfertask.S3TransferConfig, userToken string, notifier *TransferNotifier) (string, error) {
+func doUploadMultipart(ctx context.Context, totalSize int64, objectName string, file *os.File, httpClient *HttpUploader, options transfertask.S3TransferConfig, userToken string, notifier *transfertask.TransferNotifier) (string, error) {
 	partCount := int(math.Ceil(float64(totalSize) / float64(options.ChunkSizeMB*MiB)))
 
 	uploadID, presignedURLs, err := getPresignedUrls(objectName, partCount, options.Endpoint, userToken)
@@ -226,8 +227,6 @@ func doUploadMultipart(ctx context.Context, totalSize int64, objectName string, 
 
 			notifier.AddUploadedBytes(int64(n))
 
-			notifier.UpdateTaskProgress()
-
 			parts[partNumber] = CompletePart{ETag: etag, PartNumber: partNumber + 1, ChecksumSHA256: base64hash}
 
 			return nil
@@ -248,6 +247,9 @@ func doUploadMultipart(ctx context.Context, totalSize int64, objectName string, 
 	if err != nil {
 		return uploadID, fmt.Errorf("error completing multipart upload: %s", err.Error())
 	}
+
+	notifier.IncreaseFileCount(1)
+	notifier.UpdateTaskProgress()
 
 	return uploadID, nil
 }
