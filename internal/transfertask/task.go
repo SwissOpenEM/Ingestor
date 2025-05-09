@@ -63,16 +63,22 @@ func (i *Status) ToStr() string {
 	}
 }
 
+type ArchivalJobInfo struct {
+	OwnerUser    string
+	OwnerGroup   string
+	AutoArchive  bool
+	ContactEmail string
+}
+
 type TransferTask struct {
-	DatasetFolder     DatasetFolder
-	datasetId         string
-	fileList          []datasetIngestor.Datafile
-	datasetOwnerGroup string
-	TransferMethod    TransferMethod
-	Context           context.Context
-	Cancel            context.CancelFunc
-	autoArchive       bool
-	transferObjects   map[string]interface{}
+	DatasetFolder   DatasetFolder
+	datasetId       string
+	fileList        []datasetIngestor.Datafile
+	archivalJobInfo ArchivalJobInfo
+	TransferMethod  TransferMethod
+	Context         context.Context
+	Cancel          context.CancelFunc
+	transferObjects map[string]interface{}
 
 	statusLock *sync.RWMutex
 	details    *TaskDetails
@@ -84,20 +90,24 @@ type Result struct {
 	Error           error
 }
 
-func CreateTransferTask(datasetId string, fileList []datasetIngestor.Datafile, datasetFolder DatasetFolder, datasetOwnerGroup string, transferMethod TransferMethod, autoArchive bool, transferObjects map[string]interface{}, cancel context.CancelFunc) TransferTask {
+func CreateTransferTask(datasetId string, fileList []datasetIngestor.Datafile, datasetFolder DatasetFolder, datasteOwnerUser string, datasetOwnerGroup string, contactEmail string, autoArchive bool, transferMethod TransferMethod, transferObjects map[string]interface{}, cancel context.CancelFunc) TransferTask {
 	totalBytes := int64(0)
 	for _, file := range fileList {
 		totalBytes += int64(file.Size)
 	}
 	return TransferTask{
-		datasetId:         datasetId,
-		fileList:          fileList,
-		DatasetFolder:     datasetFolder,
-		datasetOwnerGroup: datasetOwnerGroup,
-		TransferMethod:    transferMethod,
-		autoArchive:       autoArchive,
-		transferObjects:   transferObjects,
-		Cancel:            cancel,
+		datasetId:     datasetId,
+		fileList:      fileList,
+		DatasetFolder: datasetFolder,
+		archivalJobInfo: ArchivalJobInfo{
+			OwnerUser:    datasteOwnerUser,
+			OwnerGroup:   datasetOwnerGroup,
+			ContactEmail: contactEmail,
+			AutoArchive:  autoArchive,
+		},
+		TransferMethod:  transferMethod,
+		transferObjects: transferObjects,
+		Cancel:          cancel,
 		details: &TaskDetails{
 			BytesTransferred: 0,
 			BytesTotal:       totalBytes,
@@ -188,16 +198,12 @@ func (t *TransferTask) GetDatasetId() string {
 	return t.datasetId
 }
 
-func (t *TransferTask) GetDatasetOwnerGroup() string {
-	return t.datasetOwnerGroup
+func (t *TransferTask) GetArchivalJobInfo() ArchivalJobInfo {
+	return t.archivalJobInfo
 }
 
 func (t *TransferTask) GetFileList() []datasetIngestor.Datafile {
 	return t.fileList
-}
-
-func (t *TransferTask) ToAutoArchive() bool {
-	return t.autoArchive
 }
 
 func (t *TransferTask) GetTransferObject(name string) interface{} {

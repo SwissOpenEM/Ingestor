@@ -19,6 +19,7 @@ import (
 
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/oapi-codegen/runtime"
+	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
 const (
@@ -87,6 +88,21 @@ type CreateServiceTokenResp struct {
 	TokenType *string `json:"token_type,omitempty"`
 }
 
+// FinalizeDatasetUploadBody defines model for FinalizeDatasetUploadBody.
+type FinalizeDatasetUploadBody struct {
+	ContactEmail       openapi_types.Email `json:"ContactEmail"`
+	CreateArchivingJob bool                `json:"CreateArchivingJob"`
+	DatasetPID         string              `json:"DatasetPID"`
+	OwnerGroup         string              `json:"OwnerGroup"`
+	OwnerUser          string              `json:"OwnerUser"`
+}
+
+// FinalizeDatasetUploadResp defines model for FinalizeDatasetUploadResp.
+type FinalizeDatasetUploadResp struct {
+	DatasetID string `json:"DatasetID"`
+	Message   string `json:"Message"`
+}
+
 // HTTPValidationError defines model for HTTPValidationError.
 type HTTPValidationError struct {
 	Detail *[]ValidationError `json:"detail,omitempty"`
@@ -142,6 +158,9 @@ type AbortMultipartUploadJSONRequestBody = AbortUploadBody
 
 // CompleteUploadJSONRequestBody defines body for CompleteUpload for application/json ContentType.
 type CompleteUploadJSONRequestBody = CompleteUploadBody
+
+// FinalizeDatasetUploadJSONRequestBody defines body for FinalizeDatasetUpload for application/json ContentType.
+type FinalizeDatasetUploadJSONRequestBody = FinalizeDatasetUploadBody
 
 // GetPresignedUrlsJSONRequestBody defines body for GetPresignedUrls for application/json ContentType.
 type GetPresignedUrlsJSONRequestBody = PresignedUrlBody
@@ -291,6 +310,11 @@ type ClientInterface interface {
 
 	CompleteUpload(ctx context.Context, body CompleteUploadJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// FinalizeDatasetUploadWithBody request with any body
+	FinalizeDatasetUploadWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	FinalizeDatasetUpload(ctx context.Context, body FinalizeDatasetUploadJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetPresignedUrlsWithBody request with any body
 	GetPresignedUrlsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -338,6 +362,30 @@ func (c *Client) CompleteUploadWithBody(ctx context.Context, contentType string,
 
 func (c *Client) CompleteUpload(ctx context.Context, body CompleteUploadJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewCompleteUploadRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) FinalizeDatasetUploadWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewFinalizeDatasetUploadRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) FinalizeDatasetUpload(ctx context.Context, body FinalizeDatasetUploadJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewFinalizeDatasetUploadRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -445,6 +493,46 @@ func NewCompleteUploadRequestWithBody(server string, contentType string, body io
 	}
 
 	operationPath := fmt.Sprintf("/s3/completeUpload")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewFinalizeDatasetUploadRequest calls the generic FinalizeDatasetUpload builder with application/json body
+func NewFinalizeDatasetUploadRequest(server string, body FinalizeDatasetUploadJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewFinalizeDatasetUploadRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewFinalizeDatasetUploadRequestWithBody generates requests for FinalizeDatasetUpload with any type of body
+func NewFinalizeDatasetUploadRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/s3/finalizeDatasetUpload")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -584,6 +672,11 @@ type ClientWithResponsesInterface interface {
 
 	CompleteUploadWithResponse(ctx context.Context, body CompleteUploadJSONRequestBody, reqEditors ...RequestEditorFn) (*CompleteUploadResponse, error)
 
+	// FinalizeDatasetUploadWithBodyWithResponse request with any body
+	FinalizeDatasetUploadWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*FinalizeDatasetUploadResponse, error)
+
+	FinalizeDatasetUploadWithResponse(ctx context.Context, body FinalizeDatasetUploadJSONRequestBody, reqEditors ...RequestEditorFn) (*FinalizeDatasetUploadResponse, error)
+
 	// GetPresignedUrlsWithBodyWithResponse request with any body
 	GetPresignedUrlsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GetPresignedUrlsResponse, error)
 
@@ -635,6 +728,30 @@ func (r CompleteUploadResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r CompleteUploadResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type FinalizeDatasetUploadResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON201      *FinalizeDatasetUploadResp
+	JSON422      *HTTPValidationError
+	JSON500      *InternalError
+}
+
+// Status returns HTTPResponse.Status
+func (r FinalizeDatasetUploadResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r FinalizeDatasetUploadResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -721,6 +838,23 @@ func (c *ClientWithResponses) CompleteUploadWithResponse(ctx context.Context, bo
 		return nil, err
 	}
 	return ParseCompleteUploadResponse(rsp)
+}
+
+// FinalizeDatasetUploadWithBodyWithResponse request with arbitrary body returning *FinalizeDatasetUploadResponse
+func (c *ClientWithResponses) FinalizeDatasetUploadWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*FinalizeDatasetUploadResponse, error) {
+	rsp, err := c.FinalizeDatasetUploadWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseFinalizeDatasetUploadResponse(rsp)
+}
+
+func (c *ClientWithResponses) FinalizeDatasetUploadWithResponse(ctx context.Context, body FinalizeDatasetUploadJSONRequestBody, reqEditors ...RequestEditorFn) (*FinalizeDatasetUploadResponse, error) {
+	rsp, err := c.FinalizeDatasetUpload(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseFinalizeDatasetUploadResponse(rsp)
 }
 
 // GetPresignedUrlsWithBodyWithResponse request with arbitrary body returning *GetPresignedUrlsResponse
@@ -829,6 +963,46 @@ func ParseCompleteUploadResponse(rsp *http.Response) (*CompleteUploadResponse, e
 	return response, nil
 }
 
+// ParseFinalizeDatasetUploadResponse parses an HTTP response from a FinalizeDatasetUploadWithResponse call
+func ParseFinalizeDatasetUploadResponse(rsp *http.Response) (*FinalizeDatasetUploadResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &FinalizeDatasetUploadResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest FinalizeDatasetUploadResp
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest HTTPValidationError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseGetPresignedUrlsResponse parses an HTTP response from a GetPresignedUrlsWithResponse call
 func ParseGetPresignedUrlsResponse(rsp *http.Response) (*GetPresignedUrlsResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -912,34 +1086,38 @@ func ParseCreateNewServiceTokenResponse(rsp *http.Response) (*CreateNewServiceTo
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
-	"sylUiud4ireX278DAAD//y+L8prgHQAA",
+	"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",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file
