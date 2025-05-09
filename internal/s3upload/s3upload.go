@@ -8,6 +8,7 @@ import (
 
 	"github.com/SwissOpenEM/Ingestor/internal/transfertask"
 	"github.com/google/uuid"
+	openapi_types "github.com/oapi-codegen/runtime/types"
 
 	"golang.org/x/oauth2"
 	"golang.org/x/sync/errgroup"
@@ -108,4 +109,36 @@ func uploadFiles(ctx context.Context, s3Objects *S3Objects, options transfertask
 	close(objectsChannel)
 	return errorGroup.Wait()
 
+}
+
+func FinalizeUpload(ctx context.Context, config transfertask.S3TransferConfig, dataset_pid string, ownerUser string, ownerGroup string, email string, autoArchive bool, accessToken string, refreshToken string) error {
+
+	tokenSource := createTokenSource(ctx, config.ClientID, config.TokenUrl, accessToken, refreshToken)
+
+	token, err := tokenSource.Token()
+	if err != nil {
+		return fmt.Errorf("error fetching a new token: %w", err)
+	}
+
+	resp, err := GetPresignedUrlServer(config.Endpoint).FinalizeDatasetUploadWithResponse(ctx, FinalizeDatasetUploadBody{
+		DatasetPID:         dataset_pid,
+		OwnerUser:          ownerUser,
+		OwnerGroup:         ownerGroup,
+		ContactEmail:       openapi_types.Email(email),
+		CreateArchivingJob: autoArchive,
+	}, createAddAuthorizationHeaderFunction(token.AccessToken))
+
+	if err != nil {
+		return err
+	}
+
+	if resp.HTTPResponse.StatusCode == 500 {
+		return fmt.Errorf("failed to finalize upload: %d, %s, %s ", resp.HTTPResponse.StatusCode, resp.HTTPResponse.Status, *resp.JSON500.Details)
+	} else if resp.HTTPResponse.StatusCode == 201 {
+		logger.Debug("Upload finalized", "dataset pid", resp.JSON201.DatasetID, "message", resp.JSON201.Message)
+	} else {
+		return fmt.Errorf("failed to finalize upload: %d, %s", resp.HTTPResponse.StatusCode, resp.HTTPResponse.Status)
+	}
+
+	return nil
 }

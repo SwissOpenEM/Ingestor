@@ -65,7 +65,7 @@ paths:
           description: Internal Server Error
       summary: Get Presigned Urls
       tags:
-        - presignedUrls
+        - s3upload
   /s3/completeUpload:
     post:
       operationId: complete_upload
@@ -96,7 +96,7 @@ paths:
           description: Internal Server Error
       summary: Complete Upload
       tags:
-        - presignedUrls
+        - s3upload
   /s3/abortMultipartUpload:
     post:
       operationId: abort_multipart_upload
@@ -127,7 +127,38 @@ paths:
           description: Internal Server Error
       summary: Abort Multipart Upload
       tags:
-        - presignedUrls
+        - s3upload
+  /s3/finalizeDatasetUpload:
+    post:
+      operationId: FinalizeDatasetUpload
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FinalizeDatasetUploadBody"
+        required: true
+      responses:
+        "201":
+          description: Finalize dataset upload requested
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FinalizeDatasetUploadResp"
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+          description: Validation Error
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InternalError"
+          description: Internal Server Error
+      summary: Finalize Dataset Upload
+      tags:
+        - s3upload
 components:
   securitySchemes:
     BearerAuth: # arbitrary name for the security scheme
@@ -274,6 +305,52 @@ components:
         - Location
         - Key
       title: CompleteUploadResp
+    FinalizeDatasetUploadBody:
+      example:
+        DatasetPID: c2c6bc13-2c14-43d7-91a9-46cd556b258d
+        CreateArchivingJob: true
+        OwnerGroup: Group
+        OwnerUser: User
+        ContactEmail: user@mail.com
+      properties:
+        DatasetPID:
+          title: DatasetPID
+          type: string
+        CreateArchivingJob:
+          title: CreateArchivingJob
+          type: boolean
+        OwnerGroup:
+          title: OwnerGroup
+          type: string
+        OwnerUser:
+          title: OwnerUser
+          type: string
+        ContactEmail:
+          title: ContactEmail
+          type: string
+          format: email
+      required:
+        - DatasetPID
+        - CreateArchivingJob
+        - OwnerGroup
+        - OwnerUser
+        - ContactEmail
+      title: FinalizeDatasetUploadBody
+    FinalizeDatasetUploadResp:
+      example:
+        DatasetID: DatasetID
+        Message: "Upload finalized"
+      properties:
+        DatasetID:
+          title: DatasetID
+          type: string
+        Message:
+          title: Message
+          type: string
+      required:
+        - DatasetID
+        - Message
+      title: FinalizeDatasetUploadResp
     HTTPValidationError:
       example:
         detail:

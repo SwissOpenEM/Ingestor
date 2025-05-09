@@ -190,9 +190,6 @@ func TransferDataset(
 	config Config,
 	notifier transfertask.ProgressNotifier,
 ) error {
-	datasetId := transferTask.GetDatasetId()
-	datasetFolder := transferTask.DatasetFolder.FolderPath
-	fileList := transferTask.GetFileList()
 
 	var err error
 
@@ -208,8 +205,16 @@ func TransferDataset(
 		}
 
 		err = s3upload.UploadS3(task_context, transferTask, config.Transfer.S3, accessToken, refreshToken, notifier)
+
+		if err == nil {
+			archivalJobInfo := transferTask.GetArchivalJobInfo()
+			err = s3upload.FinalizeUpload(task_context, config.Transfer.S3, transferTask.GetDatasetId(), archivalJobInfo.OwnerUser, archivalJobInfo.OwnerGroup, archivalJobInfo.ContactEmail, archivalJobInfo.AutoArchive, accessToken, refreshToken)
+		}
+
 	case transfertask.TransferGlobus:
 		// get transfer objects
+		datasetFolder := transferTask.DatasetFolder.FolderPath
+		fileList := transferTask.GetFileList()
 		client, ok := transferTask.GetTransferObject("globus_client").(*globus.GlobusClient)
 		if !ok {
 			return fmt.Errorf("globus client was not set")
@@ -255,15 +260,20 @@ func TransferDataset(
 		if err != nil {
 			return err
 		}
+
+		err = FinalizeTransfer(serviceUser, config, datasetId, transferTask.GetArchivalJobInfo())
+		if err != nil {
+			return err
+		}
+
 	default:
 		err = fmt.Errorf("unknown transfer method: %d", transferTask.TransferMethod)
 	}
 
-	// transfer failed
-	if err != nil {
-		return err
-	}
+	return err
+}
 
+func FinalizeTransfer(serviceUser *UserCreds, config Config, datasetId string, archivalJobInfo transfertask.ArchivalJobInfo) error {
 	var http_client = &http.Client{
 		Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}},
 		Timeout:   120 * time.Second}
@@ -280,11 +290,14 @@ func TransferDataset(
 		return err
 	}
 
-	// auto archive
-	if transferTask.ToAutoArchive() {
-		copies := 1
-		_, err = datasetUtils.CreateArchivalJob(http_client, config.Scicat.Host, user, transferTask.GetDatasetOwnerGroup(), []string{datasetId}, &copies)
-	}
+	// Create the archiving job as the user that is logged in and not the the service user
+	user["mail"] = archivalJobInfo.ContactEmail
+	user["username"] = archivalJobInfo.OwnerUser
 
+	// auto archive
+	if archivalJobInfo.AutoArchive {
+		copies := 1
+		_, err = datasetUtils.CreateArchivalJob(http_client, config.Scicat.Host, user, archivalJobInfo.OwnerGroup, []string{datasetId}, &copies)
+	}
 	return err
 }

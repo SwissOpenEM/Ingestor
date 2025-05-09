@@ -38,7 +38,7 @@ func (w *TaskQueue) Startup() {
 	}
 }
 
-func (w *TaskQueue) AddTransferTask(datasetId string, fileList []datasetIngestor.Datafile, taskId uuid.UUID, folderPath string, ownerGroup string, autoArchive bool, transferObjects map[string]interface{}) error {
+func (w *TaskQueue) AddTransferTask(datasetId string, fileList []datasetIngestor.Datafile, taskId uuid.UUID, folderPath string, ownerUser string, ownerGroup string, contactEmail string, autoArchive bool, transferObjects map[string]interface{}) error {
 	transferMethod := w.GetTransferMethod()
 	t := task.CreateTransferTask(
 		datasetId,
@@ -47,9 +47,11 @@ func (w *TaskQueue) AddTransferTask(datasetId string, fileList []datasetIngestor
 			Id:         taskId,
 			FolderPath: folderPath,
 		},
+		ownerUser,
 		ownerGroup,
-		transferMethod,
+		contactEmail,
 		autoArchive,
+		transferMethod,
 		transferObjects,
 		nil,
 	)
