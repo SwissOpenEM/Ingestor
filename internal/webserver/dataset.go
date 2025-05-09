@@ -197,7 +197,7 @@ func (i *IngestorWebServerImplemenation) DatasetControllerIngestDataset(ctx cont
 		if err != nil {
 			if reqErr, ok := err.(*extglobusservice.RequestError); ok {
 				if reqErr.Code() < 500 {
-					return DatasetControllerIngestDataset400TextResponse(fmt.Sprintf("Transfer request server refused with Code: '%d', Message: '%s'", reqErr.Code(), reqErr.Error())), nil
+					return DatasetControllerIngestDataset400TextResponse(fmt.Sprintf("Transfer request server refused with Code: '%d', Message: '%s', Details: '%s'", reqErr.Code(), reqErr.Error(), reqErr.Details())), nil
 				}
 			}
 			return DatasetControllerIngestDataset400TextResponse(fmt.Sprintf("Transfer request - unknown error: %s", err.Error())), nil
