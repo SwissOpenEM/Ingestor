@@ -24,3 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  - (Code) the API now expects dataset paths to have their first path node to contain the collection location 'name'.  
 
 A recommendation is to have the name of the collection's root folder to be the same as its "name" in the map. For example,  "example_collection" is  mapped to "/some/location/example_collection".
+
+## [PR #127] (2025-05-05)
+### Added
+ - (CONFIG) Transfer.StorageLocation sets an ID string in the dataset lifecycle that specifies to which facility we're transmitting the dataset's data

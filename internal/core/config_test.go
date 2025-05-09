@@ -14,6 +14,7 @@ import (
 func createExpectedValidConfigS3() transfertask.TransferConfig {
 	return transfertask.TransferConfig{
 		Method:           "S3",
+		StorageLocation:  "SomeFacility",
 		ConcurrencyLimit: 10,
 		QueueSize:        1000,
 		S3: transfertask.S3TransferConfig{
@@ -30,6 +31,7 @@ func createExpectedValidConfigS3() transfertask.TransferConfig {
 func createExpectedValidConfigGlobus() transfertask.TransferConfig {
 	return transfertask.TransferConfig{
 		Method:           "Globus",
+		StorageLocation:  "SomeFacility",
 		ConcurrencyLimit: 10,
 		QueueSize:        1000,
 		Globus: transfertask.GlobusTransferConfig{

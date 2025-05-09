@@ -176,7 +176,7 @@ func (i *IngestorWebServerImplemenation) DatasetControllerIngestDataset(ctx cont
 	}
 
 	// do catalogue insertion
-	datasetId, _, fileList, username, err := core.AddDatasetToScicat(metadata, folderPath, request.Body.UserToken, i.taskQueue.Config.Scicat.Host)
+	datasetId, _, fileList, username, err := core.AddDatasetToScicat(metadata, folderPath, i.taskQueue.Config.Transfer.StorageLocation, request.Body.UserToken, i.taskQueue.Config.Scicat.Host)
 	if err != nil {
 		return DatasetControllerIngestDataset400TextResponse(err.Error()), nil
 	}
@@ -197,7 +197,7 @@ func (i *IngestorWebServerImplemenation) DatasetControllerIngestDataset(ctx cont
 		if err != nil {
 			if reqErr, ok := err.(*extglobusservice.RequestError); ok {
 				if reqErr.Code() < 500 {
-					return DatasetControllerIngestDataset400TextResponse(fmt.Sprintf("Transfer request server refused with Code: '%d', Message: '%s'", reqErr.Code(), reqErr.Error())), nil
+					return DatasetControllerIngestDataset400TextResponse(fmt.Sprintf("Transfer request server refused with Code: '%d', Message: '%s', Details: '%s'", reqErr.Code(), reqErr.Error(), reqErr.Details())), nil
 				}
 			}
 			return DatasetControllerIngestDataset400TextResponse(fmt.Sprintf("Transfer request - unknown error: %s", err.Error())), nil

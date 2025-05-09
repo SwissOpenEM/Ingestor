@@ -2,6 +2,7 @@ Scicat:
   Host: http://scicat:8080/api/v3
 Transfer:
   Method: S3
+  StorageLocation: "SomeFacility"
   ConcurrencyLimit: 10
   QueueSize: 1000
   S3:
