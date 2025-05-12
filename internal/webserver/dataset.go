@@ -187,7 +187,7 @@ func (i *IngestorWebServerImplemenation) DatasetControllerIngestDataset(ctx cont
 	}
 
 	// do catalogue insertion
-	datasetId, _, fileList, _, err := core.AddDatasetToScicat(metadata, folderPath, request.Body.UserToken, i.taskQueue.Config.Scicat.Host)
+	datasetId, _, fileList, username, err := core.AddDatasetToScicat(metadata, folderPath, request.Body.UserToken, i.taskQueue.Config.Scicat.Host)
 	if err != nil {
 		return DatasetControllerIngestDataset400TextResponse(err.Error()), nil
 	}
@@ -202,7 +202,7 @@ func (i *IngestorWebServerImplemenation) DatasetControllerIngestDataset(ctx cont
 	var taskId uuid.UUID
 	switch i.taskQueue.GetTransferMethod() {
 	case transfertask.TransferGlobus:
-		taskId, err = i.addGlobusTransferTask(ctx, datasetId, fileList, folderPath, ownerUser, ownerGroup, autoArchive, contactEmail)
+		taskId, err = i.addGlobusTransferTask(ctx, datasetId, fileList, folderPath, username, ownerUser, ownerGroup, autoArchive, contactEmail)
 	case transfertask.TransferExtGlobus:
 		jobId, err := i.addExtGlobusTransferTask(ctx, datasetId, fileList, autoArchive, request.Body.UserToken)
 		if err != nil {
@@ -242,7 +242,7 @@ func (i *IngestorWebServerImplemenation) DatasetControllerIngestDataset(ctx cont
 	}, nil
 }
 
-func (i *IngestorWebServerImplemenation) addGlobusTransferTask(ctx context.Context, datasetId string, fileList []datasetIngestor.Datafile, folderPath string, ownerUser string, ownerGroup string, autoArchive bool, contactEmail string) (uuid.UUID, error) {
+func (i *IngestorWebServerImplemenation) addGlobusTransferTask(ctx context.Context, datasetId string, fileList []datasetIngestor.Datafile, folderPath string, username string, ownerUser string, ownerGroup string, autoArchive bool, contactEmail string) (uuid.UUID, error) {
 	taskId := uuid.New()
 	transferObjects := map[string]interface{}{}
 
@@ -254,7 +254,7 @@ func (i *IngestorWebServerImplemenation) addGlobusTransferTask(ctx context.Conte
 	// |-> globus dependencies
 	// add transfer dependencies to the transferObjects map
 	transferObjects["globus_client"] = client
-	transferObjects["dataset_id"] = datasetId
+	transferObjects["username"] = username
 
 	err = i.taskQueue.AddTransferTask(datasetId, fileList, taskId, folderPath, ownerUser, ownerGroup, contactEmail, autoArchive, transferObjects)
 	if err != nil {
