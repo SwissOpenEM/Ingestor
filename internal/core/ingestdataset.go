@@ -219,15 +219,10 @@ func TransferDataset(
 		if !ok {
 			return fmt.Errorf("globus client was not set")
 		}
-		datasetId, ok := transferTask.GetTransferObject("dataset_id").(string)
-		if !ok {
-			return fmt.Errorf("dataset id was not set for globus transfer")
-		}
 		username, ok := transferTask.GetTransferObject("username").(string)
 		if !ok {
 			return fmt.Errorf("username was not set for globus transfer")
 		}
-
 		// globus doesn't work with absolute folders, this library uses sourcePrefix to adapt the path to the globus' own path from a relative path
 		_, _, relativeDatasetFolder, err := collections.GetPathDetails(config.WebServer.CollectionLocations, filepath.Clean(datasetFolder))
 		if err != nil {
@@ -241,6 +236,7 @@ func TransferDataset(
 			files[i].Path = file.Path
 			bytesTotal += int64(file.Size)
 		}
+
 		transferNotifier := transfertask.NewTransferNotifier(bytesTotal, transferTask.DatasetFolder.Id, notifier, transferTask)
 
 		transferTask.TransferStarted()
@@ -250,7 +246,7 @@ func TransferDataset(
 			config.Transfer.Globus.SourcePrefixPath,
 			config.Transfer.Globus.DestinationCollectionID,
 			config.Transfer.Globus.DestinationTemplate,
-			datasetId,
+			transferTask.GetDatasetId(),
 			username,
 			task_context,
 			relativeDatasetFolder,
@@ -261,7 +257,7 @@ func TransferDataset(
 			return err
 		}
 
-		err = FinalizeTransfer(serviceUser, config, datasetId, transferTask.GetArchivalJobInfo())
+		err = FinalizeTransfer(serviceUser, config, transferTask.GetDatasetId(), transferTask.GetArchivalJobInfo())
 		if err != nil {
 			return err
 		}
