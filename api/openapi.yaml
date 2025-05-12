@@ -500,12 +500,16 @@ components:
           type: string
         bytesTransferred:
           type: integer
+          format: int64
         bytesTotal:
           type: integer
+          format: int64
         filesTransferred:
           type: integer
+          format: int32
         filesTotal:
           type: integer
+          format: int32
       required:
         - transferId
         - status

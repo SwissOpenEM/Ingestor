@@ -3,7 +3,10 @@ package transfertask
 import (
 	"context"
 	"sync"
+	"sync/atomic"
+	"time"
 
+	"github.com/google/uuid"
 	"github.com/paulscherrerinstitute/scicat-cli/v3/datasetIngestor"
 )
 
@@ -27,10 +30,10 @@ type TaskTransferConfig struct {
 }
 
 type TaskDetails struct {
-	BytesTransferred int
-	BytesTotal       int
-	FilesTransferred int
-	FilesTotal       int
+	BytesTransferred int64
+	BytesTotal       int64
+	FilesTransferred int32
+	FilesTotal       int32
 	Status           Status
 	Message          string
 }
@@ -60,16 +63,22 @@ func (i *Status) ToStr() string {
 	}
 }
 
+type ArchivalJobInfo struct {
+	OwnerUser    string
+	OwnerGroup   string
+	AutoArchive  bool
+	ContactEmail string
+}
+
 type TransferTask struct {
-	DatasetFolder     DatasetFolder
-	datasetId         string
-	fileList          []datasetIngestor.Datafile
-	datasetOwnerGroup string
-	TransferMethod    TransferMethod
-	Context           context.Context
-	Cancel            context.CancelFunc
-	autoArchive       bool
-	transferObjects   map[string]interface{}
+	DatasetFolder   DatasetFolder
+	datasetId       string
+	fileList        []datasetIngestor.Datafile
+	archivalJobInfo ArchivalJobInfo
+	TransferMethod  TransferMethod
+	Context         context.Context
+	Cancel          context.CancelFunc
+	transferObjects map[string]interface{}
 
 	statusLock *sync.RWMutex
 	details    *TaskDetails
@@ -81,25 +90,29 @@ type Result struct {
 	Error           error
 }
 
-func CreateTransferTask(datasetId string, fileList []datasetIngestor.Datafile, datasetFolder DatasetFolder, datasetOwnerGroup string, transferMethod TransferMethod, autoArchive bool, transferObjects map[string]interface{}, cancel context.CancelFunc) TransferTask {
-	totalBytes := 0
+func CreateTransferTask(datasetId string, fileList []datasetIngestor.Datafile, datasetFolder DatasetFolder, datasteOwnerUser string, datasetOwnerGroup string, contactEmail string, autoArchive bool, transferMethod TransferMethod, transferObjects map[string]interface{}, cancel context.CancelFunc) TransferTask {
+	totalBytes := int64(0)
 	for _, file := range fileList {
-		totalBytes += int(file.Size)
+		totalBytes += int64(file.Size)
 	}
 	return TransferTask{
-		datasetId:         datasetId,
-		fileList:          fileList,
-		DatasetFolder:     datasetFolder,
-		datasetOwnerGroup: datasetOwnerGroup,
-		TransferMethod:    transferMethod,
-		autoArchive:       autoArchive,
-		transferObjects:   transferObjects,
-		Cancel:            cancel,
+		datasetId:     datasetId,
+		fileList:      fileList,
+		DatasetFolder: datasetFolder,
+		archivalJobInfo: ArchivalJobInfo{
+			OwnerUser:    datasteOwnerUser,
+			OwnerGroup:   datasetOwnerGroup,
+			ContactEmail: contactEmail,
+			AutoArchive:  autoArchive,
+		},
+		TransferMethod:  transferMethod,
+		transferObjects: transferObjects,
+		Cancel:          cancel,
 		details: &TaskDetails{
 			BytesTransferred: 0,
 			BytesTotal:       totalBytes,
 			FilesTransferred: 0,
-			FilesTotal:       len(fileList),
+			FilesTotal:       int32(len(fileList)),
 			Status:           Waiting,
 			Message:          "in waiting list",
 		},
@@ -133,7 +146,7 @@ func (t *TransferTask) TransferStarted() {
 	t.details.Message = "transferring files"
 }
 
-func (t *TransferTask) UpdateProgress(bytesTransferred *int, filesTransferred *int) {
+func (t *TransferTask) UpdateProgress(bytesTransferred *int64, filesTransferred *int32) {
 	t.statusLock.Lock()
 	defer t.statusLock.Unlock()
 	if t.details.Status != Transferring {
@@ -185,18 +198,52 @@ func (t *TransferTask) GetDatasetId() string {
 	return t.datasetId
 }
 
-func (t *TransferTask) GetDatasetOwnerGroup() string {
-	return t.datasetOwnerGroup
+func (t *TransferTask) GetArchivalJobInfo() ArchivalJobInfo {
+	return t.archivalJobInfo
 }
 
 func (t *TransferTask) GetFileList() []datasetIngestor.Datafile {
 	return t.fileList
 }
 
-func (t *TransferTask) ToAutoArchive() bool {
-	return t.autoArchive
-}
-
 func (t *TransferTask) GetTransferObject(name string) interface{} {
 	return t.transferObjects[name]
+}
+
+type TransferNotifier struct {
+	totalBytes       int64
+	bytesTransferred int64
+	filesTransferred int32
+	startTime        time.Time
+	id               uuid.UUID
+	notifier         ProgressNotifier
+	TaskStatus       *Status
+	TaskProgress     *TransferTask
+}
+
+func NewTransferNotifier(total int64, uploadId uuid.UUID, notifier ProgressNotifier, task *TransferTask) TransferNotifier {
+	return TransferNotifier{totalBytes: total,
+		bytesTransferred: 0,
+		startTime:        time.Now(),
+		id:               uploadId,
+		notifier:         notifier,
+		TaskProgress:     task,
+	}
+}
+
+func (tn *TransferNotifier) IncreaseFileCount(i int32) {
+	atomic.AddInt32(&tn.filesTransferred, i)
+}
+
+func (tn *TransferNotifier) AddUploadedBytes(numBytes int64) {
+	atomic.AddInt64(&tn.bytesTransferred, numBytes)
+}
+
+func (tn *TransferNotifier) OnTaskCanceled(id uuid.UUID) {
+	tn.notifier.OnTaskCanceled(id)
+}
+
+func (tn *TransferNotifier) UpdateTaskProgress() {
+	tn.notifier.OnTaskProgress(tn.id, (int)(100*tn.bytesTransferred/tn.totalBytes))
+	tn.TaskProgress.UpdateProgress(&tn.bytesTransferred, &tn.filesTransferred)
 }

@@ -5,35 +5,14 @@ import (
 	"fmt"
 	"os"
 	"path"
-	"sync/atomic"
-	"time"
 
 	"github.com/SwissOpenEM/Ingestor/internal/transfertask"
 	"github.com/google/uuid"
+	openapi_types "github.com/oapi-codegen/runtime/types"
 
-	"github.com/paulscherrerinstitute/scicat-cli/v3/datasetIngestor"
 	"golang.org/x/oauth2"
 	"golang.org/x/sync/errgroup"
 )
-
-// Progress notifier object for Minio upload
-type TransferNotifier struct {
-	totalBytes       int64
-	bytesTransferred int64
-	FilesCount       int
-	startTime        time.Time
-	id               uuid.UUID
-	notifier         transfertask.ProgressNotifier
-	TaskStatus       *transfertask.Status
-}
-
-func (pn *TransferNotifier) AddUploadedBytes(numBytes int64) {
-	atomic.AddInt64(&pn.bytesTransferred, numBytes)
-}
-
-func (pn *TransferNotifier) UpdateTaskProgress() {
-	pn.notifier.OnTaskProgress(pn.id, (int)(100*pn.bytesTransferred/pn.totalBytes))
-}
 
 type S3Objects struct {
 	Files       []string
@@ -71,31 +50,36 @@ func createTokenSource(ctx context.Context, clientID string, tokenUrl string, ac
 }
 
 // Upload all files in a folder using presinged urls
-func UploadS3(ctx context.Context, datasetPID string, datasetSourceFolder string, fileList []datasetIngestor.Datafile, uploadId uuid.UUID, options transfertask.S3TransferConfig, accessToken string, refreshToken string, notifier transfertask.ProgressNotifier) error {
+func UploadS3(ctx context.Context, task *transfertask.TransferTask, options transfertask.S3TransferConfig, accessToken string, refreshToken string, notifier transfertask.ProgressNotifier) error {
 
-	if len(fileList) == 0 {
+	if len(task.GetFileList()) == 0 {
 		return fmt.Errorf("empty file list provided")
 	}
 
+	datasetFolder := task.DatasetFolder.FolderPath
+	datasetId := task.GetDatasetId()
+	uploadId := task.DatasetFolder.Id
+
 	s3Objects := S3Objects{}
-	for _, f := range fileList {
-		info, _ := os.Stat(path.Join(datasetSourceFolder, f.Path))
+	for _, f := range task.GetFileList() {
+		info, _ := os.Stat(path.Join(datasetFolder, f.Path))
 		if info.IsDir() {
 			continue
 		}
 		s3Objects.TotalBytes += info.Size()
-		s3Objects.Files = append(s3Objects.Files, path.Join(datasetSourceFolder, f.Path))
-		s3Objects.ObjectNames = append(s3Objects.ObjectNames, "openem-network/datasets/"+datasetPID+"/raw_files/"+f.Path)
+		s3Objects.Files = append(s3Objects.Files, path.Join(datasetFolder, f.Path))
+		s3Objects.ObjectNames = append(s3Objects.ObjectNames, "openem-network/datasets/"+datasetId+"/raw_files/"+f.Path)
 	}
 
-	transferNotifier := TransferNotifier{totalBytes: s3Objects.TotalBytes, bytesTransferred: 0, startTime: time.Now(), id: uploadId, notifier: notifier}
+	transferNotifier := transfertask.NewTransferNotifier(s3Objects.TotalBytes, uploadId, notifier, task)
 
+	task.TransferStarted()
 	tokenSource := createTokenSource(context.Background(), options.ClientID, options.TokenUrl, accessToken, refreshToken)
 
 	return uploadFiles(ctx, &s3Objects, options, &transferNotifier, uploadId, tokenSource)
 }
 
-func uploadFiles(ctx context.Context, s3Objects *S3Objects, options transfertask.S3TransferConfig, transferNotifier *TransferNotifier, uploadId uuid.UUID, tokenSource oauth2.TokenSource) error {
+func uploadFiles(ctx context.Context, s3Objects *S3Objects, options transfertask.S3TransferConfig, transferNotifier *transfertask.TransferNotifier, uploadId uuid.UUID, tokenSource oauth2.TokenSource) error {
 	errorGroup, context := errgroup.WithContext(ctx)
 	objectsChannel := make(chan int, len(s3Objects.Files))
 
@@ -107,7 +91,7 @@ func uploadFiles(ctx context.Context, s3Objects *S3Objects, options transfertask
 				for idx := range objectsChannel {
 					select {
 					case <-context.Done():
-						transferNotifier.notifier.OnTaskCanceled(uploadId)
+						transferNotifier.OnTaskCanceled(uploadId)
 						return context.Err()
 					default:
 						err := uploadFile(context, s3Objects.Files[idx], s3Objects.ObjectNames[idx], options, transferNotifier, tokenSource)
@@ -125,4 +109,36 @@ func uploadFiles(ctx context.Context, s3Objects *S3Objects, options transfertask
 	close(objectsChannel)
 	return errorGroup.Wait()
 
+}
+
+func FinalizeUpload(ctx context.Context, config transfertask.S3TransferConfig, dataset_pid string, ownerUser string, ownerGroup string, email string, autoArchive bool, accessToken string, refreshToken string) error {
+
+	tokenSource := createTokenSource(ctx, config.ClientID, config.TokenUrl, accessToken, refreshToken)
+
+	token, err := tokenSource.Token()
+	if err != nil {
+		return fmt.Errorf("error fetching a new token: %w", err)
+	}
+
+	resp, err := GetPresignedUrlServer(config.Endpoint).FinalizeDatasetUploadWithResponse(ctx, FinalizeDatasetUploadBody{
+		DatasetPID:         dataset_pid,
+		OwnerUser:          ownerUser,
+		OwnerGroup:         ownerGroup,
+		ContactEmail:       openapi_types.Email(email),
+		CreateArchivingJob: autoArchive,
+	}, createAddAuthorizationHeaderFunction(token.AccessToken))
+
+	if err != nil {
+		return err
+	}
+
+	if resp.HTTPResponse.StatusCode == 500 {
+		return fmt.Errorf("failed to finalize upload: %d, %s, %s ", resp.HTTPResponse.StatusCode, resp.HTTPResponse.Status, *resp.JSON500.Details)
+	} else if resp.HTTPResponse.StatusCode == 201 {
+		logger.Debug("Upload finalized", "dataset pid", resp.JSON201.DatasetID, "message", resp.JSON201.Message)
+	} else {
+		return fmt.Errorf("failed to finalize upload: %d, %s", resp.HTTPResponse.StatusCode, resp.HTTPResponse.Status)
+	}
+
+	return nil
 }

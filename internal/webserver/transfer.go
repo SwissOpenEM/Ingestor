@@ -169,9 +169,9 @@ func JobToTransferItem(job jobs.ScicatJob) TransferItem {
 		status = Failed
 	}
 	return TransferItem{
-		BytesTransferred: getPointerOrNil(int(job.JobResultObject.BytesTransferred)),
-		FilesTransferred: getPointerOrNil(int(job.JobResultObject.FilesTransferred)),
-		FilesTotal:       getPointerOrNil(int(job.JobResultObject.FilesTotal)),
+		BytesTransferred: getPointerOrNil(int64(job.JobResultObject.BytesTransferred)),
+		FilesTransferred: getPointerOrNil(int32(job.JobResultObject.FilesTransferred)),
+		FilesTotal:       getPointerOrNil(int32(job.JobResultObject.FilesTotal)),
 		Status:           status,
 		Message:          &job.StatusMessage,
 		TransferId:       job.ID,

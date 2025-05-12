@@ -192,9 +192,6 @@ func TransferDataset(
 	config Config,
 	notifier transfertask.ProgressNotifier,
 ) error {
-	datasetId := transferTask.GetDatasetId()
-	datasetFolder := transferTask.DatasetFolder.FolderPath
-	fileList := transferTask.GetFileList()
 
 	var err error
 
@@ -209,22 +206,25 @@ func TransferDataset(
 			return fmt.Errorf("missing refresh token for s3 upload")
 		}
 
-		err = s3upload.UploadS3(task_context, datasetId, datasetFolder, fileList, transferTask.DatasetFolder.Id, config.Transfer.S3, accessToken, refreshToken, notifier)
+		err = s3upload.UploadS3(task_context, transferTask, config.Transfer.S3, accessToken, refreshToken, notifier)
+
+		if err == nil {
+			archivalJobInfo := transferTask.GetArchivalJobInfo()
+			err = s3upload.FinalizeUpload(task_context, config.Transfer.S3, transferTask.GetDatasetId(), archivalJobInfo.OwnerUser, archivalJobInfo.OwnerGroup, archivalJobInfo.ContactEmail, archivalJobInfo.AutoArchive, accessToken, refreshToken)
+		}
+
 	case transfertask.TransferGlobus:
 		// get transfer objects
+		datasetFolder := transferTask.DatasetFolder.FolderPath
+		fileList := transferTask.GetFileList()
 		client, ok := transferTask.GetTransferObject("globus_client").(*globus.GlobusClient)
 		if !ok {
 			return fmt.Errorf("globus client was not set")
-		}
-		datasetId, ok := transferTask.GetTransferObject("dataset_id").(string)
-		if !ok {
-			return fmt.Errorf("dataset id was not set for globus transfer")
 		}
 		username, ok := transferTask.GetTransferObject("username").(string)
 		if !ok {
 			return fmt.Errorf("username was not set for globus transfer")
 		}
-
 		// globus doesn't work with absolute folders, this library uses sourcePrefix to adapt the path to the globus' own path from a relative path
 		_, _, relativeDatasetFolder, err := collections.GetPathDetails(config.WebServer.CollectionLocations, filepath.Clean(datasetFolder))
 		if err != nil {
@@ -232,12 +232,14 @@ func TransferDataset(
 		}
 
 		files := make([]globustransfer.File, len(fileList))
-		bytesTotal := 0
+		bytesTotal := int64(0)
 		for i, file := range fileList {
 			files[i].IsSymlink = file.IsSymlink
 			files[i].Path = file.Path
-			bytesTotal += int(file.Size)
+			bytesTotal += int64(file.Size)
 		}
+
+		transferNotifier := transfertask.NewTransferNotifier(bytesTotal, transferTask.DatasetFolder.Id, notifier, transferTask)
 
 		transferTask.TransferStarted()
 		err = globustransfer.TransferFiles(
@@ -246,29 +248,30 @@ func TransferDataset(
 			config.Transfer.Globus.SourcePrefixPath,
 			config.Transfer.Globus.DestinationCollectionID,
 			config.Transfer.Globus.DestinationTemplate,
-			datasetId,
+			transferTask.GetDatasetId(),
 			username,
 			task_context,
 			relativeDatasetFolder,
 			files,
-			func(bytesTransferred, filesTransferred int) {
-				progress := bytesTransferred * 100 / bytesTotal
-				notifier.OnTaskProgress(transferTask.DatasetFolder.Id, progress)
-				transferTask.UpdateProgress(&bytesTransferred, &filesTransferred)
-			},
+			&transferNotifier,
 		)
 		if err != nil {
 			return err
 		}
+
+		err = FinalizeTransfer(serviceUser, config, transferTask.GetDatasetId(), transferTask.GetArchivalJobInfo())
+		if err != nil {
+			return err
+		}
+
 	default:
 		err = fmt.Errorf("unknown transfer method: %d", transferTask.TransferMethod)
 	}
 
-	// transfer failed
-	if err != nil {
-		return err
-	}
+	return err
+}
 
+func FinalizeTransfer(serviceUser *UserCreds, config Config, datasetId string, archivalJobInfo transfertask.ArchivalJobInfo) error {
 	var http_client = &http.Client{
 		Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}},
 		Timeout:   120 * time.Second}
@@ -285,11 +288,14 @@ func TransferDataset(
 		return err
 	}
 
-	// auto archive
-	if transferTask.ToAutoArchive() {
-		copies := 1
-		_, err = datasetUtils.CreateArchivalJob(http_client, config.Scicat.Host, user, transferTask.GetDatasetOwnerGroup(), []string{datasetId}, &copies)
-	}
+	// Create the archiving job as the user that is logged in and not the the service user
+	user["mail"] = archivalJobInfo.ContactEmail
+	user["username"] = archivalJobInfo.OwnerUser
 
+	// auto archive
+	if archivalJobInfo.AutoArchive {
+		copies := 1
+		_, err = datasetUtils.CreateArchivalJob(http_client, config.Scicat.Host, user, archivalJobInfo.OwnerGroup, []string{datasetId}, &copies)
+	}
 	return err
 }
