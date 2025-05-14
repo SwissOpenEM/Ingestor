@@ -224,11 +224,6 @@ func TransferDataset(
 		if !ok {
 			return fmt.Errorf("username was not set for globus transfer")
 		}
-		// globus doesn't work with absolute folders, this library uses sourcePrefix to adapt the path to the globus' own path from a relative path
-		//_, _, relativeDatasetFolder, err := collections.GetPathDetails(config.WebServer.CollectionLocations, filepath.Clean(datasetFolder))
-		//if err != nil {
-		//	return err
-		//}
 
 		files := make([]globustransfer.File, len(fileList))
 		bytesTotal := int64(0)
