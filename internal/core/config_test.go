@@ -39,7 +39,7 @@ func createExpectedValidConfigGlobus() transfertask.TransferConfig {
 			RedirectURL:             "https://auth.globus.org/v2/web/auth-code",
 			Scopes:                  []string{"urn:globus:auth:scope:transfer.api.globus.org:all[*https://auth.globus.org/scopes/[collection_id1]/data_access]"},
 			SourceCollectionID:      "collectionid1",
-			SourcePrefixPath:        "/some/optional/path",
+			CollectionRootPath:      "/some/optional/path",
 			DestinationCollectionID: "collectionid2",
 			DestinationTemplate:     "/{{ .Username }}/{{ replace .Pid \".\" \"_\" }}/{{ .DatasetFolder }}",
 		},

@@ -15,7 +15,7 @@ type GlobusTransferConfig struct {
 	RedirectURL             string   `yaml:"redirectUrl"`
 	Scopes                  []string `yaml:"scopes,omitempty"`
 	SourceCollectionID      string   `yaml:"sourceCollection"`
-	SourcePrefixPath        string   `yaml:"sourcePrefixPath,omitempty"`
+	CollectionRootPath      string   `yaml:"collectionRootPath,omitempty"`
 	DestinationCollectionID string   `yaml:"destinationCollection"`
 	DestinationTemplate     string   `yaml:"destinationTemplate"`
 }
