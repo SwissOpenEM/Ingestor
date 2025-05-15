@@ -3,6 +3,7 @@ package webserver
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -11,17 +12,31 @@ import (
 	"strings"
 
 	"github.com/SwissOpenEM/Ingestor/internal/core"
+	"github.com/SwissOpenEM/Ingestor/internal/datasetaccess"
 	"github.com/SwissOpenEM/Ingestor/internal/extglobusservice"
 	"github.com/SwissOpenEM/Ingestor/internal/s3upload"
 	"github.com/SwissOpenEM/Ingestor/internal/transfertask"
 	"github.com/SwissOpenEM/Ingestor/internal/webserver/collections"
 	"github.com/SwissOpenEM/Ingestor/internal/webserver/globusauth"
+	"github.com/gin-contrib/sessions"
+	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/paulscherrerinstitute/scicat-cli/v3/datasetIngestor"
 	"github.com/paulscherrerinstitute/scicat-cli/v3/datasetUtils"
 )
 
 func (i *IngestorWebServerImplemenation) DatasetControllerBrowseFilesystem(ctx context.Context, request DatasetControllerBrowseFilesystemRequestObject) (DatasetControllerBrowseFilesystemResponseObject, error) {
+	ginCtx, ok := ctx.(*gin.Context)
+	if !ok {
+		return DatasetControllerBrowseFilesystem500TextResponse("internal context error"), nil
+	}
+
+	userSession := sessions.DefaultMany(ginCtx, "user")
+	accessGroups, ok := userSession.Get("access_groups").([]string)
+	if !ok {
+		return DatasetControllerBrowseFilesystem500TextResponse("internal user session error: can't get access groups of user"), nil
+	}
+
 	// an internal function used to determine if a folder has subfolders
 	folderHasFilesOrSubFolders := func(path string) (bool, bool) {
 		folder, err := os.Open(path)
@@ -77,16 +92,24 @@ func (i *IngestorWebServerImplemenation) DatasetControllerBrowseFilesystem(ctx c
 	absPath := filepath.Join(collectionPath, relPath)
 
 	// check if path is dir
-	folder, err := os.Stat(absPath)
+	err = datasetaccess.IsFolderCheck(absPath)
 	if err != nil {
-		if os.IsNotExist(err) {
-			return DatasetControllerBrowseFilesystem400TextResponse("path does not exist or is invalid"), nil
-		} else {
-			return nil, err
-		}
+		return DatasetControllerBrowseFilesystem400TextResponse("path is directory check error: " + err.Error()), nil
 	}
-	if !folder.IsDir() {
-		return DatasetControllerBrowseFilesystem400TextResponse("path does not point to a folder"), nil
+
+	// dataset access checks
+	err = datasetaccess.CheckAccessIntegrity(absPath)
+	if errors.Is(err, &datasetaccess.InvalidGroupsError{}) || errors.Is(err, &datasetaccess.PathError{}) {
+		return DatasetControllerBrowseFilesystem500TextResponse("error - path access rules are invalid: " + err.Error()), nil
+	} else if err != nil {
+		return DatasetControllerBrowseFilesystem500TextResponse("internal server error: " + err.Error()), nil
+	}
+
+	err = datasetaccess.CheckUserAccess(absPath, accessGroups)
+	if errors.Is(err, &datasetaccess.AccessError{}) {
+		return DatasetControllerBrowseFilesystem401TextResponse("unauthorized: " + err.Error()), nil
+	} else if err != nil {
+		return DatasetControllerBrowseFilesystem500TextResponse("internal server error: " + err.Error()), nil
 	}
 
 	// get page values
