@@ -3,6 +3,7 @@ package webserver
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"path/filepath"
@@ -10,6 +11,7 @@ import (
 
 	b64 "encoding/base64"
 
+	"github.com/SwissOpenEM/Ingestor/internal/datasetaccess"
 	"github.com/SwissOpenEM/Ingestor/internal/webserver/collections"
 	"github.com/SwissOpenEM/Ingestor/internal/webserver/metadatatasks"
 	"github.com/gin-gonic/gin"
@@ -115,6 +117,36 @@ func (i *IngestorWebServerImplemenation) ExtractMetadata(ctx context.Context, re
 			StatusCode: 400}, nil
 	}
 	request.Params.FilePath = relPath
+
+	// check if path is dir
+	absPath := filepath.Join(colPath, relPath)
+	err = datasetaccess.IsFolderCheck(absPath)
+	if err != nil {
+		return ExtractMetadatadefaultJSONResponse{
+			Body: Error{
+				Code:    "400",
+				Message: err.Error(),
+			},
+			StatusCode: 400}, nil
+	}
+
+	// dataset access checks
+	err = datasetaccess.CheckAccessIntegrity(absPath)
+	if errors.Is(err, &datasetaccess.InvalidGroupsError{}) || errors.Is(err, &datasetaccess.PathError{}) {
+		return ExtractMetadatadefaultJSONResponse{
+			Body: Error{
+				Code:    "400",
+				Message: "error - path access rules are invalid: " + err.Error(),
+			},
+			StatusCode: 400}, nil
+	} else if err != nil {
+		return ExtractMetadatadefaultJSONResponse{
+			Body: Error{
+				Code:    "400",
+				Message: "internal server error: " + err.Error(),
+			},
+			StatusCode: 400}, nil
+	}
 
 	// start streaming the extraction process
 	return ResponseWriter{ctx: ctx, metadataTaskPool: i.metp, req: request, collectionLocation: colPath}, nil
