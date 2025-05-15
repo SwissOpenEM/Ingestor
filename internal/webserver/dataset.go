@@ -18,25 +18,12 @@ import (
 	"github.com/SwissOpenEM/Ingestor/internal/transfertask"
 	"github.com/SwissOpenEM/Ingestor/internal/webserver/collections"
 	"github.com/SwissOpenEM/Ingestor/internal/webserver/globusauth"
-	"github.com/gin-contrib/sessions"
-	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/paulscherrerinstitute/scicat-cli/v3/datasetIngestor"
 	"github.com/paulscherrerinstitute/scicat-cli/v3/datasetUtils"
 )
 
 func (i *IngestorWebServerImplemenation) DatasetControllerBrowseFilesystem(ctx context.Context, request DatasetControllerBrowseFilesystemRequestObject) (DatasetControllerBrowseFilesystemResponseObject, error) {
-	ginCtx, ok := ctx.(*gin.Context)
-	if !ok {
-		return DatasetControllerBrowseFilesystem500TextResponse("internal context error"), nil
-	}
-
-	userSession := sessions.DefaultMany(ginCtx, "user")
-	accessGroups, ok := userSession.Get("access_groups").([]string)
-	if !ok {
-		return DatasetControllerBrowseFilesystem500TextResponse("internal user session error: can't get access groups of user"), nil
-	}
-
 	// an internal function used to determine if a folder has subfolders
 	folderHasFilesOrSubFolders := func(path string) (bool, bool) {
 		folder, err := os.Open(path)
@@ -105,7 +92,7 @@ func (i *IngestorWebServerImplemenation) DatasetControllerBrowseFilesystem(ctx c
 		return DatasetControllerBrowseFilesystem500TextResponse("internal server error: " + err.Error()), nil
 	}
 
-	err = datasetaccess.CheckUserAccess(absPath, accessGroups)
+	err = datasetaccess.CheckUserAccess(ctx, absPath)
 	if errors.Is(err, &datasetaccess.AccessError{}) {
 		return DatasetControllerBrowseFilesystem401TextResponse("unauthorized: " + err.Error()), nil
 	} else if err != nil {
