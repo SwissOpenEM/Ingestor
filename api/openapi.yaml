@@ -65,6 +65,18 @@ paths:
               text/plain:
                 schema:
                   type: string
+          "401":
+            description: "Unauthorized access:  the path is not allowed for the user, or the user is not logged in"
+            content:
+              text/plain:
+                schema:
+                  type: string
+          "500":
+            description: Internal server error
+            content:
+              text/plain:
+                schema:
+                  type: string
 
   /dataset:
     post:
