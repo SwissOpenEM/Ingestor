@@ -27,22 +27,23 @@ func CheckAccessIntegrity(path string) error {
 	allFoundGroups := map[string]bool{}
 
 	// check if the access hierarchy follows the rules by traversing parent directories
+	prevPath := ""
 	for i := len(splitPath); i > 0; i-- {
 		/// read and parse file
-		path := filepath.Join(append(splitPath[0:i], accessControlFilename)...)
+		currPath := filepath.Join(append(splitPath[0:i], accessControlFilename)...)
 
-		if _, err := os.Stat(path); errors.Is(err, os.ErrNotExist) {
+		if _, err := os.Stat(currPath); errors.Is(err, os.ErrNotExist) {
 			continue // skip the path if it doesn't contain any access restrictions
 		}
 
-		parsedAccessFile, err := parseAccessFile(path)
+		parsedAccessFile, err := parseAccessFile(currPath)
 		if err != nil {
 			return err
 		}
 
 		// path rule check
-		if parsedAccessFile.Path != path {
-			return newPathError(parsedAccessFile.Path, path)
+		if parsedAccessFile.Path != currPath {
+			return newPathError(parsedAccessFile.Path, currPath)
 		}
 
 		parsedGroups := map[string]bool{}
@@ -57,13 +58,14 @@ func CheckAccessIntegrity(path string) error {
 			}
 		}
 		if len(invalidGroups) > 0 { // return an error in case of any mismatched groups
-			return newInvalidGroupsError(path, invalidGroups)
+			return newInvalidGroupsError(prevPath, invalidGroups)
 		}
 
 		// update map of all encountered groups
 		for group := range parsedGroups {
 			allFoundGroups[group] = true
 		}
+		prevPath = currPath
 	}
 	return nil
 }
@@ -101,10 +103,21 @@ func CheckUserAccess(path string, hasGroups []string) error {
 	allowedGroupsSlice := make([]string, 0, len(allowedGroups))
 	for group := range allowedGroups {
 		if _, ok := hasGroupsMap[group]; ok {
-			return nil
+			return nil // if the user has at least one group from the list, they're allowed to access the dataset
 		}
 		allowedGroupsSlice = append(allowedGroupsSlice, group)
 	}
 
 	return newAccessError(allowedGroupsSlice)
+}
+
+func IsFolderCheck(path string) error {
+	folder, err := os.Stat(path)
+	if err != nil {
+		return err
+	}
+	if !folder.IsDir() {
+		return newNotFolderError(path)
+	}
+	return nil
 }

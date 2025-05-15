@@ -47,3 +47,15 @@ func newPathError(yamlPath string, actualPath string) *PathError {
 		actualPath: actualPath,
 	}
 }
+
+type NotFolderError struct {
+	path string
+}
+
+func (e *NotFolderError) Error() string {
+	return "the path at '" + e.path + "' is not a folder"
+}
+
+func newNotFolderError(path string) *NotFolderError {
+	return &NotFolderError{path: path}
+}
