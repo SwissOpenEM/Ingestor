@@ -142,10 +142,27 @@ func (i *IngestorWebServerImplemenation) ExtractMetadata(ctx context.Context, re
 	} else if err != nil {
 		return ExtractMetadatadefaultJSONResponse{
 			Body: Error{
-				Code:    "400",
+				Code:    "500",
 				Message: "internal server error: " + err.Error(),
 			},
-			StatusCode: 400}, nil
+			StatusCode: 500}, nil
+	}
+
+	err = datasetaccess.CheckUserAccess(ctx, absPath)
+	if errors.Is(err, &datasetaccess.AccessError{}) {
+		return ExtractMetadatadefaultJSONResponse{
+			Body: Error{
+				Code:    "401",
+				Message: "unauthorized: " + err.Error(),
+			},
+			StatusCode: 401}, nil
+	} else if err != nil {
+		return ExtractMetadatadefaultJSONResponse{
+			Body: Error{
+				Code:    "500",
+				Message: "internal server error: " + err.Error(),
+			},
+			StatusCode: 500}, nil
 	}
 
 	// start streaming the extraction process

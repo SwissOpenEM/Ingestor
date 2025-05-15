@@ -1,11 +1,15 @@
 package datasetaccess
 
 import (
+	"context"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 
+	"github.com/gin-contrib/sessions"
+	"github.com/gin-gonic/gin"
 	"gopkg.in/yaml.v2"
 )
 
@@ -70,7 +74,18 @@ func CheckAccessIntegrity(path string) error {
 	return nil
 }
 
-func CheckUserAccess(path string, hasGroups []string) error {
+func CheckUserAccess(ctx context.Context, path string) error {
+	ginCtx, ok := ctx.(*gin.Context)
+	if !ok {
+		return fmt.Errorf("internal context error")
+	}
+
+	userSession := sessions.DefaultMany(ginCtx, "user")
+	hasGroups, ok := userSession.Get("access_groups").([]string)
+	if !ok {
+		return fmt.Errorf("internal user session error: can't get access groups of user")
+	}
+
 	splitPath := strings.Split(filepath.Clean(path), string(filepath.Separator))
 
 	allowedGroups := map[string]bool{}
