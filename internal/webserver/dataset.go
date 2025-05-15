@@ -193,9 +193,24 @@ func (i *IngestorWebServerImplemenation) DatasetControllerIngestDataset(ctx cont
 	}
 
 	// check if folder exists
-	err = core.CheckIfFolderExists(folderPath)
+	err = datasetaccess.IsFolderCheck(folderPath)
 	if err != nil {
 		return DatasetControllerIngestDataset400TextResponse(fmt.Sprintf("dataset location lookup error: %s", err.Error())), nil
+	}
+
+	// dataset access checks
+	err = datasetaccess.CheckAccessIntegrity(folderPath)
+	if errors.Is(err, &datasetaccess.InvalidGroupsError{}) || errors.Is(err, &datasetaccess.PathError{}) {
+		return DatasetControllerIngestDataset500TextResponse("error - path access rules are invalid: " + err.Error()), nil
+	} else if err != nil {
+		return DatasetControllerIngestDataset500TextResponse("internal server error: " + err.Error()), nil
+	}
+
+	err = datasetaccess.CheckUserAccess(ctx, folderPath)
+	if errors.Is(err, &datasetaccess.AccessError{}) {
+		return DatasetControllerIngestDataset401TextResponse("unauthorized: " + err.Error()), nil
+	} else if err != nil {
+		return DatasetControllerIngestDataset500TextResponse("internal server error: " + err.Error()), nil
 	}
 
 	// do catalogue insertion
