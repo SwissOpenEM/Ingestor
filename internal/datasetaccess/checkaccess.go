@@ -28,13 +28,16 @@ func parseAccessFile(path string) (accessFile, error) {
 
 func CheckAccessIntegrity(path string) error {
 	splitPath := strings.Split(filepath.Clean(path), string(filepath.Separator))
-	allFoundGroups := map[string]bool{}
+	allFoundAllowedGroups := map[string]bool{}
 
 	// check if the access hierarchy follows the rules by traversing parent directories
 	prevPath := ""
 	for i := len(splitPath); i > 0; i-- {
 		/// read and parse file
 		currPath := filepath.Join(append(splitPath[0:i], accessControlFilename)...)
+		if splitPath[0] == "" {
+			currPath = string(filepath.Separator) + currPath // UNIX fix
+		}
 
 		if _, err := os.Stat(currPath); errors.Is(err, os.ErrNotExist) {
 			continue // skip the path if it doesn't contain any access restrictions
@@ -56,7 +59,7 @@ func CheckAccessIntegrity(path string) error {
 		}
 
 		invalidGroups := []string{}
-		for group := range allFoundGroups {
+		for group := range allFoundAllowedGroups {
 			if _, ok := parsedGroups[group]; !ok {
 				invalidGroups = append(invalidGroups, group)
 			}
@@ -67,7 +70,7 @@ func CheckAccessIntegrity(path string) error {
 
 		// update map of all encountered groups
 		for group := range parsedGroups {
-			allFoundGroups[group] = true
+			allFoundAllowedGroups[group] = true
 		}
 		prevPath = currPath
 	}
