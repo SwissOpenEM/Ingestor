@@ -15,7 +15,6 @@ import (
 	"github.com/SwissOpenEM/Ingestor/internal/globustransfer"
 	"github.com/SwissOpenEM/Ingestor/internal/s3upload"
 	"github.com/SwissOpenEM/Ingestor/internal/transfertask"
-	"github.com/SwissOpenEM/Ingestor/internal/webserver/collections"
 	"github.com/SwissOpenEM/globus"
 	"github.com/paulscherrerinstitute/scicat-cli/v3/datasetIngestor"
 	"github.com/paulscherrerinstitute/scicat-cli/v3/datasetUtils"
@@ -213,11 +212,6 @@ func TransferDataset(
 		if !ok {
 			return fmt.Errorf("username was not set for globus transfer")
 		}
-		// globus doesn't work with absolute folders, this library uses sourcePrefix to adapt the path to the globus' own path from a relative path
-		_, _, relativeDatasetFolder, err := collections.GetPathDetails(config.WebServer.CollectionLocations, filepath.Clean(datasetFolder))
-		if err != nil {
-			return err
-		}
 
 		files := make([]globustransfer.File, len(fileList))
 		bytesTotal := int64(0)
@@ -233,13 +227,13 @@ func TransferDataset(
 		err = globustransfer.TransferFiles(
 			client,
 			config.Transfer.Globus.SourceCollectionID,
-			config.Transfer.Globus.SourcePrefixPath,
+			config.Transfer.Globus.CollectionRootPath,
 			config.Transfer.Globus.DestinationCollectionID,
 			config.Transfer.Globus.DestinationTemplate,
 			transferTask.GetDatasetId(),
 			username,
 			task_context,
-			relativeDatasetFolder,
+			datasetFolder,
 			files,
 			&transferNotifier,
 		)

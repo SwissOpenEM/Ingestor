@@ -9,7 +9,7 @@ Transfer:
     ClientId: "clientid_registered_with_globus"
     RedirectUrl: "https://auth.globus.org/v2/web/auth-code"
     SourceCollectionID: "collectionid1"
-    SourcePrefixPath: "/some/optional/path"
+    CollectionRootPath: "/some/optional/path"
     DestinationCollectionID: "collectionid2"
     DestinationTemplate: "/{{ .Username }}/{{ replace .Pid \".\" \"_\" }}/{{ .DatasetFolder }}"
     Scopes:

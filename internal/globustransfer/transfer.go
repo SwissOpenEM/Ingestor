@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"path"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/SwissOpenEM/Ingestor/internal/transfertask"
@@ -48,7 +49,7 @@ func checkTransfer(client *globus.GlobusClient, globusTaskId string) (bytesTrans
 func TransferFiles(
 	client *globus.GlobusClient,
 	SourceCollectionID string,
-	SourcePrefixPath string,
+	CollectionRootPath string,
 	DestinationCollectionID string,
 	DestinationPathTemplate string,
 	datasetId string,
@@ -84,7 +85,7 @@ func TransferFiles(
 
 	result, err := client.TransferFileList(
 		SourceCollectionID,
-		path.Join(SourcePrefixPath, datasetPath),
+		strings.TrimPrefix(datasetPath, CollectionRootPath),
 		DestinationCollectionID,
 		finalDestinationPath,
 		filePathList,
