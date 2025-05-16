@@ -29,6 +29,7 @@ func parseAccessFile(path string) (accessFile, error) {
 func CheckAccessIntegrity(path string) error {
 	splitPath := strings.Split(filepath.Clean(path), string(filepath.Separator))
 	allFoundAllowedGroups := map[string]bool{}
+	lowestLevelBlockedGroups := map[string]bool{}
 
 	// check if the access hierarchy follows the rules by traversing parent directories
 	prevPath := ""
@@ -53,23 +54,40 @@ func CheckAccessIntegrity(path string) error {
 			return newPathError(parsedAccessFile.Path, currPath)
 		}
 
-		parsedGroups := map[string]bool{}
+		// find invalid allowed groups (ones that only appeared on lower levels)
+		parsedAllowedGroups := map[string]bool{}
 		for _, group := range parsedAccessFile.AllowedGroups {
-			parsedGroups[group] = true
+			parsedAllowedGroups[group] = true
 		}
 
-		invalidGroups := []string{}
+		invalidAllowedGroups := []string{}
 		for group := range allFoundAllowedGroups {
-			if _, ok := parsedGroups[group]; !ok {
-				invalidGroups = append(invalidGroups, group)
+			if _, ok := parsedAllowedGroups[group]; !ok {
+				invalidAllowedGroups = append(invalidAllowedGroups, group)
 			}
 		}
-		if len(invalidGroups) > 0 { // return an error in case of any mismatched groups
-			return newInvalidGroupsError(prevPath, invalidGroups)
+
+		// find invalid blocked groups (ones that only appeared on upper levels of the path)
+		invalidBlockedGroups := []string{}
+		if len(lowestLevelBlockedGroups) == 0 {
+			for _, group := range parsedAccessFile.BlockedGroups {
+				lowestLevelBlockedGroups[group] = true
+			}
+		} else {
+			for _, group := range parsedAccessFile.BlockedGroups {
+				if _, ok := lowestLevelBlockedGroups[group]; !ok {
+					invalidBlockedGroups = append(invalidBlockedGroups, group)
+				}
+			}
 		}
 
-		// update map of all encountered groups
-		for group := range parsedGroups {
+		// return an error in case of any mismatched groups
+		if len(invalidAllowedGroups) > 0 || len(invalidBlockedGroups) > 0 {
+			return newInvalidGroupsError(prevPath, currPath, invalidAllowedGroups, invalidBlockedGroups)
+		}
+
+		// update map of all encountered allowed groups
+		for group := range parsedAllowedGroups {
 			allFoundAllowedGroups[group] = true
 		}
 		prevPath = currPath
@@ -114,7 +132,7 @@ func CheckUserAccess(ctx context.Context, path string) error {
 			return err
 		}
 
-		// the first file closest to the final path determines the strictest level of required groups
+		// the first file closest to the final path determines the strictest level of allowed and blocked groups
 		for _, group := range parsedAccessFile.AllowedGroups {
 			allowedGroups[group] = true
 		}

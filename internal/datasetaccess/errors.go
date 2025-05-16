@@ -29,18 +29,30 @@ func newAccessError(groupsWithAccess []string, blockedGroups []string) *AccessEr
 }
 
 type InvalidGroupsError struct {
-	currentPath   string
-	invalidGroups []string
+	allowPath            string
+	blockPath            string
+	invalidAllowedGroups []string
+	invalidBlockedGroups []string
 }
 
 func (e *InvalidGroupsError) Error() string {
-	return fmt.Sprintf("the following invalid groups were found when checking the path '%s': '%v'", e.currentPath, e.invalidGroups)
+	listErrs := []string{}
+	if len(e.invalidAllowedGroups) > 0 {
+		listErrs = append(listErrs, fmt.Sprintf("the following allowed blocks at %s are invalid: %v", e.allowPath, e.invalidAllowedGroups))
+	}
+	if len(e.invalidBlockedGroups) > 0 {
+		listErrs = append(listErrs, fmt.Sprintf("the following blocked groups at %s are invalid: '%v'", e.blockPath, e.invalidBlockedGroups))
+
+	}
+	return fmt.Sprintf("invalid groups error - %s", strings.Join(listErrs, ", "))
 }
 
-func newInvalidGroupsError(path string, groups []string) *InvalidGroupsError {
+func newInvalidGroupsError(allowPath string, blockPath string, allowedGroups []string, blockedGroups []string) *InvalidGroupsError {
 	return &InvalidGroupsError{
-		currentPath:   path,
-		invalidGroups: groups,
+		allowPath:            allowPath,
+		blockPath:            blockPath,
+		invalidAllowedGroups: allowedGroups,
+		invalidBlockedGroups: blockedGroups,
 	}
 }
 
