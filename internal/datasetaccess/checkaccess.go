@@ -97,6 +97,9 @@ func CheckUserAccess(ctx context.Context, path string) error {
 	for i := len(splitPath); i > 0; i-- {
 		/// read and parse file
 		path := filepath.Join(append(splitPath[0:i], accessControlFilename)...)
+		if splitPath[0] == "" {
+			path = string(filepath.Separator) + path // UNIX fix
+		}
 
 		if _, err := os.Stat(path); errors.Is(err, os.ErrNotExist) {
 			continue // skip the path if it doesn't contain any access restrictions
@@ -112,6 +115,11 @@ func CheckUserAccess(ctx context.Context, path string) error {
 			allowedGroups[group] = true
 		}
 		break // no need to continue iterate further, we got the (theoretical) strictest set of groups
+	}
+
+	// if there's no allowed group found, allow all
+	if len(allowedGroups) == 0 {
+		return nil
 	}
 
 	// check if user has required groups
