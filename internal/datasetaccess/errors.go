@@ -1,18 +1,30 @@
 package datasetaccess
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 type AccessError struct {
 	groupsWithAccess []string
+	blockedGroups    []string
 }
 
 func (e *AccessError) Error() string {
-	return fmt.Sprintf("the user does not have access to the datasets, one of the following groups is needed: %v", e.groupsWithAccess)
+	listErrs := []string{}
+	if len(e.groupsWithAccess) > 0 {
+		listErrs = append(listErrs, fmt.Sprintf("one of the following groups is needed: %v", e.groupsWithAccess))
+	}
+	if len(e.blockedGroups) > 0 {
+		listErrs = append(listErrs, fmt.Sprintf("the following groups to which the user belongs are blocked from accessing it: %v", e.blockedGroups))
+	}
+	return fmt.Sprintf("the user does not have access to the datasets - %s", strings.Join(listErrs, ", "))
 }
 
-func newAccessError(groupsWithAccess []string) *AccessError {
+func newAccessError(groupsWithAccess []string, blockedGroups []string) *AccessError {
 	return &AccessError{
 		groupsWithAccess: groupsWithAccess,
+		blockedGroups:    blockedGroups,
 	}
 }
 

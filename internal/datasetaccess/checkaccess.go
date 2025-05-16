@@ -51,7 +51,7 @@ func CheckAccessIntegrity(path string) error {
 		}
 
 		parsedGroups := map[string]bool{}
-		for _, group := range parsedAccessFile.AccessGroups {
+		for _, group := range parsedAccessFile.AllowedGroups {
 			parsedGroups[group] = true
 		}
 
@@ -89,9 +89,10 @@ func CheckUserAccess(ctx context.Context, path string) error {
 	splitPath := strings.Split(filepath.Clean(path), string(filepath.Separator))
 
 	allowedGroups := map[string]bool{}
-	hasGroupsMap := map[string]bool{}
+	blockedGroups := map[string]bool{}
+	userGroupsMap := map[string]bool{}
 	for _, group := range hasGroups {
-		hasGroupsMap[group] = true
+		userGroupsMap[group] = true
 	}
 
 	for i := len(splitPath); i > 0; i-- {
@@ -111,8 +112,11 @@ func CheckUserAccess(ctx context.Context, path string) error {
 		}
 
 		// the first file closest to the final path determines the strictest level of required groups
-		for _, group := range parsedAccessFile.AccessGroups {
+		for _, group := range parsedAccessFile.AllowedGroups {
 			allowedGroups[group] = true
+		}
+		for _, group := range parsedAccessFile.BlockedGroups {
+			blockedGroups[group] = true
 		}
 		break // no need to continue iterate further, we got the (theoretical) strictest set of groups
 	}
@@ -123,15 +127,33 @@ func CheckUserAccess(ctx context.Context, path string) error {
 	}
 
 	// check if user has required groups
-	allowedGroupsSlice := make([]string, 0, len(allowedGroups))
+	failedWhitelist := true
 	for group := range allowedGroups {
-		if _, ok := hasGroupsMap[group]; ok {
-			return nil // if the user has at least one group from the list, they're allowed to access the dataset
+		if _, ok := userGroupsMap[group]; ok {
+			failedWhitelist = false
+			break // if the user has at least one group from the list, continue
 		}
-		allowedGroupsSlice = append(allowedGroupsSlice, group)
 	}
 
-	return newAccessError(allowedGroupsSlice)
+	// check if user should be blocked based on group membership
+	userBlockedGroupsSlice := []string{}
+	for group := range blockedGroups {
+		if _, ok := userGroupsMap[group]; ok {
+			userBlockedGroupsSlice = append(userBlockedGroupsSlice, group)
+		}
+	}
+
+	// return error if found, otherwise return nil
+	if failedWhitelist || len(userBlockedGroupsSlice) > 0 {
+		allowedGroupsSlice := make([]string, 0, len(allowedGroups))
+		if failedWhitelist {
+			for k := range allowedGroups {
+				allowedGroupsSlice = append(allowedGroupsSlice, k)
+			}
+		}
+		return newAccessError(allowedGroupsSlice, userBlockedGroupsSlice)
+	}
+	return nil
 }
 
 func IsFolderCheck(path string) error {
