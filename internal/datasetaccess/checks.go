@@ -187,3 +187,11 @@ func IsFolderCheck(path string) error {
 	}
 	return nil
 }
+
+func IsDatasetFolder(path string) bool {
+	accessFile, err := parseAccessFile(filepath.Dir(path))
+	if err == nil {
+		return accessFile.HasDatasetFolders
+	}
+	return false
+}
