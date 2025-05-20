@@ -3,8 +3,8 @@ package webserver
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"os"
 	"path"
@@ -85,18 +85,12 @@ func (i *IngestorWebServerImplemenation) DatasetControllerBrowseFilesystem(ctx c
 	}
 
 	// dataset access checks
-	err = datasetaccess.CheckAccessIntegrity(absPath)
-	if errors.Is(err, &datasetaccess.InvalidGroupsError{}) || errors.Is(err, &datasetaccess.PathError{}) {
-		return DatasetControllerBrowseFilesystem500TextResponse("error - path access rules are invalid: " + err.Error()), nil
-	} else if err != nil {
-		return DatasetControllerBrowseFilesystem500TextResponse("internal server error: " + err.Error()), nil
-	}
-
 	err = datasetaccess.CheckUserAccess(ctx, absPath)
-	if errors.Is(err, &datasetaccess.AccessError{}) {
+	if _, ok := err.(*datasetaccess.AccessError); ok {
 		return DatasetControllerBrowseFilesystem401TextResponse("unauthorized: " + err.Error()), nil
 	} else if err != nil {
-		return DatasetControllerBrowseFilesystem500TextResponse("internal server error: " + err.Error()), nil
+		slog.Error("user access error", "error", err.Error())
+		return DatasetControllerBrowseFilesystem500TextResponse("internal server error: user access error"), nil
 	}
 
 	// get page values
@@ -199,18 +193,12 @@ func (i *IngestorWebServerImplemenation) DatasetControllerIngestDataset(ctx cont
 	}
 
 	// dataset access checks
-	err = datasetaccess.CheckAccessIntegrity(folderPath)
-	if errors.Is(err, &datasetaccess.InvalidGroupsError{}) || errors.Is(err, &datasetaccess.PathError{}) {
-		return DatasetControllerIngestDataset500TextResponse("error - path access rules are invalid: " + err.Error()), nil
-	} else if err != nil {
-		return DatasetControllerIngestDataset500TextResponse("internal server error: " + err.Error()), nil
-	}
-
 	err = datasetaccess.CheckUserAccess(ctx, folderPath)
-	if errors.Is(err, &datasetaccess.AccessError{}) {
+	if _, ok := err.(*datasetaccess.AccessError); ok {
 		return DatasetControllerIngestDataset401TextResponse("unauthorized: " + err.Error()), nil
 	} else if err != nil {
-		return DatasetControllerIngestDataset500TextResponse("internal server error: " + err.Error()), nil
+		slog.Error("user access error", "error", err.Error())
+		return DatasetControllerIngestDataset500TextResponse("internal server error: user access error"), nil
 	}
 
 	// do catalogue insertion
