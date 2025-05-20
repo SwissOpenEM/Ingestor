@@ -33,6 +33,7 @@ func CheckAccessIntegrity(path string) error {
 
 	// check if the access hierarchy follows the rules by traversing parent directories
 	prevPath := ""
+	encounteredAccessFile := false
 	for i := len(splitPath); i > 0; i-- {
 		/// read and parse file
 		currPath := filepath.Join(append(splitPath[0:i], accessControlFilename)...)
@@ -54,20 +55,28 @@ func CheckAccessIntegrity(path string) error {
 			return newPathError(parsedAccessFile.Path, currPath)
 		}
 
-		// find invalid allowed groups (ones that only appeared on lower levels)
+		// find invalid allowed groups
 		parsedAllowedGroups := map[string]bool{}
 		for _, group := range parsedAccessFile.AllowedGroups {
 			parsedAllowedGroups[group] = true
 		}
 
+		// check if the upper levels define an allowed groups list while the lower levels don't
 		invalidAllowedGroups := []string{}
-		for group := range allFoundAllowedGroups {
-			if _, ok := parsedAllowedGroups[group]; !ok {
+		if len(allFoundAllowedGroups) == 0 && len(parsedAllowedGroups) > 0 && encounteredAccessFile {
+			// if yes, add all discovered groups to the invalid list
+			for group := range parsedAllowedGroups {
 				invalidAllowedGroups = append(invalidAllowedGroups, group)
+			}
+		} else { // otherwise find groups that only appeared on the lower levels
+			for group := range allFoundAllowedGroups {
+				if _, ok := parsedAllowedGroups[group]; !ok {
+					invalidAllowedGroups = append(invalidAllowedGroups, group)
+				}
 			}
 		}
 
-		// find invalid blocked groups (ones that only appeared on upper levels of the path)
+		// find invalid blocked groups (ones that only appeared on the upper levels of the path)
 		invalidBlockedGroups := []string{}
 		if len(lowestLevelBlockedGroups) == 0 {
 			for _, group := range parsedAccessFile.BlockedGroups {
@@ -91,6 +100,7 @@ func CheckAccessIntegrity(path string) error {
 			allFoundAllowedGroups[group] = true
 		}
 		prevPath = currPath
+		encounteredAccessFile = true
 	}
 	return nil
 }
