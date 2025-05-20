@@ -38,7 +38,7 @@ type InvalidGroupsError struct {
 func (e *InvalidGroupsError) Error() string {
 	listErrs := []string{}
 	if len(e.invalidAllowedGroups) > 0 {
-		listErrs = append(listErrs, fmt.Sprintf("the following allowed blocks at %s are invalid: %v", e.allowPath, e.invalidAllowedGroups))
+		listErrs = append(listErrs, fmt.Sprintf("the following allowed groups at %s are invalid: %v", e.allowPath, e.invalidAllowedGroups))
 	}
 	if len(e.invalidBlockedGroups) > 0 {
 		listErrs = append(listErrs, fmt.Sprintf("the following blocked groups at %s are invalid: '%v'", e.blockPath, e.invalidBlockedGroups))
