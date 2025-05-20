@@ -3,8 +3,8 @@ package webserver
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"io"
+	"log/slog"
 	"net/http"
 	"path/filepath"
 	"time"
@@ -131,25 +131,8 @@ func (i *IngestorWebServerImplemenation) ExtractMetadata(ctx context.Context, re
 	}
 
 	// dataset access checks
-	err = datasetaccess.CheckAccessIntegrity(absPath)
-	if errors.Is(err, &datasetaccess.InvalidGroupsError{}) || errors.Is(err, &datasetaccess.PathError{}) {
-		return ExtractMetadatadefaultJSONResponse{
-			Body: Error{
-				Code:    "400",
-				Message: "error - path access rules are invalid: " + err.Error(),
-			},
-			StatusCode: 400}, nil
-	} else if err != nil {
-		return ExtractMetadatadefaultJSONResponse{
-			Body: Error{
-				Code:    "500",
-				Message: "internal server error: " + err.Error(),
-			},
-			StatusCode: 500}, nil
-	}
-
 	err = datasetaccess.CheckUserAccess(ctx, absPath)
-	if errors.Is(err, &datasetaccess.AccessError{}) {
+	if _, ok := err.(*datasetaccess.AccessError); ok {
 		return ExtractMetadatadefaultJSONResponse{
 			Body: Error{
 				Code:    "401",
@@ -157,10 +140,11 @@ func (i *IngestorWebServerImplemenation) ExtractMetadata(ctx context.Context, re
 			},
 			StatusCode: 401}, nil
 	} else if err != nil {
+		slog.Error("user access error", "error", err.Error())
 		return ExtractMetadatadefaultJSONResponse{
 			Body: Error{
 				Code:    "500",
-				Message: "internal server error: " + err.Error(),
+				Message: "internal server error - user access error",
 			},
 			StatusCode: 500}, nil
 	}

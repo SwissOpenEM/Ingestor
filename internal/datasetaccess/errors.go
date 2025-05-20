@@ -28,31 +28,28 @@ func newAccessError(groupsWithAccess []string, blockedGroups []string) *AccessEr
 	}
 }
 
-type InvalidGroupsError struct {
-	allowPath            string
-	blockPath            string
-	invalidAllowedGroups []string
-	invalidBlockedGroups []string
+type GroupError struct {
+	path               string
+	invalidAllowGroups []string
+	conflictedGroups   []string
 }
 
-func (e *InvalidGroupsError) Error() string {
-	listErrs := []string{}
-	if len(e.invalidAllowedGroups) > 0 {
-		listErrs = append(listErrs, fmt.Sprintf("the following allowed groups at %s are invalid: %v", e.allowPath, e.invalidAllowedGroups))
+func (e *GroupError) Error() string {
+	errList := []string{}
+	if len(e.invalidAllowGroups) > 0 {
+		errList = append(errList, fmt.Sprintf("invalid allow groups found on a lower level: %v", e.invalidAllowGroups))
 	}
-	if len(e.invalidBlockedGroups) > 0 {
-		listErrs = append(listErrs, fmt.Sprintf("the following blocked groups at %s are invalid: '%v'", e.blockPath, e.invalidBlockedGroups))
-
+	if len(e.conflictedGroups) > 0 {
+		errList = append(errList, fmt.Sprintf("the following groups are in conflict: %v", e.conflictedGroups))
 	}
-	return fmt.Sprintf("invalid groups error - %s", strings.Join(listErrs, ", "))
+	return "the following group errors occured at '" + e.path + "': " + strings.Join(errList, ", ")
 }
 
-func newInvalidGroupsError(allowPath string, blockPath string, allowedGroups []string, blockedGroups []string) *InvalidGroupsError {
-	return &InvalidGroupsError{
-		allowPath:            allowPath,
-		blockPath:            blockPath,
-		invalidAllowedGroups: allowedGroups,
-		invalidBlockedGroups: blockedGroups,
+func newGroupError(path string, invalidAllowGroups []string, conflictedGroups []string) *GroupError {
+	return &GroupError{
+		path:               path,
+		invalidAllowGroups: invalidAllowGroups,
+		conflictedGroups:   conflictedGroups,
 	}
 }
 
