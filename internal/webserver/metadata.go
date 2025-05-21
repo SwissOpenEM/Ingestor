@@ -131,22 +131,24 @@ func (i *IngestorWebServerImplemenation) ExtractMetadata(ctx context.Context, re
 	}
 
 	// dataset access checks
-	err = datasetaccess.CheckUserAccess(ctx, absPath)
-	if _, ok := err.(*datasetaccess.AccessError); ok {
-		return ExtractMetadatadefaultJSONResponse{
-			Body: Error{
-				Code:    "401",
-				Message: "unauthorized: " + err.Error(),
-			},
-			StatusCode: 401}, nil
-	} else if err != nil {
-		slog.Error("user access error", "error", err.Error())
-		return ExtractMetadatadefaultJSONResponse{
-			Body: Error{
-				Code:    "500",
-				Message: "internal server error - user access error",
-			},
-			StatusCode: 500}, nil
+	if !i.disableAuth {
+		err = datasetaccess.CheckUserAccess(ctx, absPath)
+		if _, ok := err.(*datasetaccess.AccessError); ok {
+			return ExtractMetadatadefaultJSONResponse{
+				Body: Error{
+					Code:    "401",
+					Message: "unauthorized: " + err.Error(),
+				},
+				StatusCode: 401}, nil
+		} else if err != nil {
+			slog.Error("user access error", "error", err.Error())
+			return ExtractMetadatadefaultJSONResponse{
+				Body: Error{
+					Code:    "500",
+					Message: "internal server error - user access error",
+				},
+				StatusCode: 500}, nil
+		}
 	}
 
 	// start streaming the extraction process
