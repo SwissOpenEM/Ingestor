@@ -85,12 +85,14 @@ func (i *IngestorWebServerImplemenation) DatasetControllerBrowseFilesystem(ctx c
 	}
 
 	// dataset access checks
-	err = datasetaccess.CheckUserAccess(ctx, absPath)
-	if _, ok := err.(*datasetaccess.AccessError); ok {
-		return DatasetControllerBrowseFilesystem401TextResponse("unauthorized: " + err.Error()), nil
-	} else if err != nil {
-		slog.Error("user access error", "error", err.Error())
-		return DatasetControllerBrowseFilesystem500TextResponse("internal server error: user access error"), nil
+	if !i.disableAuth {
+		err = datasetaccess.CheckUserAccess(ctx, absPath)
+		if _, ok := err.(*datasetaccess.AccessError); ok {
+			return DatasetControllerBrowseFilesystem401TextResponse("unauthorized: " + err.Error()), nil
+		} else if err != nil {
+			slog.Error("user access error", "error", err.Error())
+			return DatasetControllerBrowseFilesystem500TextResponse("internal server error: user access error"), nil
+		}
 	}
 
 	// get page values
@@ -193,12 +195,14 @@ func (i *IngestorWebServerImplemenation) DatasetControllerIngestDataset(ctx cont
 	}
 
 	// dataset access checks
-	err = datasetaccess.CheckUserAccess(ctx, folderPath)
-	if _, ok := err.(*datasetaccess.AccessError); ok {
-		return DatasetControllerIngestDataset401TextResponse("unauthorized: " + err.Error()), nil
-	} else if err != nil {
-		slog.Error("user access error", "error", err.Error())
-		return DatasetControllerIngestDataset500TextResponse("internal server error: user access error"), nil
+	if !i.disableAuth {
+		err = datasetaccess.CheckUserAccess(ctx, folderPath)
+		if _, ok := err.(*datasetaccess.AccessError); ok {
+			return DatasetControllerIngestDataset401TextResponse("unauthorized: " + err.Error()), nil
+		} else if err != nil {
+			slog.Error("user access error", "error", err.Error())
+			return DatasetControllerIngestDataset500TextResponse("internal server error: user access error"), nil
+		}
 	}
 
 	// do catalogue insertion
