@@ -18,7 +18,7 @@ func (e *AccessError) Error() string {
 	if len(e.blockedGroups) > 0 {
 		listErrs = append(listErrs, fmt.Sprintf("the following groups to which the user belongs are blocked from accessing it: %v", e.blockedGroups))
 	}
-	return fmt.Sprintf("the user does not have access to the datasets - %s", strings.Join(listErrs, ", "))
+	return fmt.Sprintf("the user does not have access to the path - %s", strings.Join(listErrs, ", "))
 }
 
 func newAccessError(groupsWithAccess []string, blockedGroups []string) *AccessError {
