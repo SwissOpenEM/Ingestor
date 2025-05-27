@@ -115,6 +115,10 @@ func CheckIfFolderExists(path string) error {
 	return nil
 }
 
+const (
+	ErrIllegalKeys = "metadata contains keys with illegal characters (., [], $, or <>)"
+)
+
 func AddDatasetToScicat(
 	metaDataMap map[string]interface{},
 	datasetFolder string,
@@ -137,13 +141,23 @@ func AddDatasetToScicat(
 		"accessToken": userToken,
 	}
 
-	fullUser, accessGroups, err := datasetUtils.GetUserInfoFromToken(http_client, SCICAT_API_URL, userToken)
+	// there is no v4 endpoint yet
+	s := strings.Replace(scicatUrl, "v4", "v3", 1)
+	fullUser, accessGroups, err := datasetUtils.GetUserInfoFromToken(http_client, s, userToken)
 	if err != nil {
 		return datasetId, totalSize, fileList, "", err
 	}
 
-	// check if dataset already exists (identified by source folder)
-	_, _, err = datasetIngestor.CheckMetadata(http_client, SCICAT_API_URL, metaDataMap, fullUser, accessGroups)
+	if keys := datasetIngestor.CollectIllegalKeys(metaDataMap); len(keys) > 0 {
+		return datasetId, totalSize, fileList, "", errors.New(ErrIllegalKeys + ": \"" + strings.Join(keys, "\", \"") + "\"")
+	}
+
+	_, err = datasetIngestor.CheckUserAndOwnerGroup(user, accessGroups, metaDataMap)
+	if err != nil {
+		return datasetId, totalSize, fileList, "", err
+	}
+
+	err = datasetIngestor.CheckMetadataValidity(http_client, SCICAT_API_URL, user["accessToken"], metaDataMap)
 	if err != nil {
 		return datasetId, totalSize, fileList, "", err
 	}
@@ -175,6 +189,10 @@ func AddDatasetToScicat(
 	metaDataMap["datasetlifecycle"].(map[string]interface{})["archiveStatusMessage"] = "filesNotYetAvailable"
 	metaDataMap["datasetlifecycle"].(map[string]interface{})["archivable"] = false
 	metaDataMap["datasetlifecycle"].(map[string]interface{})["storageLocation"] = storageLocation
+
+	if strings.Contains(SCICAT_API_URL, "v3") {
+		metaDataMap["principalInvestigator"] = metaDataMap["owner"]
+	}
 
 	// NOTE: scicat-cli considers "ingestion" as just inserting the dataset into scicat and adding the orig datablocks
 	datasetId, err = datasetIngestor.IngestDataset(http_client, SCICAT_API_URL, metaDataMap, fileList, user)
