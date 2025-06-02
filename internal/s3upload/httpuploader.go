@@ -80,7 +80,10 @@ func getPresignedUrls(object_name string, part int, endpoint string, userToken s
 	}
 
 	if response.StatusCode() == http.StatusInternalServerError {
-		return "", []string{}, fmt.Errorf("%s: %s", response.JSON500.Message, *response.JSON500.Details)
+		if response.JSON500 != nil {
+			return "", []string{}, fmt.Errorf("%s: %s", response.JSON500.Message, *response.JSON500.Details)
+		}
+		return "", []string{}, fmt.Errorf("Unknown error")
 	}
 	if response.StatusCode() == http.StatusUnprocessableEntity {
 		err_string := ""
