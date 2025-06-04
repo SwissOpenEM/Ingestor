@@ -35,5 +35,5 @@ func (n *LoggingNotifier) OnTaskCompleted(id uuid.UUID, elapsedSeconds int) {
 	n.logger.Info("Task completed", "id", id, "elapsed", elapsedSeconds)
 }
 func (n *LoggingNotifier) OnTaskProgress(id uuid.UUID, percentage int) {
-	n.logger.Info("Task progress", "id", id, "percentage", percentage)
+	n.logger.Debug("Task progress", "id", id, "percentage", percentage)
 }
