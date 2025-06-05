@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"time"
 
 	"github.com/SwissOpenEM/Ingestor/internal/transfertask"
 	"github.com/google/uuid"
@@ -20,22 +21,22 @@ type S3Objects struct {
 	TotalBytes  int64
 }
 
-func GetTokens(ctx context.Context, endpoint string, userToken string) (string, string, error) {
+func GetTokens(ctx context.Context, endpoint string, userToken string) (string, string, int, error) {
 	resp, err := GetPresignedUrlServer(endpoint).CreateNewServiceTokenWithResponse(ctx,
 		createAddAuthorizationHeaderFunction(userToken))
 
 	if err != nil {
-		return "", "", err
+		return "", "", 0, err
 	}
 
 	if resp.HTTPResponse.StatusCode != 201 {
-		return "", "", fmt.Errorf("failed to get access tokens: %d, %s", resp.HTTPResponse.StatusCode, resp.HTTPResponse.Status)
+		return "", "", 0, fmt.Errorf("failed to get access tokens: %d, %s", resp.HTTPResponse.StatusCode, resp.HTTPResponse.Status)
 	}
 
-	return resp.JSON201.AccessToken, resp.JSON201.RefreshToken, nil
+	return resp.JSON201.AccessToken, resp.JSON201.RefreshToken, *resp.JSON201.ExpiresIn, nil
 }
 
-func createTokenSource(ctx context.Context, clientID string, tokenUrl string, accessToken string, refreshToken string) oauth2.TokenSource {
+func createTokenSource(ctx context.Context, clientID string, tokenUrl string, accessToken string, refreshToken string, expires_in int) oauth2.TokenSource {
 	config := &oauth2.Config{
 		ClientID: clientID,
 		Endpoint: oauth2.Endpoint{TokenURL: tokenUrl},
@@ -44,13 +45,14 @@ func createTokenSource(ctx context.Context, clientID string, tokenUrl string, ac
 	token := &oauth2.Token{
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
+		Expiry:       time.Now().Add(time.Duration(expires_in)),
 	}
 
 	return config.TokenSource(ctx, token)
 }
 
 // Upload all files in a folder using presinged urls
-func UploadS3(ctx context.Context, task *transfertask.TransferTask, options transfertask.S3TransferConfig, accessToken string, refreshToken string, notifier transfertask.ProgressNotifier) error {
+func UploadS3(ctx context.Context, task *transfertask.TransferTask, options transfertask.S3TransferConfig, accessToken string, refreshToken string, expires_in int, notifier transfertask.ProgressNotifier) error {
 
 	if len(task.GetFileList()) == 0 {
 		return fmt.Errorf("empty file list provided")
@@ -74,7 +76,7 @@ func UploadS3(ctx context.Context, task *transfertask.TransferTask, options tran
 	transferNotifier := transfertask.NewTransferNotifier(s3Objects.TotalBytes, uploadId, notifier, task)
 
 	task.TransferStarted()
-	tokenSource := createTokenSource(context.Background(), options.ClientID, options.TokenUrl, accessToken, refreshToken)
+	tokenSource := createTokenSource(context.Background(), options.ClientID, options.TokenUrl, accessToken, refreshToken, expires_in)
 
 	return uploadFiles(ctx, &s3Objects, options, &transferNotifier, uploadId, tokenSource)
 }
@@ -83,7 +85,7 @@ func uploadFiles(ctx context.Context, s3Objects *S3Objects, options transfertask
 	errorGroup, context := errgroup.WithContext(ctx)
 	objectsChannel := make(chan int, len(s3Objects.Files))
 
-	nWorkers := max(options.ConcurrentFiles, len(s3Objects.Files))
+	nWorkers := min(options.ConcurrentFiles, len(s3Objects.Files))
 
 	for t := 0; t < nWorkers; t++ {
 		errorGroup.Go(
@@ -111,9 +113,9 @@ func uploadFiles(ctx context.Context, s3Objects *S3Objects, options transfertask
 
 }
 
-func FinalizeUpload(ctx context.Context, config transfertask.S3TransferConfig, dataset_pid string, ownerUser string, ownerGroup string, email string, autoArchive bool, accessToken string, refreshToken string) error {
+func FinalizeUpload(ctx context.Context, config transfertask.S3TransferConfig, dataset_pid string, ownerUser string, ownerGroup string, email string, autoArchive bool, accessToken string, refreshToken string, expires_in int) error {
 
-	tokenSource := createTokenSource(ctx, config.ClientID, config.TokenUrl, accessToken, refreshToken)
+	tokenSource := createTokenSource(ctx, config.ClientID, config.TokenUrl, accessToken, refreshToken, expires_in)
 
 	token, err := tokenSource.Token()
 	if err != nil {
@@ -135,7 +137,7 @@ func FinalizeUpload(ctx context.Context, config transfertask.S3TransferConfig, d
 	if resp.HTTPResponse.StatusCode == 500 {
 		return fmt.Errorf("failed to finalize upload: %d, %s, %s ", resp.HTTPResponse.StatusCode, resp.HTTPResponse.Status, *resp.JSON500.Details)
 	} else if resp.HTTPResponse.StatusCode == 201 {
-		logger.Debug("Upload finalized", "dataset pid", resp.JSON201.DatasetID, "message", resp.JSON201.Message)
+		log().Debug("Upload finalized", "dataset pid", resp.JSON201.DatasetID, "message", resp.JSON201.Message)
 	} else {
 		return fmt.Errorf("failed to finalize upload: %d, %s", resp.HTTPResponse.StatusCode, resp.HTTPResponse.Status)
 	}

@@ -285,12 +285,13 @@ func (i *IngestorWebServerImplemenation) addS3TransferTask(ctx context.Context, 
 	transferObjects := map[string]interface{}{}
 
 	// access and refresh token need be fetched at this point from the archiver backend since user token could expire
-	accessToken, refreshToken, err := s3upload.GetTokens(ctx, i.taskQueue.Config.Transfer.S3.Endpoint, scicatToken)
+	accessToken, refreshToken, expires_in, err := s3upload.GetTokens(ctx, i.taskQueue.Config.Transfer.S3.Endpoint, scicatToken)
 	if err != nil {
 		return uuid.UUID{}, err
 	}
 	transferObjects["accessToken"] = accessToken
 	transferObjects["refreshToken"] = refreshToken
+	transferObjects["expires_in"] = expires_in
 
 	err = i.taskQueue.AddTransferTask(datasetId, fileList, taskId, folderPath, ownerUser, ownerGroup, contactEmail, autoArchive, transferObjects)
 	if err != nil {
