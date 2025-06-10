@@ -115,6 +115,10 @@ func CheckIfFolderExists(path string) error {
 	return nil
 }
 
+const (
+	ErrIllegalKeys = "metadata contains keys with illegal characters (., [], $, or <>)"
+)
+
 func AddDatasetToScicat(
 	metaDataMap map[string]interface{},
 	datasetFolder string,
@@ -142,8 +146,16 @@ func AddDatasetToScicat(
 		return datasetId, totalSize, fileList, "", err
 	}
 
-	// check if dataset already exists (identified by source folder)
-	_, _, err = datasetIngestor.CheckMetadata(http_client, SCICAT_API_URL, metaDataMap, fullUser, accessGroups)
+	if keys := datasetIngestor.CollectIllegalKeys(metaDataMap); len(keys) > 0 {
+		return datasetId, totalSize, fileList, "", errors.New(ErrIllegalKeys + ": \"" + strings.Join(keys, "\", \"") + "\"")
+	}
+
+	_, err = datasetIngestor.CheckUserAndOwnerGroup(user, accessGroups, metaDataMap)
+	if err != nil {
+		return datasetId, totalSize, fileList, "", err
+	}
+
+	err = datasetIngestor.CheckMetadataValidity(http_client, SCICAT_API_URL, user["accessToken"], metaDataMap)
 	if err != nil {
 		return datasetId, totalSize, fileList, "", err
 	}

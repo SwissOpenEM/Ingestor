@@ -6,6 +6,7 @@ import (
 	"log"
 	"log/slog"
 	"os"
+	"strings"
 
 	core "github.com/SwissOpenEM/Ingestor/internal/core"
 	"github.com/SwissOpenEM/Ingestor/internal/metadataextractor"
@@ -51,6 +52,10 @@ func main() {
 	println(string(configData))
 
 	setupLogging(config.WebServer.LogLevel)
+
+	if !strings.HasSuffix(config.Scicat.Host, "v3") {
+		panic(fmt.Sprintf("Only Scicat API v3 is supported. No v3 suffix found in API path. Got '%s'", config.Scicat.Host))
+	}
 
 	ctx := context.Background()
 
