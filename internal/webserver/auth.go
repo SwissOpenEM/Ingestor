@@ -175,10 +175,12 @@ func (i *IngestorWebServerImplemenation) GetCallback(ctx context.Context, reques
 		return globusCallbackRedirect(ctx, i.globusAuthConf)
 	}
 
+	redirectUrl := i.frontend.origin + i.frontend.redirectPath + "?backendUrl=" + url.QueryEscape(i.taskQueue.Config.WebServer.BackendAddress)
+
 	// standard redirect to frontend if there's nothing else to do
 	return GetCallback302Response{
 		Headers: GetCallback302ResponseHeaders{
-			Location: i.frontend.origin + i.frontend.redirectPath,
+			Location: redirectUrl,
 		},
 	}, nil
 }
