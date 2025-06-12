@@ -29,6 +29,7 @@ func (t *ExtractionProgress) GetExtractorError() error {
 func (t *ExtractionProgress) setStdOut(output string) {
 	if !t.finished {
 		t.taskStdOut = output
+		log().Info("Metadata Extractor", "message", output)
 		t.setProgress()
 	}
 }
@@ -36,6 +37,7 @@ func (t *ExtractionProgress) setStdOut(output string) {
 func (t *ExtractionProgress) setStdErr(output string) {
 	if !t.finished {
 		t.taskStdErr = output
+		log().Error("Metadata Extractor", "error", output)
 		t.setProgress()
 	}
 }
