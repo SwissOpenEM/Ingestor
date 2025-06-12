@@ -221,11 +221,13 @@ func TransferDataset(
 			return fmt.Errorf("missing expiration for s3 upload token")
 		}
 
-		err = s3upload.UploadS3(task_context, transferTask, config.Transfer.S3, accessToken, refreshToken, expires_in, notifier)
+		tokenSource := s3upload.CreateTokenSource(context.Background(), config.Transfer.S3.ClientID, config.Transfer.S3.TokenUrl, accessToken, refreshToken, expires_in)
+
+		err = s3upload.UploadS3(task_context, transferTask, config.Transfer.S3, tokenSource, notifier)
 
 		if err == nil {
 			archivalJobInfo := transferTask.GetArchivalJobInfo()
-			err = s3upload.FinalizeUpload(task_context, config.Transfer.S3, transferTask.GetDatasetId(), archivalJobInfo.OwnerUser, archivalJobInfo.OwnerGroup, archivalJobInfo.ContactEmail, archivalJobInfo.AutoArchive, accessToken, refreshToken, expires_in)
+			err = s3upload.FinalizeUpload(task_context, config.Transfer.S3, transferTask.GetDatasetId(), archivalJobInfo.OwnerUser, archivalJobInfo.OwnerGroup, archivalJobInfo.ContactEmail, archivalJobInfo.AutoArchive, tokenSource)
 		}
 
 	case transfertask.TransferGlobus:
