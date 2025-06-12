@@ -36,10 +36,12 @@ func GetTokens(ctx context.Context, endpoint string, userToken string) (string, 
 	return resp.JSON201.AccessToken, resp.JSON201.RefreshToken, *resp.JSON201.ExpiresIn, nil
 }
 
-func createTokenSource(ctx context.Context, clientID string, tokenUrl string, accessToken string, refreshToken string, expires_in int) oauth2.TokenSource {
+func CreateTokenSource(ctx context.Context, clientID string, tokenUrl string, accessToken string, refreshToken string, expires_in int) oauth2.TokenSource {
 	config := &oauth2.Config{
 		ClientID: clientID,
 		Endpoint: oauth2.Endpoint{TokenURL: tokenUrl},
+		// required for the refresh token to be updated
+		Scopes: []string{"offline_access"},
 	}
 
 	token := &oauth2.Token{
@@ -52,7 +54,7 @@ func createTokenSource(ctx context.Context, clientID string, tokenUrl string, ac
 }
 
 // Upload all files in a folder using presinged urls
-func UploadS3(ctx context.Context, task *transfertask.TransferTask, options transfertask.S3TransferConfig, accessToken string, refreshToken string, expires_in int, notifier transfertask.ProgressNotifier) error {
+func UploadS3(ctx context.Context, task *transfertask.TransferTask, options transfertask.S3TransferConfig, tokenSource oauth2.TokenSource, notifier transfertask.ProgressNotifier) error {
 
 	if len(task.GetFileList()) == 0 {
 		return fmt.Errorf("empty file list provided")
@@ -76,7 +78,6 @@ func UploadS3(ctx context.Context, task *transfertask.TransferTask, options tran
 	transferNotifier := transfertask.NewTransferNotifier(s3Objects.TotalBytes, uploadId, notifier, task)
 
 	task.TransferStarted()
-	tokenSource := createTokenSource(context.Background(), options.ClientID, options.TokenUrl, accessToken, refreshToken, expires_in)
 
 	return uploadFiles(ctx, &s3Objects, options, &transferNotifier, uploadId, tokenSource)
 }
@@ -113,13 +114,11 @@ func uploadFiles(ctx context.Context, s3Objects *S3Objects, options transfertask
 
 }
 
-func FinalizeUpload(ctx context.Context, config transfertask.S3TransferConfig, dataset_pid string, ownerUser string, ownerGroup string, email string, autoArchive bool, accessToken string, refreshToken string, expires_in int) error {
-
-	tokenSource := createTokenSource(ctx, config.ClientID, config.TokenUrl, accessToken, refreshToken, expires_in)
+func FinalizeUpload(ctx context.Context, config transfertask.S3TransferConfig, dataset_pid string, ownerUser string, ownerGroup string, email string, autoArchive bool, tokenSource oauth2.TokenSource) error {
 
 	token, err := tokenSource.Token()
 	if err != nil {
-		return fmt.Errorf("error fetching a new token: %w", err)
+		return fmt.Errorf("finalizing upload failed: error fetching a new token: %w", err)
 	}
 
 	resp, err := GetPresignedUrlServer(config.Endpoint).FinalizeDatasetUploadWithResponse(ctx, FinalizeDatasetUploadBody{
