@@ -103,6 +103,10 @@ func createLocalFilenameFilterCallback(illegalFileNamesCounter *uint) func(filep
 	}
 }
 
+const (
+	ErrIllegalKeys = "metadata contains keys with illegal characters (., [], $, or <>)"
+)
+
 func AddDatasetToScicat(
 	metaDataMap map[string]interface{},
 	datasetFolder string,
@@ -130,8 +134,16 @@ func AddDatasetToScicat(
 		return datasetId, totalSize, fileList, "", err
 	}
 
-	// check if dataset already exists (identified by source folder)
-	_, _, err = datasetIngestor.CheckMetadata(http_client, SCICAT_API_URL, metaDataMap, fullUser, accessGroups)
+	if keys := datasetIngestor.CollectIllegalKeys(metaDataMap); len(keys) > 0 {
+		return datasetId, totalSize, fileList, "", errors.New(ErrIllegalKeys + ": \"" + strings.Join(keys, "\", \"") + "\"")
+	}
+
+	_, err = datasetIngestor.CheckUserAndOwnerGroup(user, accessGroups, metaDataMap)
+	if err != nil {
+		return datasetId, totalSize, fileList, "", err
+	}
+
+	err = datasetIngestor.CheckMetadataValidity(http_client, SCICAT_API_URL, user["accessToken"], metaDataMap)
 	if err != nil {
 		return datasetId, totalSize, fileList, "", err
 	}
@@ -192,12 +204,16 @@ func TransferDataset(
 		if !ok {
 			return fmt.Errorf("missing refresh token for s3 upload")
 		}
+		expires_in, ok := transferTask.GetTransferObject("expires_in").(int)
+		if !ok {
+			return fmt.Errorf("missing expiration for s3 upload token")
+		}
 
-		err = s3upload.UploadS3(task_context, transferTask, config.Transfer.S3, accessToken, refreshToken, notifier)
+		err = s3upload.UploadS3(task_context, transferTask, config.Transfer.S3, accessToken, refreshToken, expires_in, notifier)
 
 		if err == nil {
 			archivalJobInfo := transferTask.GetArchivalJobInfo()
-			err = s3upload.FinalizeUpload(task_context, config.Transfer.S3, transferTask.GetDatasetId(), archivalJobInfo.OwnerUser, archivalJobInfo.OwnerGroup, archivalJobInfo.ContactEmail, archivalJobInfo.AutoArchive, accessToken, refreshToken)
+			err = s3upload.FinalizeUpload(task_context, config.Transfer.S3, transferTask.GetDatasetId(), archivalJobInfo.OwnerUser, archivalJobInfo.OwnerGroup, archivalJobInfo.ContactEmail, archivalJobInfo.AutoArchive, accessToken, refreshToken, expires_in)
 		}
 
 	case transfertask.TransferGlobus:
