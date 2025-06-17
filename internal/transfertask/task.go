@@ -16,6 +16,7 @@ const (
 	TransferS3 TransferMethod = iota + 1
 	TransferGlobus
 	TransferExtGlobus
+	TransferNone
 )
 
 type TransferOptions struct {
@@ -90,7 +91,7 @@ type Result struct {
 	Error           error
 }
 
-func CreateTransferTask(datasetId string, fileList []datasetIngestor.Datafile, datasetFolder DatasetFolder, datasteOwnerUser string, datasetOwnerGroup string, contactEmail string, autoArchive bool, transferMethod TransferMethod, transferObjects map[string]interface{}, cancel context.CancelFunc) TransferTask {
+func CreateTransferTask(datasetId string, fileList []datasetIngestor.Datafile, datasetFolder DatasetFolder, datasetOwnerUser string, datasetOwnerGroup string, contactEmail string, autoArchive bool, transferMethod TransferMethod, transferObjects map[string]interface{}, cancel context.CancelFunc) TransferTask {
 	totalBytes := int64(0)
 	for _, file := range fileList {
 		totalBytes += int64(file.Size)
@@ -100,7 +101,7 @@ func CreateTransferTask(datasetId string, fileList []datasetIngestor.Datafile, d
 		fileList:      fileList,
 		DatasetFolder: datasetFolder,
 		archivalJobInfo: ArchivalJobInfo{
-			OwnerUser:    datasteOwnerUser,
+			OwnerUser:    datasetOwnerUser,
 			OwnerGroup:   datasetOwnerGroup,
 			ContactEmail: contactEmail,
 			AutoArchive:  autoArchive,
