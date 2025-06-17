@@ -19,6 +19,7 @@ import (
 	"runtime"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	b64 "encoding/base64"
@@ -382,16 +383,21 @@ func runExtractor(ctx context.Context, executable string, args []string, stdout_
 	stdout, _ := cmd.StdoutPipe()
 	stderr, _ := cmd.StderrPipe()
 
+	var wg sync.WaitGroup
+	wg.Add(1)
 	go func(scanner *bufio.Scanner) {
 		for scanner.Scan() {
 			stdout_callback(scanner.Text())
 		}
+		wg.Done()
 	}(bufio.NewScanner(stdout))
 
+	wg.Add(1)
 	go func(scanner *bufio.Scanner) {
 		for scanner.Scan() {
 			stderr_callback(scanner.Text())
 		}
+		wg.Done()
 	}(bufio.NewScanner(stderr))
 
 	err := cmd.Start()
@@ -400,7 +406,10 @@ func runExtractor(ctx context.Context, executable string, args []string, stdout_
 		return err
 	}
 
-	defer func() { err = cmd.Wait() }()
+	defer func() {
+		err = cmd.Wait()
+		wg.Wait()
+	}()
 
 	return err
 }
