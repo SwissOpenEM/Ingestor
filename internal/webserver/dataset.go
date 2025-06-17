@@ -223,10 +223,7 @@ func (i *IngestorWebServerImplemenation) DatasetControllerIngestDataset(ctx cont
 		taskId, err = i.addS3TransferTask(ctx, datasetId, fileList, folderPath, ownerUser, ownerGroup, autoArchive, contactEmail, request.Body.UserToken)
 	case transfertask.TransferNone:
 		// mark dataset as archivable
-		if i.taskQueue.ServiceUser == nil {
-			return nil, fmt.Errorf("no service user was set, can't mark dataset as archivable")
-		}
-		user, _, err := datasetUtils.AuthenticateUser(http.DefaultClient, i.taskQueue.Config.Scicat.Host, i.taskQueue.ServiceUser.Username, i.taskQueue.ServiceUser.Password, false)
+		user, _, err := datasetUtils.GetUserInfoFromToken(http.DefaultClient, i.taskQueue.Config.Scicat.Host, request.Body.UserToken)
 		if err != nil {
 			return nil, err
 		}
