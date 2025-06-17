@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"os"
 	"path"
 	"path/filepath"
@@ -17,6 +18,7 @@ import (
 	"github.com/SwissOpenEM/Ingestor/internal/webserver/globusauth"
 	"github.com/google/uuid"
 	"github.com/paulscherrerinstitute/scicat-cli/v3/datasetIngestor"
+	"github.com/paulscherrerinstitute/scicat-cli/v3/datasetUtils"
 )
 
 func (i *IngestorWebServerImplemenation) DatasetControllerBrowseFilesystem(ctx context.Context, request DatasetControllerBrowseFilesystemRequestObject) (DatasetControllerBrowseFilesystemResponseObject, error) {
@@ -219,6 +221,31 @@ func (i *IngestorWebServerImplemenation) DatasetControllerIngestDataset(ctx cont
 		}, nil
 	case transfertask.TransferS3:
 		taskId, err = i.addS3TransferTask(ctx, datasetId, fileList, folderPath, ownerUser, ownerGroup, autoArchive, contactEmail, request.Body.UserToken)
+	case transfertask.TransferNone:
+		// mark dataset as archivable
+		if i.taskQueue.ServiceUser == nil {
+			return nil, fmt.Errorf("no service user was set, can't mark dataset as archivable")
+		}
+		user, _, err := datasetUtils.AuthenticateUser(http.DefaultClient, i.taskQueue.Config.Scicat.Host, i.taskQueue.ServiceUser.Username, i.taskQueue.ServiceUser.Password, false)
+		if err != nil {
+			return nil, err
+		}
+		err = datasetIngestor.MarkFilesReady(http.DefaultClient, i.taskQueue.Config.Scicat.Host, datasetId, user)
+		if err != nil {
+			return nil, err
+		}
+
+		// auto archive
+		if autoArchive {
+			copies := 1
+			_, err = datasetUtils.CreateArchivalJob(http.DefaultClient, i.taskQueue.Config.Scicat.Host, user, ownerGroup, []string{datasetId}, &copies)
+		}
+
+		// return response
+		return DatasetControllerIngestDataset200JSONResponse{
+			TransferId: "no-transfer",
+			Status:     getStrPointerOrNil("finished"),
+		}, err
 	}
 	if err != nil {
 		if _, ok := err.(*os.PathError); ok {
