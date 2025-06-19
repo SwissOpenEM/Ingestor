@@ -61,11 +61,6 @@ func CheckUserAccess(ctx context.Context, path string) error {
 			return err
 		}
 
-		// path rule check
-		if parsedAccessFile.Path != currPath {
-			return newPathError(parsedAccessFile.Path, currPath)
-		}
-
 		// find groups
 		if len(allowedGroups) > 0 {
 			// check if lowest level allowed groups list align with upper levels (same or stricter set of groups)
