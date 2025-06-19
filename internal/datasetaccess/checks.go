@@ -13,7 +13,7 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-const accessControlFilename = "openem-access.yaml"
+const accessControlFilename = ".ingestor-access.yaml"
 
 func parseAccessFile(path string) (accessFile, error) {
 	rawAccessFile, err := os.ReadFile(path)
