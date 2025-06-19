@@ -223,27 +223,24 @@ func (i *IngestorWebServerImplemenation) DatasetControllerIngestDataset(ctx cont
 	case transfertask.TransferS3:
 		taskId, err = i.addS3TransferTask(ctx, datasetId, fileList, folderPath, ownerUser, ownerGroup, autoArchive, contactEmail, request.Body.UserToken)
 	case transfertask.TransferNone:
-		// mark dataset as archivable
-		user, _, err := datasetUtils.GetUserInfoFromToken(http.DefaultClient, i.taskQueue.Config.Scicat.Host, request.Body.UserToken)
-		if err != nil {
-			return nil, err
-		}
-		err = datasetIngestor.MarkFilesReady(http.DefaultClient, i.taskQueue.Config.Scicat.Host, datasetId, user)
-		if err != nil {
-			return nil, err
-		}
-
-		// auto archive
 		if autoArchive {
+			user, _, err := datasetUtils.GetUserInfoFromToken(http.DefaultClient, i.taskQueue.Config.Scicat.Host, request.Body.UserToken)
+			if err != nil {
+				return nil, err
+			}
+
 			copies := 1
 			_, err = datasetUtils.CreateArchivalJob(http.DefaultClient, i.taskQueue.Config.Scicat.Host, user, ownerGroup, []string{datasetId}, &copies)
+			if err != nil {
+				return nil, err
+			}
 		}
 
 		// return response
 		return DatasetControllerIngestDataset200JSONResponse{
 			TransferId: "no-transfer",
 			Status:     getStrPointerOrNil("finished"),
-		}, err
+		}, nil
 	}
 	if err != nil {
 		if _, ok := err.(*os.PathError); ok {
