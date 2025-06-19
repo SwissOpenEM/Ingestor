@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"os"
 	"path"
 	"path/filepath"
@@ -17,6 +18,7 @@ import (
 	"github.com/SwissOpenEM/Ingestor/internal/webserver/globusauth"
 	"github.com/google/uuid"
 	"github.com/paulscherrerinstitute/scicat-cli/v3/datasetIngestor"
+	"github.com/paulscherrerinstitute/scicat-cli/v3/datasetUtils"
 )
 
 func (i *IngestorWebServerImplemenation) DatasetControllerBrowseFilesystem(ctx context.Context, request DatasetControllerBrowseFilesystemRequestObject) (DatasetControllerBrowseFilesystemResponseObject, error) {
@@ -187,7 +189,8 @@ func (i *IngestorWebServerImplemenation) DatasetControllerIngestDataset(ctx cont
 	}
 
 	// do catalogue insertion
-	datasetId, _, fileList, username, err := core.AddDatasetToScicat(metadata, folderPath, i.taskQueue.Config.Transfer.StorageLocation, request.Body.UserToken, i.taskQueue.Config.Scicat.Host)
+	isOnCentralDisk := i.taskQueue.GetTransferMethod() == transfertask.TransferNone
+	datasetId, _, fileList, username, err := core.AddDatasetToScicat(metadata, folderPath, i.taskQueue.Config.Transfer.StorageLocation, request.Body.UserToken, i.taskQueue.Config.Scicat.Host, isOnCentralDisk)
 	if err != nil {
 		return DatasetControllerIngestDataset400TextResponse(err.Error()), nil
 	}
@@ -214,11 +217,31 @@ func (i *IngestorWebServerImplemenation) DatasetControllerIngestDataset(ctx cont
 			return DatasetControllerIngestDataset400TextResponse(fmt.Sprintf("Transfer request - unknown error: %s", err.Error())), nil
 		}
 		return DatasetControllerIngestDataset200JSONResponse{
-			TransferId: jobId,
+			DatasetId:  datasetId,
+			TransferId: getPointerOrNil(jobId),
 			Status:     getStrPointerOrNil("started"),
 		}, nil
 	case transfertask.TransferS3:
 		taskId, err = i.addS3TransferTask(ctx, datasetId, fileList, folderPath, ownerUser, ownerGroup, autoArchive, contactEmail, request.Body.UserToken)
+	case transfertask.TransferNone:
+		if autoArchive {
+			user, _, err := datasetUtils.GetUserInfoFromToken(http.DefaultClient, i.taskQueue.Config.Scicat.Host, request.Body.UserToken)
+			if err != nil {
+				return nil, err
+			}
+
+			copies := 1
+			_, err = datasetUtils.CreateArchivalJob(http.DefaultClient, i.taskQueue.Config.Scicat.Host, user, ownerGroup, []string{datasetId}, &copies)
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		// return response
+		return DatasetControllerIngestDataset200JSONResponse{
+			DatasetId: datasetId,
+			Status:    getStrPointerOrNil("finished"),
+		}, nil
 	}
 	if err != nil {
 		if _, ok := err.(*os.PathError); ok {
@@ -237,7 +260,8 @@ func (i *IngestorWebServerImplemenation) DatasetControllerIngestDataset(ctx cont
 	status := "started"
 	idString := taskId.String()
 	return DatasetControllerIngestDataset200JSONResponse{
-		TransferId: idString,
+		DatasetId:  datasetId,
+		TransferId: getPointerOrNil(idString),
 		Status:     &status,
 	}, nil
 }

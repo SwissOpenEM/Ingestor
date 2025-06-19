@@ -28,7 +28,7 @@ type ExtGlobusTransferConfig struct {
 }
 
 type TransferConfig struct {
-	Method           string                  `string:"Method" validate:"oneof=S3 Globus ExtGlobus"`
+	Method           string                  `string:"Method" validate:"oneof=S3 Globus ExtGlobus None"`
 	StorageLocation  string                  `string:"StorageLocation"`
 	ConcurrencyLimit int                     `int:"ConcurrencyLimit" validate:"gte=0"`
 	QueueSize        int                     `int:"QueueSize"`
