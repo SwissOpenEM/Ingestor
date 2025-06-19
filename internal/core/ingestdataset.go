@@ -125,6 +125,7 @@ func AddDatasetToScicat(
 	storageLocation string,
 	userToken string,
 	scicatUrl string,
+	isOnCentralDisk bool,
 ) (datasetId string, totalSize int64, fileList []datasetIngestor.Datafile, username string, err error) {
 	var http_client = &http.Client{
 		Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}},
@@ -183,9 +184,13 @@ func AddDatasetToScicat(
 	datasetIngestor.UpdateMetaData(http_client, SCICAT_API_URL, user, originalMetaDataMap, metaDataMap, startTime, endTime, owner, TAPECOPIES)
 
 	metaDataMap["datasetlifecycle"] = map[string]interface{}{}
-	metaDataMap["datasetlifecycle"].(map[string]interface{})["isOnCentralDisk"] = false
-	metaDataMap["datasetlifecycle"].(map[string]interface{})["archiveStatusMessage"] = "filesNotYetAvailable"
-	metaDataMap["datasetlifecycle"].(map[string]interface{})["archivable"] = false
+	metaDataMap["datasetlifecycle"].(map[string]interface{})["isOnCentralDisk"] = isOnCentralDisk
+	if isOnCentralDisk {
+		metaDataMap["datasetlifecycle"].(map[string]interface{})["archiveStatusMessage"] = "filesReady"
+	} else {
+		metaDataMap["datasetlifecycle"].(map[string]interface{})["archiveStatusMessage"] = "filesNotYetAvailable"
+	}
+	metaDataMap["datasetlifecycle"].(map[string]interface{})["archivable"] = isOnCentralDisk
 	metaDataMap["datasetlifecycle"].(map[string]interface{})["storageLocation"] = storageLocation
 
 	// NOTE: scicat-cli considers "ingestion" as just inserting the dataset into scicat and adding the orig datablocks

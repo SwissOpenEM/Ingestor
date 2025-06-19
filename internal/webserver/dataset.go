@@ -189,7 +189,8 @@ func (i *IngestorWebServerImplemenation) DatasetControllerIngestDataset(ctx cont
 	}
 
 	// do catalogue insertion
-	datasetId, _, fileList, username, err := core.AddDatasetToScicat(metadata, folderPath, i.taskQueue.Config.Transfer.StorageLocation, request.Body.UserToken, i.taskQueue.Config.Scicat.Host)
+	isOnCentralDisk := i.taskQueue.GetTransferMethod() == transfertask.TransferNone
+	datasetId, _, fileList, username, err := core.AddDatasetToScicat(metadata, folderPath, i.taskQueue.Config.Transfer.StorageLocation, request.Body.UserToken, i.taskQueue.Config.Scicat.Host, isOnCentralDisk)
 	if err != nil {
 		return DatasetControllerIngestDataset400TextResponse(err.Error()), nil
 	}
