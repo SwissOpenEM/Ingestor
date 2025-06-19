@@ -186,7 +186,7 @@ func AddDatasetToScicat(
 	metaDataMap["datasetlifecycle"] = map[string]interface{}{}
 	metaDataMap["datasetlifecycle"].(map[string]interface{})["isOnCentralDisk"] = isOnCentralDisk
 	if isOnCentralDisk {
-		metaDataMap["datasetlifecycle"].(map[string]interface{})["archiveStatusMessage"] = "filesReady"
+		metaDataMap["datasetlifecycle"].(map[string]interface{})["archiveStatusMessage"] = "datasetCreated"
 	} else {
 		metaDataMap["datasetlifecycle"].(map[string]interface{})["archiveStatusMessage"] = "filesNotYetAvailable"
 	}
