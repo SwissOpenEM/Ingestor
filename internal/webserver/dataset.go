@@ -217,7 +217,8 @@ func (i *IngestorWebServerImplemenation) DatasetControllerIngestDataset(ctx cont
 			return DatasetControllerIngestDataset400TextResponse(fmt.Sprintf("Transfer request - unknown error: %s", err.Error())), nil
 		}
 		return DatasetControllerIngestDataset200JSONResponse{
-			TransferId: jobId,
+			DatasetId:  datasetId,
+			TransferId: getPointerOrNil(jobId),
 			Status:     getStrPointerOrNil("started"),
 		}, nil
 	case transfertask.TransferS3:
@@ -238,8 +239,8 @@ func (i *IngestorWebServerImplemenation) DatasetControllerIngestDataset(ctx cont
 
 		// return response
 		return DatasetControllerIngestDataset200JSONResponse{
-			TransferId: "no-transfer",
-			Status:     getStrPointerOrNil("finished"),
+			DatasetId: datasetId,
+			Status:    getStrPointerOrNil("finished"),
 		}, nil
 	}
 	if err != nil {
@@ -259,7 +260,8 @@ func (i *IngestorWebServerImplemenation) DatasetControllerIngestDataset(ctx cont
 	status := "started"
 	idString := taskId.String()
 	return DatasetControllerIngestDataset200JSONResponse{
-		TransferId: idString,
+		DatasetId:  datasetId,
+		TransferId: getPointerOrNil(idString),
 		Status:     &status,
 	}, nil
 }

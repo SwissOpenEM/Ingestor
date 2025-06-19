@@ -480,6 +480,9 @@ components:
     PostDatasetResponse:
       type: object
       properties:
+        datasetId:
+          type: string
+          description: The created dataset's id
         transferId:
           type: string
           description: The unique transfer id of the dataset transfer job.
@@ -487,7 +490,7 @@ components:
           type: string
           description: The status of the transfer. Can be used to send a message back to the ui.
       required:
-        - transferId
+        - datasetId
     TransferItem:
       type: object
       properties:
