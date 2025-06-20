@@ -53,22 +53,6 @@ func newGroupError(path string, invalidAllowGroups []string, conflictedGroups []
 	}
 }
 
-type PathError struct {
-	yamlPath   string
-	actualPath string
-}
-
-func (e *PathError) Error() string {
-	return fmt.Sprintf("the path indicated in the '%s' access file is different from the actual path - got: '%s', wanted: '%s'", accessControlFilename, e.yamlPath, e.actualPath)
-}
-
-func newPathError(yamlPath string, actualPath string) *PathError {
-	return &PathError{
-		yamlPath:   yamlPath,
-		actualPath: actualPath,
-	}
-}
-
 type NotFolderError struct {
 	path string
 }
