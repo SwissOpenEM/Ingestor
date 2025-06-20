@@ -31,6 +31,7 @@ type IngestorWebServerImplemenation struct {
 	jwtKeyfunc       jwt.Keyfunc
 	jwtSignMethods   []string
 	sessionDuration  uint
+	disableAuth      bool
 	scopeToRoleMap   map[string]string
 	pathConfig       wsconfig.PathsConf
 	frontend         struct {
@@ -105,6 +106,7 @@ func NewIngestorWebServer(version string, tq *core.TaskQueue, eh *metadataextrac
 		jwtSignMethods:   signMethods,
 		scopeToRoleMap:   scopeToRoleMap,
 		sessionDuration:  ws.SessionDuration,
+		disableAuth:      ws.AuthConf.Disable,
 		pathConfig:       ws.PathsConf,
 		metp:             metadataTaskPool,
 		frontend: struct {

@@ -103,18 +103,6 @@ func createLocalFilenameFilterCallback(illegalFileNamesCounter *uint) func(filep
 	}
 }
 
-func CheckIfFolderExists(path string) error {
-	// check if the folder exists
-	fileInfo, err := os.Stat(path)
-	if err != nil {
-		return err
-	}
-	if !fileInfo.IsDir() {
-		return errors.New("'sourceFolder' is not a directory")
-	}
-	return nil
-}
-
 const (
 	ErrIllegalKeys = "metadata contains keys with illegal characters (., [], $, or <>)"
 )
