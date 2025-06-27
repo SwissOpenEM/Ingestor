@@ -33,6 +33,7 @@ type IngestorWebServerImplemenation struct {
 	sessionDuration  uint
 	scopeToRoleMap   map[string]string
 	pathConfig       wsconfig.PathsConf
+	secureCookies    bool
 	frontend         struct {
 		origin       string
 		redirectPath string
@@ -106,6 +107,7 @@ func NewIngestorWebServer(version string, tq *core.TaskQueue, eh *metadataextrac
 		scopeToRoleMap:   scopeToRoleMap,
 		sessionDuration:  ws.SessionDuration,
 		pathConfig:       ws.PathsConf,
+		secureCookies:    ws.SecureCookies,
 		metp:             metadataTaskPool,
 		frontend: struct {
 			origin       string
