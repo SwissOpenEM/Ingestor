@@ -25,7 +25,7 @@ func GetTokensFromCookie(ctx *gin.Context) (string, string, time.Time, error) {
 	return refreshToken, accessToken, expiry, nil
 }
 
-func SetTokenCookie(ctx *gin.Context, refreshToken string, accessToken string, expiry time.Time, sessionDuration uint) error {
+func SetTokenCookie(ctx *gin.Context, refreshToken string, accessToken string, expiry time.Time, sessionDuration uint, secureCookies bool) error {
 	s := sessions.DefaultMany(ctx, "globus")
 	s.Set("refresh_token", refreshToken)
 	s.Set("access_token", accessToken)
@@ -33,19 +33,19 @@ func SetTokenCookie(ctx *gin.Context, refreshToken string, accessToken string, e
 	s.Options(sessions.Options{
 		HttpOnly: true,
 		MaxAge:   int(sessionDuration),
-		Secure:   ctx.Request.TLS != nil,
+		Secure:   secureCookies || (ctx.Request.TLS != nil),
 	})
 	return s.Save()
 }
 
-func DeleteTokenCookie(ctx *gin.Context) error {
+func DeleteTokenCookie(ctx *gin.Context, secureCookies bool) error {
 	s := sessions.DefaultMany(ctx, "globus")
 	s.Delete("access_token")
 	s.Delete("refresh_token")
 	s.Delete("expiry")
 	s.Options(sessions.Options{
 		HttpOnly: true,
-		Secure:   ctx.Request.TLS != nil,
+		Secure:   secureCookies || (ctx.Request.TLS != nil),
 		MaxAge:   -1,
 	})
 	return s.Save()

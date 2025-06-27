@@ -246,7 +246,7 @@ func (i *IngestorWebServerImplemenation) addGlobusTransferTask(ctx context.Conte
 	taskId := uuid.New()
 	transferObjects := map[string]interface{}{}
 
-	client, err := globusauth.GetClientFromSession(ctx, i.globusAuthConf, i.sessionDuration)
+	client, err := globusauth.GetClientFromSession(ctx, i.globusAuthConf, i.sessionDuration, i.secureCookies)
 	if err != nil {
 		return uuid.UUID{}, err
 	}

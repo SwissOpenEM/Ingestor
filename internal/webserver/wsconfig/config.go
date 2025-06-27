@@ -66,6 +66,9 @@ type OtherConf struct {
 	Port                       int    `int:"Port" validate:"required,gte=0"`
 	LogLevel                   string `string:"LogLevel" validate:"oneof=Debug Info Warning Error"`
 	DisableServiceAccountCheck bool
+	// If true, all cookies will be set with Secure=true
+	// If false, Secure will only be set if TLS is detected
+	SecureCookies bool `bool:"SecureCookies"`
 }
 
 type WebServerConfig struct {

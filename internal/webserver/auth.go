@@ -42,7 +42,7 @@ func (i *IngestorWebServerImplemenation) GetLogin(ctx context.Context, request G
 	authSession.Options(sessions.Options{
 		HttpOnly: true,
 		MaxAge:   300,
-		Secure:   ginCtx.Request.TLS != nil,
+		Secure:   i.secureCookies || (ginCtx.Request.TLS != nil),
 	})
 	authSession.Set("state", state)
 	authSession.Set("verifier", verifier)
@@ -88,7 +88,7 @@ func (i *IngestorWebServerImplemenation) GetCallback(ctx context.Context, reques
 	authSession.Delete("nonce")
 	authSession.Options(sessions.Options{
 		HttpOnly: true,
-		Secure:   ginCtx.Request.TLS != nil,
+		Secure:   i.secureCookies || (ginCtx.Request.TLS != nil),
 		MaxAge:   -1,
 	})
 	err := authSession.Save()
@@ -159,7 +159,7 @@ func (i *IngestorWebServerImplemenation) GetCallback(ctx context.Context, reques
 	userSession.Options(sessions.Options{
 		HttpOnly: true,
 		MaxAge:   int(i.sessionDuration),
-		Secure:   ginCtx.Request.TLS != nil,
+		Secure:   i.secureCookies || (ginCtx.Request.TLS != nil),
 	})
 	err = userSession.Save()
 	if err != nil {
@@ -170,9 +170,9 @@ func (i *IngestorWebServerImplemenation) GetCallback(ctx context.Context, reques
 	if i.taskQueue.GetTransferMethod() == transfertask.TransferGlobus {
 		// revoke session with globus, if we have one ongoing
 		if globusauth.TestGlobusCookie(ginCtx) {
-			_ = globusauth.Logout(ginCtx, *i.globusAuthConf) // we don't care if logout fails
+			_ = globusauth.Logout(ginCtx, *i.globusAuthConf, i.secureCookies) // we don't care if logout fails
 		}
-		return globusCallbackRedirect(ctx, i.globusAuthConf)
+		return globusCallbackRedirect(ctx, i.globusAuthConf, i.secureCookies)
 	}
 
 	redirectUrl := i.frontend.origin + i.frontend.redirectPath + "?backendUrl=" + url.QueryEscape(i.taskQueue.Config.WebServer.BackendAddress)
@@ -195,7 +195,7 @@ func (i *IngestorWebServerImplemenation) GetLogout(ctx context.Context, request 
 	userSession := sessions.DefaultMany(ginCtx, "user")
 	userSession.Options(sessions.Options{
 		HttpOnly: true,
-		Secure:   ginCtx.Request.TLS != nil,
+		Secure:   i.secureCookies || (ginCtx.Request.TLS != nil),
 		MaxAge:   -1,
 	})
 	err := userSession.Save()
@@ -204,7 +204,7 @@ func (i *IngestorWebServerImplemenation) GetLogout(ctx context.Context, request 
 	}
 
 	if i.taskQueue.GetTransferMethod() == transfertask.TransferGlobus {
-		err = globusauth.Logout(ginCtx, *i.globusAuthConf)
+		err = globusauth.Logout(ginCtx, *i.globusAuthConf, i.secureCookies)
 		if err != nil {
 			return GetLogout500TextResponse(err.Error()), nil
 		}
@@ -293,7 +293,7 @@ func (i *IngestorWebServerImplemenation) GetGlobusCallback(ctx context.Context, 
 	authSession.Delete("verifier")
 	authSession.Options(sessions.Options{
 		HttpOnly: true,
-		Secure:   ginCtx.Request.TLS != nil,
+		Secure:   i.secureCookies || (ginCtx.Request.TLS != nil),
 		MaxAge:   -1,
 	})
 	err := authSession.Save()
@@ -316,7 +316,7 @@ func (i *IngestorWebServerImplemenation) GetGlobusCallback(ctx context.Context, 
 		return GetGlobusCallback400TextResponse(fmt.Sprintf("code exchange failed: %s", err.Error())), nil
 	}
 
-	err = globusauth.SetTokenCookie(ginCtx, oauthToken.RefreshToken, oauthToken.AccessToken, oauthToken.Expiry, i.sessionDuration)
+	err = globusauth.SetTokenCookie(ginCtx, oauthToken.RefreshToken, oauthToken.AccessToken, oauthToken.Expiry, i.sessionDuration, i.secureCookies)
 	if err != nil {
 		return GetGlobusCallback400TextResponse(fmt.Sprintf("creating globus session cookie failed: %s", err.Error())), nil
 	}
@@ -332,8 +332,8 @@ func (i *IngestorWebServerImplemenation) GetGlobusCallback(ctx context.Context, 
 	}, nil
 }
 
-func globusCallbackRedirect(ctx context.Context, globusAuthConf *oauth2.Config) (GetCallbackResponseObject, error) {
-	redirectUrl, err := globusauth.GetRedirectUrl(ctx, globusAuthConf)
+func globusCallbackRedirect(ctx context.Context, globusAuthConf *oauth2.Config, secureCookies bool) (GetCallbackResponseObject, error) {
+	redirectUrl, err := globusauth.GetRedirectUrl(ctx, globusAuthConf, secureCookies)
 	if err != nil {
 		return GetCallback500TextResponse(err.Error()), nil
 	}

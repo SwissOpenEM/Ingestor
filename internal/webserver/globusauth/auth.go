@@ -18,7 +18,7 @@ import (
 	"golang.org/x/oauth2"
 )
 
-func GetRedirectUrl(ctx context.Context, globusAuthConf *oauth2.Config) (string, error) {
+func GetRedirectUrl(ctx context.Context, globusAuthConf *oauth2.Config, secureCookies bool) (string, error) {
 	// get sessions
 	ginCtx, ok := ctx.(*gin.Context)
 	if !ok {
@@ -37,7 +37,7 @@ func GetRedirectUrl(ctx context.Context, globusAuthConf *oauth2.Config) (string,
 	authSession.Options(sessions.Options{
 		HttpOnly: true,
 		MaxAge:   300,
-		Secure:   ginCtx.Request.TLS != nil,
+		Secure:   secureCookies || (ginCtx.Request.TLS != nil),
 	})
 	authSession.Set("state", state)
 	authSession.Set("verifier", verifier)
@@ -53,7 +53,7 @@ func GetRedirectUrl(ctx context.Context, globusAuthConf *oauth2.Config) (string,
 	), nil
 }
 
-func Logout(ctx *gin.Context, globusConf oauth2.Config) error {
+func Logout(ctx *gin.Context, globusConf oauth2.Config, secureCookies bool) error {
 	globusSession := sessions.DefaultMany(ctx, "globus")
 
 	accessToken, ok1 := globusSession.Get("access_token").(string)
@@ -74,12 +74,12 @@ func Logout(ctx *gin.Context, globusConf oauth2.Config) error {
 	revokeErrs[0] = revokeToken(globusConf.ClientID, globusConf.ClientSecret, accessToken)
 	revokeErrs[1] = revokeToken(globusConf.ClientID, globusConf.ClientSecret, refreshToken)
 
-	err = DeleteTokenCookie(ctx)
+	err = DeleteTokenCookie(ctx, secureCookies)
 
 	return errors.Join(err, revokeErrs[0], revokeErrs[1]) // return potential errors
 }
 
-func GetClientFromSession(ctx context.Context, globusConfig *oauth2.Config, sessionDuration uint) (*globus.GlobusClient, error) {
+func GetClientFromSession(ctx context.Context, globusConfig *oauth2.Config, sessionDuration uint, secureCookies bool) (*globus.GlobusClient, error) {
 	ginCtx := ctx.(*gin.Context)
 
 	refreshToken, accessToken, expiry, err := GetTokensFromCookie(ginCtx)
@@ -87,13 +87,18 @@ func GetClientFromSession(ctx context.Context, globusConfig *oauth2.Config, sess
 		return nil, err
 	}
 
-	ts := refreshfunctoken.NewTokenSource(ginCtx, globusConfig, accessToken, refreshToken, expiry, sessionDuration, getNewTokens)
+	ts := refreshfunctoken.NewTokenSource(
+		ginCtx, globusConfig, accessToken, refreshToken, expiry, sessionDuration,
+		func(ctx *gin.Context, globusConf *oauth2.Config, refreshToken string, sessionDuration uint) (string, string, time.Time, error) {
+			return getNewTokens(ctx, globusConf, refreshToken, sessionDuration, secureCookies)
+		},
+	)
 
 	client := globus.HttpClientToGlobusClient(oauth2.NewClient(ctx, ts))
 	return &client, nil
 }
 
-func getNewTokens(ctx *gin.Context, globusConf *oauth2.Config, refreshToken string, sessionDuration uint) (string, string, time.Time, error) {
+func getNewTokens(ctx *gin.Context, globusConf *oauth2.Config, refreshToken string, sessionDuration uint, secureCookies bool) (string, string, time.Time, error) {
 	type tokenResponse struct {
 		AccessToken  string `json:"access_token"`
 		RefreshToken string `json:"refresh_token"`
@@ -138,7 +143,7 @@ func getNewTokens(ctx *gin.Context, globusConf *oauth2.Config, refreshToken stri
 
 	// update context cookies if context still exists
 	if ctx.Err() == nil {
-		err = SetTokenCookie(ctx, t.RefreshToken, t.AccessToken, expiry, sessionDuration)
+		err = SetTokenCookie(ctx, t.RefreshToken, t.AccessToken, expiry, sessionDuration, secureCookies)
 		if err != nil {
 			return t.AccessToken, t.RefreshToken, expiry, err
 		}
