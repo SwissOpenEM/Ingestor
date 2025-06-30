@@ -40,11 +40,15 @@ func (i *IngestorWebServerImplemenation) GetLogin(ctx context.Context, request G
 	}
 
 	// store state, verifier & nonce in session
+	sameSiteMode := http.SameSiteLaxMode
+	if i.secureCookies || (ginCtx.Request.TLS != nil) {
+		sameSiteMode = http.SameSiteNoneMode
+	}
 	authSession.Options(sessions.Options{
 		HttpOnly: true,
 		MaxAge:   300,
 		Secure:   i.secureCookies || (ginCtx.Request.TLS != nil),
-		SameSite: http.SameSiteNoneMode,
+		SameSite: sameSiteMode,
 	})
 	authSession.Set("state", state)
 	authSession.Set("verifier", verifier)
@@ -88,10 +92,14 @@ func (i *IngestorWebServerImplemenation) GetCallback(ctx context.Context, reques
 	authSession.Delete("state")
 	authSession.Delete("verifier")
 	authSession.Delete("nonce")
+	sameSiteMode := http.SameSiteLaxMode
+	if i.secureCookies || (ginCtx.Request.TLS != nil) {
+		sameSiteMode = http.SameSiteNoneMode
+	}
 	authSession.Options(sessions.Options{
 		HttpOnly: true,
 		Secure:   i.secureCookies || (ginCtx.Request.TLS != nil),
-		SameSite: http.SameSiteNoneMode,
+		SameSite: sameSiteMode,
 		MaxAge:   -1,
 	})
 	err := authSession.Save()
@@ -163,7 +171,7 @@ func (i *IngestorWebServerImplemenation) GetCallback(ctx context.Context, reques
 		HttpOnly: true,
 		MaxAge:   int(i.sessionDuration),
 		Secure:   i.secureCookies || (ginCtx.Request.TLS != nil),
-		SameSite: http.SameSiteNoneMode,
+		SameSite: sameSiteMode,
 	})
 	err = userSession.Save()
 	if err != nil {
@@ -197,10 +205,14 @@ func (i *IngestorWebServerImplemenation) GetLogout(ctx context.Context, request 
 
 	// expire session data
 	userSession := sessions.DefaultMany(ginCtx, "user")
+	sameSiteMode := http.SameSiteLaxMode
+	if i.secureCookies || (ginCtx.Request.TLS != nil) {
+		sameSiteMode = http.SameSiteLaxMode
+	}
 	userSession.Options(sessions.Options{
 		HttpOnly: true,
 		Secure:   i.secureCookies || (ginCtx.Request.TLS != nil),
-		SameSite: http.SameSiteNoneMode,
+		SameSite: sameSiteMode,
 		MaxAge:   -1,
 	})
 	err := userSession.Save()
@@ -296,10 +308,14 @@ func (i *IngestorWebServerImplemenation) GetGlobusCallback(ctx context.Context, 
 	// delete auth session
 	authSession.Delete("state")
 	authSession.Delete("verifier")
+	sameSiteMode := http.SameSiteLaxMode
+	if i.secureCookies || (ginCtx.Request.TLS != nil) {
+		sameSiteMode = http.SameSiteLaxMode
+	}
 	authSession.Options(sessions.Options{
 		HttpOnly: true,
 		Secure:   i.secureCookies || (ginCtx.Request.TLS != nil),
-		SameSite: http.SameSiteNoneMode,
+		SameSite: sameSiteMode,
 		MaxAge:   -1,
 	})
 	err := authSession.Save()
