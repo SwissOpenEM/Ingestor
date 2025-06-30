@@ -31,11 +31,15 @@ func SetTokenCookie(ctx *gin.Context, refreshToken string, accessToken string, e
 	s.Set("refresh_token", refreshToken)
 	s.Set("access_token", accessToken)
 	s.Set("expiry", expiry.Format(time.RFC3339Nano))
+	sameSiteMode := http.SameSiteLaxMode
+	if secureCookies || (ctx.Request.TLS != nil) {
+		sameSiteMode = http.SameSiteNoneMode
+	}
 	s.Options(sessions.Options{
 		HttpOnly: true,
 		MaxAge:   int(sessionDuration),
 		Secure:   secureCookies || (ctx.Request.TLS != nil),
-		SameSite: http.SameSiteNoneMode,
+		SameSite: sameSiteMode,
 	})
 	return s.Save()
 }
@@ -45,10 +49,14 @@ func DeleteTokenCookie(ctx *gin.Context, secureCookies bool) error {
 	s.Delete("access_token")
 	s.Delete("refresh_token")
 	s.Delete("expiry")
+	sameSiteMode := http.SameSiteLaxMode
+	if secureCookies || (ctx.Request.TLS != nil) {
+		sameSiteMode = http.SameSiteNoneMode
+	}
 	s.Options(sessions.Options{
 		HttpOnly: true,
 		Secure:   secureCookies || (ctx.Request.TLS != nil),
-		SameSite: http.SameSiteNoneMode,
+		SameSite: sameSiteMode,
 		MaxAge:   -1,
 	})
 	return s.Save()

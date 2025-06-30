@@ -34,11 +34,15 @@ func GetRedirectUrl(ctx context.Context, globusAuthConf *oauth2.Config, secureCo
 	verifier := oauth2.GenerateVerifier()
 
 	// store state, verifier & nonce in session
+	sameSiteMode := http.SameSiteLaxMode
+	if secureCookies || (ginCtx.Request.TLS != nil) {
+		sameSiteMode = http.SameSiteNoneMode
+	}
 	authSession.Options(sessions.Options{
 		HttpOnly: true,
 		MaxAge:   300,
 		Secure:   secureCookies || (ginCtx.Request.TLS != nil),
-		SameSite: http.SameSiteNoneMode,
+		SameSite: sameSiteMode,
 	})
 	authSession.Set("state", state)
 	authSession.Set("verifier", verifier)
