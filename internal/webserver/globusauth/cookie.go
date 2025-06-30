@@ -2,6 +2,7 @@ package globusauth
 
 import (
 	"fmt"
+	"net/http"
 	"time"
 
 	"github.com/gin-contrib/sessions"
@@ -34,6 +35,7 @@ func SetTokenCookie(ctx *gin.Context, refreshToken string, accessToken string, e
 		HttpOnly: true,
 		MaxAge:   int(sessionDuration),
 		Secure:   secureCookies || (ctx.Request.TLS != nil),
+		SameSite: http.SameSiteNoneMode,
 	})
 	return s.Save()
 }
@@ -46,6 +48,7 @@ func DeleteTokenCookie(ctx *gin.Context, secureCookies bool) error {
 	s.Options(sessions.Options{
 		HttpOnly: true,
 		Secure:   secureCookies || (ctx.Request.TLS != nil),
+		SameSite: http.SameSiteNoneMode,
 		MaxAge:   -1,
 	})
 	return s.Save()
