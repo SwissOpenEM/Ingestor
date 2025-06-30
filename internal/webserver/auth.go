@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
 	"net/url"
 	"slices"
 	"time"
@@ -43,6 +44,7 @@ func (i *IngestorWebServerImplemenation) GetLogin(ctx context.Context, request G
 		HttpOnly: true,
 		MaxAge:   300,
 		Secure:   i.secureCookies || (ginCtx.Request.TLS != nil),
+		SameSite: http.SameSiteNoneMode,
 	})
 	authSession.Set("state", state)
 	authSession.Set("verifier", verifier)
@@ -89,6 +91,7 @@ func (i *IngestorWebServerImplemenation) GetCallback(ctx context.Context, reques
 	authSession.Options(sessions.Options{
 		HttpOnly: true,
 		Secure:   i.secureCookies || (ginCtx.Request.TLS != nil),
+		SameSite: http.SameSiteNoneMode,
 		MaxAge:   -1,
 	})
 	err := authSession.Save()
@@ -160,6 +163,7 @@ func (i *IngestorWebServerImplemenation) GetCallback(ctx context.Context, reques
 		HttpOnly: true,
 		MaxAge:   int(i.sessionDuration),
 		Secure:   i.secureCookies || (ginCtx.Request.TLS != nil),
+		SameSite: http.SameSiteNoneMode,
 	})
 	err = userSession.Save()
 	if err != nil {
@@ -196,6 +200,7 @@ func (i *IngestorWebServerImplemenation) GetLogout(ctx context.Context, request 
 	userSession.Options(sessions.Options{
 		HttpOnly: true,
 		Secure:   i.secureCookies || (ginCtx.Request.TLS != nil),
+		SameSite: http.SameSiteNoneMode,
 		MaxAge:   -1,
 	})
 	err := userSession.Save()
@@ -294,6 +299,7 @@ func (i *IngestorWebServerImplemenation) GetGlobusCallback(ctx context.Context, 
 	authSession.Options(sessions.Options{
 		HttpOnly: true,
 		Secure:   i.secureCookies || (ginCtx.Request.TLS != nil),
+		SameSite: http.SameSiteNoneMode,
 		MaxAge:   -1,
 	})
 	err := authSession.Save()
