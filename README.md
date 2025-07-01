@@ -63,6 +63,8 @@ The following environment variables need to be set (e.g. using an `.env` file):
 | `KEYCLOAK_URL`         | Url to keycloak instance used with Scicat                                                                    | `https://kc.psi.ch`                    |
 | `SCICAT_FRONTEND_URL`  | Url to Scicat brontend                                                                                       | `https://discovery.psi.ch`             |
 | `SCICAT_BACKEND_URL`   | Url to Scicat backend                                                                                        | `https://dacat.psi.ch`                 |
+| `INGESTOR_SERVICE_USER_NAME` | A service account used *only* for the (direct) Globus transfer method for marking datasets archivable  | `dataset-admin`                        |
+| `INGESTOR_SERVICE_USER_PASS` | Same as above, but the password of the service user                                                    | `password`                             |
 
 The ingestor configuration is set directly as a `config` top-level element in docker-compose.yaml.
 
