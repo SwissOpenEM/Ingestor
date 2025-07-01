@@ -28,13 +28,3 @@ A recommendation is to have the name of the collection's root folder to be the s
 ## [PR #127] (2025-05-05)
 ### Added
  - (CONFIG) Transfer.StorageLocation sets an ID string in the dataset lifecycle that specifies to which facility we're transmitting the dataset's data
-
-## [PR #135] (2025-05-14)
-### Changed
- - (Config) Transfer.Globus.SourcePrefixPath was changed to Transfer.Globus.CollectionRootPath due to the change regarding multiple collection locations. 
-
-This changed value **does not** function in the same way: instead of adding a prefix path to the path given as SourceFolder of the dataset, it is now applied after the collection location resolution, making the absolute path relative to the root of the Globus collection. 
-
-Basically, if `location1` is a collection location that points to `/datasets/locations/location1`, and the user gives "/location1/dataset1" as a dataset `SourceFolder`, then the ingestor will first transform it to `/datasets/locations/location1/dataset1`. 
-
-Then, if the `CollectionRootPath` is set to `/datasets/locations`, then that means the Globus collection's root path is mounted there in the filesystem, and the Ingestor will transform the path in a way that removes the upper levels of the path, resulting in `/location1/dataset1` as the source path when requesting a transfer from Globus.
