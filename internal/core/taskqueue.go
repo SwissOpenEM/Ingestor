@@ -40,6 +40,9 @@ func (w *TaskQueue) Startup() {
 
 func (w *TaskQueue) AddTransferTask(datasetId string, fileList []datasetIngestor.Datafile, taskId uuid.UUID, folderPath string, ownerUser string, ownerGroup string, contactEmail string, autoArchive bool, transferObjects map[string]interface{}) error {
 	transferMethod := w.GetTransferMethod()
+	if transferMethod == task.TransferNone {
+		return nil
+	}
 	t := task.CreateTransferTask(
 		datasetId,
 		fileList,
@@ -200,6 +203,8 @@ func (w *TaskQueue) GetTransferMethod() (transferMethod task.TransferMethod) {
 		transferMethod = task.TransferExtGlobus
 	case "s3":
 		transferMethod = task.TransferS3
+	case "none":
+		transferMethod = task.TransferNone
 	default:
 		panic("unknown transfer method")
 	}
