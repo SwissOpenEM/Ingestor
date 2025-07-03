@@ -167,6 +167,7 @@ func (i *IngestorWebServerImplemenation) GetCallback(ctx context.Context, reques
 	userSession.Set("name", claims.Name)
 	userSession.Set("family_name", claims.FamilyName)
 	userSession.Set("given_name", claims.GivenName)
+	userSession.Set("access_groups", claims.AccessGroups)
 	userSession.Options(sessions.Options{
 		HttpOnly: true,
 		MaxAge:   int(i.sessionDuration),

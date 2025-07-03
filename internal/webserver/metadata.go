@@ -4,12 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"log/slog"
 	"net/http"
 	"path/filepath"
 	"time"
 
 	b64 "encoding/base64"
 
+	"github.com/SwissOpenEM/Ingestor/internal/datasetaccess"
 	"github.com/SwissOpenEM/Ingestor/internal/webserver/collections"
 	"github.com/SwissOpenEM/Ingestor/internal/webserver/metadatatasks"
 	"github.com/gin-gonic/gin"
@@ -115,6 +117,39 @@ func (i *IngestorWebServerImplemenation) ExtractMetadata(ctx context.Context, re
 			StatusCode: 400}, nil
 	}
 	request.Params.FilePath = relPath
+
+	// check if path is dir
+	absPath := filepath.Join(colPath, relPath)
+	err = datasetaccess.IsFolderCheck(absPath)
+	if err != nil {
+		return ExtractMetadatadefaultJSONResponse{
+			Body: Error{
+				Code:    "400",
+				Message: err.Error(),
+			},
+			StatusCode: 400}, nil
+	}
+
+	// dataset access checks
+	if !i.disableAuth {
+		err = datasetaccess.CheckUserAccess(ctx, absPath)
+		if _, ok := err.(*datasetaccess.AccessError); ok {
+			return ExtractMetadatadefaultJSONResponse{
+				Body: Error{
+					Code:    "401",
+					Message: "unauthorized: " + err.Error(),
+				},
+				StatusCode: 401}, nil
+		} else if err != nil {
+			slog.Error("user access error", "error", err.Error())
+			return ExtractMetadatadefaultJSONResponse{
+				Body: Error{
+					Code:    "500",
+					Message: "internal server error - user access error",
+				},
+				StatusCode: 500}, nil
+		}
+	}
 
 	// start streaming the extraction process
 	return ResponseWriter{ctx: ctx, metadataTaskPool: i.metp, req: request, collectionLocation: colPath}, nil
