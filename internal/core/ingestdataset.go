@@ -312,7 +312,8 @@ func FinalizeTransfer(serviceUser *UserCreds, config Config, datasetId string, a
 	// auto archive
 	if archivalJobInfo.AutoArchive {
 		copies := 1
-		_, err = datasetUtils.CreateArchivalJob(http_client, config.Scicat.Host, user, archivalJobInfo.OwnerGroup, []string{datasetId}, &copies)
+		var executionTime time.Time // unspecified implies immediate execution
+		_, err = datasetUtils.CreateArchivalJob(http_client, config.Scicat.Host, user, archivalJobInfo.OwnerGroup, []string{datasetId}, &copies, &executionTime)
 	}
 	return err
 }

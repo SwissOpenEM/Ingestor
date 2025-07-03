@@ -231,7 +231,7 @@ func (i *IngestorWebServerImplemenation) DatasetControllerIngestDataset(ctx cont
 			}
 
 			copies := 1
-			_, err = datasetUtils.CreateArchivalJob(http.DefaultClient, i.taskQueue.Config.Scicat.Host, user, ownerGroup, []string{datasetId}, &copies)
+			_, err = datasetUtils.CreateArchivalJob(http.DefaultClient, i.taskQueue.Config.Scicat.Host, user, ownerGroup, []string{datasetId}, &copies, nil)
 			if err != nil {
 				return nil, err
 			}

@@ -6,6 +6,7 @@ toolchain go1.23.6
 
 require (
 	github.com/SwissOpenEM/globus v0.1.2
+	github.com/SwissOpenEM/globus-transfer-service v0.0.0-20250424094725-4d3f951a7e7e
 	github.com/alitto/pond/v2 v2.3.2
 	github.com/getkin/kin-openapi v0.131.0
 	github.com/gin-contrib/cors v1.7.2
@@ -17,7 +18,7 @@ require (
 	github.com/oapi-codegen/gin-middleware v1.0.2
 	github.com/oapi-codegen/oapi-codegen/v2 v2.4.1
 	github.com/oapi-codegen/runtime v1.1.1
-	github.com/paulscherrerinstitute/scicat-cli/v3 v3.0.0-alpha3.0.20250425074246-2b8f0b3497af
+	github.com/paulscherrerinstitute/scicat-cli/v3 v3.0.0-alpha5
 	github.com/samber/slog-gin v1.14.1
 	github.com/spf13/viper v1.19.0
 	github.com/swaggo/files v1.0.1
@@ -30,7 +31,6 @@ require (
 
 require (
 	github.com/MicahParks/jwkset v0.5.19 // indirect
-	github.com/SwissOpenEM/globus-transfer-service v0.0.0-20250424094725-4d3f951a7e7e // indirect
 	github.com/andybalholm/brotli v1.0.5 // indirect
 	github.com/bodgit/plumbing v1.3.0 // indirect
 	github.com/bodgit/sevenzip v1.4.0 // indirect
