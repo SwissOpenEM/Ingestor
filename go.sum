@@ -28,12 +28,6 @@ github.com/Netflix/go-expect v0.0.0-20220104043353-73e0943537d2/go.mod h1:HBCaDe
 github.com/RaveNoX/go-jsoncommentstrip v1.0.0/go.mod h1:78ihd09MekBnJnxpICcwzCMzGrKSKYe4AqU6PDYYpjk=
 github.com/SwissOpenEM/globus v0.1.2 h1:TMe8UNVSW4DO+MTb0sPixiBwD+49g9nvgjRq8jGdJFE=
 github.com/SwissOpenEM/globus v0.1.2/go.mod h1:HiMwPdtUdztPpnA0TamNWBBRPGYjEJWXSRUIV5vjqXc=
-github.com/SwissOpenEM/globus-transfer-service v0.0.0-20250416155307-c91353515abb h1:f2fTMi6/eCCJwrUi7rFo0V4pdUXle2EafDo8Ef/Mb0M=
-github.com/SwissOpenEM/globus-transfer-service v0.0.0-20250416155307-c91353515abb/go.mod h1:fE6GuOyc7FBusuua+azAublbfOxnwufW2bqyD4zqWgI=
-github.com/SwissOpenEM/globus-transfer-service v0.0.0-20250417134430-256ec31061bc h1:iM5c8hhNZPtDPWXHX8mxoXWB3GW+cN81YiM86gEp1yE=
-github.com/SwissOpenEM/globus-transfer-service v0.0.0-20250417134430-256ec31061bc/go.mod h1:fE6GuOyc7FBusuua+azAublbfOxnwufW2bqyD4zqWgI=
-github.com/SwissOpenEM/globus-transfer-service v0.0.0-20250424093438-8b53b0d34c20 h1:ASn4knQ5HkJuF2NPrhMeuPKw5sEE2YrsPFvCq/iMd/U=
-github.com/SwissOpenEM/globus-transfer-service v0.0.0-20250424093438-8b53b0d34c20/go.mod h1:fE6GuOyc7FBusuua+azAublbfOxnwufW2bqyD4zqWgI=
 github.com/SwissOpenEM/globus-transfer-service v0.0.0-20250424094725-4d3f951a7e7e h1:03UPxGms8JKWbTnFocYg9B1oTzyFrZKKDItAUxElRII=
 github.com/SwissOpenEM/globus-transfer-service v0.0.0-20250424094725-4d3f951a7e7e/go.mod h1:fE6GuOyc7FBusuua+azAublbfOxnwufW2bqyD4zqWgI=
 github.com/alitto/pond/v2 v2.3.2 h1:EAwwpi4Re7OE7poKDHqIUhJlq/mUBmtZN2PmDYCgRLE=
@@ -307,10 +301,10 @@ github.com/onsi/gomega v1.17.0/go.mod h1:HnhC7FXeEQY45zxNK3PPoIUhzk/80Xly9PcubAl
 github.com/onsi/gomega v1.19.0/go.mod h1:LY+I3pBVzYsTBU1AnDwOSxaYi9WoWiqgwooUqq9yPro=
 github.com/onsi/gomega v1.27.6 h1:ENqfyGeS5AX/rlXDd/ETokDz93u0YufY1Pgxuy/PvWE=
 github.com/onsi/gomega v1.27.6/go.mod h1:PIQNjfQwkP3aQAH7lf7j87O/5FiNr+ZR8+ipb+qQlhg=
-github.com/paulscherrerinstitute/scicat-cli/v3 v3.0.0-alpha3.0.20250416155101-64158adebeb3 h1:1gPSVQAqAncCABsT/LJ6ojp2NNtMKkBmKPUvDiJNJhM=
-github.com/paulscherrerinstitute/scicat-cli/v3 v3.0.0-alpha3.0.20250416155101-64158adebeb3/go.mod h1:0isvmkPG0GVviHOaTk+PrenP6NaPqzHjaKcJo9J+VYE=
 github.com/paulscherrerinstitute/scicat-cli/v3 v3.0.0-alpha3.0.20250425074246-2b8f0b3497af h1:y8hj2GPAMpjZ4vLqIzcWiVOCeCTsP9seYyPwump4+lM=
 github.com/paulscherrerinstitute/scicat-cli/v3 v3.0.0-alpha3.0.20250425074246-2b8f0b3497af/go.mod h1:0isvmkPG0GVviHOaTk+PrenP6NaPqzHjaKcJo9J+VYE=
+github.com/paulscherrerinstitute/scicat-cli/v3 v3.0.0-alpha5 h1:xo3EMDC54mgF8EpqDloxHIZ/Y5WBftHhiPgkiYbqYyA=
+github.com/paulscherrerinstitute/scicat-cli/v3 v3.0.0-alpha5/go.mod h1:0isvmkPG0GVviHOaTk+PrenP6NaPqzHjaKcJo9J+VYE=
 github.com/pelletier/go-toml/v2 v2.2.3 h1:YmeHyLY8mFWbdkNWwpr+qIL2bEqT0o95WSdkNHvL12M=
 github.com/pelletier/go-toml/v2 v2.2.3/go.mod h1:MfCQTFTvCcUyyvvwm1+G6H/jORL20Xlb6rzQu9GuUkc=
 github.com/perimeterx/marshmallow v1.1.5 h1:a2LALqQ1BlHM8PZblsDdidgv1mWi1DgC2UmX50IvK2s=
