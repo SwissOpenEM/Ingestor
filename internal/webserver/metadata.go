@@ -152,7 +152,7 @@ func (i *IngestorWebServerImplemenation) ExtractMetadata(ctx context.Context, re
 	}
 
 	// start streaming the extraction process
-	return ResponseWriter{ctx: ctx, metadataTaskPool: i.metp, req: request, collectionLocation: colPath}, nil
+	return ResponseWriter{ctx: ctx, metadataTaskPool: i.metadataExtPool, req: request, collectionLocation: colPath}, nil
 }
 
 type progressDto struct {

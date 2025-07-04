@@ -81,12 +81,13 @@ func (c *ConfigReader) ReadConfig(configFileName string) (Config, error) {
 	c.viperConf.SetDefault("WebServer.Auth.JWT.JwksURL", "https://keycloak.psi.ch/realms/facility/protocol/openid-connect/certs")
 	c.viperConf.SetDefault("WebServer.Auth.JWT.JwksSignatureMethods", []string{"RS256"})
 
-	c.viperConf.SetDefault("WebServer.MetadataExtJobs.ConcurrencyLimit", 100)
+	c.viperConf.SetDefault("WebServer.MetadataExtJobs.ConcurrencyLimit", 10)
 	c.viperConf.SetDefault("WebServer.MetadataExtJobs.QueueSize", 200)
 
 	c.viperConf.SetDefault("WebServer.Other.Port", 8888)
 	c.viperConf.SetDefault("WebServer.Other.LogLevel", "Info")
 	c.viperConf.SetDefault("WebServer.Other.DisableServiceAccountCheck", false)
+	c.viperConf.SetDefault("WebServer.Other.GlobalConcurrencyLimit", 64)
 
 	err := c.viperConf.ReadInConfig()
 	if err == nil {

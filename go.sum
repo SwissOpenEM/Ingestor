@@ -301,8 +301,6 @@ github.com/onsi/gomega v1.17.0/go.mod h1:HnhC7FXeEQY45zxNK3PPoIUhzk/80Xly9PcubAl
 github.com/onsi/gomega v1.19.0/go.mod h1:LY+I3pBVzYsTBU1AnDwOSxaYi9WoWiqgwooUqq9yPro=
 github.com/onsi/gomega v1.27.6 h1:ENqfyGeS5AX/rlXDd/ETokDz93u0YufY1Pgxuy/PvWE=
 github.com/onsi/gomega v1.27.6/go.mod h1:PIQNjfQwkP3aQAH7lf7j87O/5FiNr+ZR8+ipb+qQlhg=
-github.com/paulscherrerinstitute/scicat-cli/v3 v3.0.0-alpha3.0.20250425074246-2b8f0b3497af h1:y8hj2GPAMpjZ4vLqIzcWiVOCeCTsP9seYyPwump4+lM=
-github.com/paulscherrerinstitute/scicat-cli/v3 v3.0.0-alpha3.0.20250425074246-2b8f0b3497af/go.mod h1:0isvmkPG0GVviHOaTk+PrenP6NaPqzHjaKcJo9J+VYE=
 github.com/paulscherrerinstitute/scicat-cli/v3 v3.0.0-alpha5 h1:xo3EMDC54mgF8EpqDloxHIZ/Y5WBftHhiPgkiYbqYyA=
 github.com/paulscherrerinstitute/scicat-cli/v3 v3.0.0-alpha5/go.mod h1:0isvmkPG0GVviHOaTk+PrenP6NaPqzHjaKcJo9J+VYE=
 github.com/pelletier/go-toml/v2 v2.2.3 h1:YmeHyLY8mFWbdkNWwpr+qIL2bEqT0o95WSdkNHvL12M=
