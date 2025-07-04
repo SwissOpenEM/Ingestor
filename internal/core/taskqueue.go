@@ -18,8 +18,7 @@ import (
 type TaskQueue struct {
 	taskListLock       sync.RWMutex                                          // locking mechanism for uploadIds and datasetUploadTasks
 	datasetUploadTasks *orderedmap.OrderedMap[uuid.UUID, *task.TransferTask] // For storing requests, mapped to the id's above
-	// inputChannel       chan *task.TransferTask                               // Requests to upload data are put into this channel
-	taskPool pond.Pool
+	taskPool           pond.Pool
 
 	appContext  context.Context
 	Config      Config
@@ -30,7 +29,6 @@ type TaskQueue struct {
 func NewTaskQueueFromPool(ctx context.Context, config Config, notifier task.ProgressNotifier, serviceUser *UserCreds, pool pond.Pool) *TaskQueue {
 
 	return &TaskQueue{
-		// inputChannel:       make(chan *task.TransferTask),
 		datasetUploadTasks: orderedmap.NewOrderedMap[uuid.UUID, *task.TransferTask](),
 		taskPool:           pool,
 		appContext:         ctx,
