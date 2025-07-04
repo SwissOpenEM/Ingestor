@@ -36,7 +36,7 @@ type HttpUploader struct {
 var instance *HttpUploader
 var once sync.Once
 
-func GetHttpUploader(poolSize int) *HttpUploader {
+func InitHttpUploaderWithPool(pool pond.Pool) {
 	once.Do(func() {
 		retryClient := retryablehttp.NewClient()
 		retryClient.RetryMax = 10
@@ -44,8 +44,11 @@ func GetHttpUploader(poolSize int) *HttpUploader {
 		retryClient.Logger = log()
 
 		standardClient := retryClient.StandardClient()
-		instance = &HttpUploader{Pool: pond.NewPool(poolSize), Client: standardClient}
+		instance = &HttpUploader{Pool: pool, Client: standardClient}
 	})
+}
+
+func GetHttpUploader() *HttpUploader {
 	return instance
 }
 
@@ -136,7 +139,7 @@ func uploadFile(ctx context.Context, filePath string, objectName string, options
 	}
 
 	totalSize := fileInfo.Size()
-	httpClient := GetHttpUploader(options.PoolSize)
+	httpClient := GetHttpUploader()
 
 	token, err := tokenSource.Token()
 	if err != nil {
