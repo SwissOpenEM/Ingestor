@@ -103,18 +103,26 @@ func (a *App) startup(ctx context.Context) {
 	)
 
 	go func(port int) {
-		extractorPool := metadatatasks.NewTaskPoolFromPool(
-			a.extractorHandler,
-			mainTaskPool.NewSubpool(
-				a.config.WebServer.MetadataExtJobsConf.ConcurrencyLimit,
-				pond.WithQueueSize(a.config.WebServer.MetadataExtJobsConf.QueueSize),
-			),
-		)
-		ingestor, err := webserver.NewIngestorWebServer(a.version, &a.taskqueue, extractorPool, a.config.WebServer)
-		if err != nil {
-			panic(err)
+		extractorHandler := metadataextractor.NewExtractorHandler(a.config.MetadataExtractors)
+
+		metadataExtractorPool := metadatatasks.NewTaskPoolFromPool(a.config.WebServer.MetadataExtJobsConf.ConcurrencyLimit,
+			a.config.WebServer.MetadataExtJobsConf.QueueSize,
+			extractorHandler,
+			&mainTaskPool)
+
+		taskQueuePool := mainTaskPool.NewSubpool(a.config.Transfer.ConcurrencyLimit, pond.WithNonBlocking(true))
+		taskqueue := core.NewTaskQueueFromPool(ctx, a.config, core.NewLoggingNotifier(), nil, taskQueuePool)
+
+		if strings.ToLower(a.config.Transfer.Method) == "s3" {
+			s3PoolSize := min(a.config.Transfer.S3.PoolSize, totalConcurrencyLimit-a.config.WebServer.MetadataExtJobsConf.ConcurrencyLimit-a.config.WebServer.ConcurrencyLimit)
+			s3upload.InitHttpUploaderWithPool(mainTaskPool.NewSubpool(s3PoolSize))
 		}
-		s := webserver.NewIngesterServer(ingestor, port)
+
+		ingestor, err := webserver.NewIngestorWebServer(version, taskqueue, extractorHandler, metadataExtractorPool, a.config.WebServer)
+		if err != nil {
+			log.Fatal(err)
+		}
+		s := webserver.NewIngesterServer(ingestor, a.config.WebServer.Port)
 		log.Fatal(s.ListenAndServe())
 	}(a.config.WebServer.Port)
 
