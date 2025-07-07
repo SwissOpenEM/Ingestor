@@ -2,7 +2,6 @@ Scicat:
   Host: http://scicat:8080/api/v3
 Transfer:
   ConcurrencyLimit: 10
-  QueueSize: 1000
   Method: Globus
   StorageLocation: "SomeFacility"
   Globus:
@@ -92,3 +91,4 @@ WebServer:
   Other:
     Port: 8888
     LogLevel: "Info"
+    GlobalConcurrencyLimit: 64

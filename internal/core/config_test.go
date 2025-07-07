@@ -1,13 +1,13 @@
 package core
 
 import (
-	"reflect"
 	"testing"
 	"time"
 
 	"github.com/SwissOpenEM/Ingestor/internal/metadataextractor"
 	"github.com/SwissOpenEM/Ingestor/internal/transfertask"
 	"github.com/SwissOpenEM/Ingestor/internal/webserver/wsconfig"
+	"github.com/go-test/deep"
 	"github.com/spf13/viper"
 )
 
@@ -16,7 +16,6 @@ func createExpectedValidConfigS3() transfertask.TransferConfig {
 		Method:           "S3",
 		StorageLocation:  "SomeFacility",
 		ConcurrencyLimit: 10,
-		QueueSize:        1000,
 		S3: transfertask.S3TransferConfig{
 			Endpoint:        "https://endpoint/api/v1",
 			TokenUrl:        "https://keycloak.localhost/realms/facility/protocol/openid-connect/token",
@@ -33,7 +32,6 @@ func createExpectedValidConfigGlobus() transfertask.TransferConfig {
 		Method:           "Globus",
 		StorageLocation:  "SomeFacility",
 		ConcurrencyLimit: 10,
-		QueueSize:        1000,
 		Globus: transfertask.GlobusTransferConfig{
 			ClientID:                "clientid_registered_with_globus",
 			RedirectURL:             "https://auth.globus.org/v2/web/auth-code",
@@ -90,8 +88,9 @@ func createExpectedValidConfig(transferConfig transfertask.TransferConfig) Confi
 			QueueSize:        200,
 		},
 		OtherConf: wsconfig.OtherConf{
-			Port:     8888,
-			LogLevel: "Info",
+			Port:                   8888,
+			LogLevel:               "Info",
+			GlobalConcurrencyLimit: 64,
 		},
 	}
 
@@ -196,8 +195,9 @@ func TestReadConfigS3(t *testing.T) {
 				t.Errorf("ReadConfig() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("ReadConfig() = %v, want %v", got, tt.want)
+			diff := deep.Equal(got, tt.want)
+			if diff != nil {
+				t.Errorf("compare failed: %v", diff)
 			}
 		})
 	}
@@ -234,8 +234,9 @@ func TestReadConfigGlobus(t *testing.T) {
 				t.Errorf("ReadConfig() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("ReadConfig() = %v, want %v", got, tt.want)
+			diff := deep.Equal(got, tt.want)
+			if diff != nil {
+				t.Errorf("compare failed: %v", diff)
 			}
 		})
 	}
