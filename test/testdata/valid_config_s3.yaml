@@ -4,7 +4,6 @@ Transfer:
   Method: S3
   StorageLocation: "SomeFacility"
   ConcurrencyLimit: 10
-  QueueSize: 1000
   S3:
     Endpoint: https://endpoint/api/v1
     TokenUrl: https://keycloak.localhost/realms/facility/protocol/openid-connect/token

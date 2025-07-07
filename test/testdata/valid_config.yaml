@@ -14,16 +14,15 @@ Transfer:
   #     - "urn:globus:auth:scope:transfer.api.globus.org:all[*https://auth.globus.org/scopes/[collection_id1]/data_access]"
   S3:
     Endpoint: http://localhost:8000
-Misc:
-  ConcurrencyLimit: 2
-  Port: 8888
-  LogLevel: Info
+  ConcurrencyLimit: 4
+
 MetadataExtractors:
   InstallationPath: ./parentPathToAllExtractors/
   DownloadMissingExtractors: false
   DownloadSchemas: false
   SchemasLocation: ./ExtractorSchemas
   Timeout: 4m
+  ConcurrencyLimit: 2
   Extractors:
   - Name: LS
     GithubOrg: SwissOpenEM
@@ -71,3 +70,7 @@ Webserver:
       AdminRole: "FACILITY-ingestor-admin"
       CreateModifyTasksRole: "FACILITY-ingestor-write"
       ViewTasksRole: "FACILITY-ingestor-read"
+
+  Other:
+    Port: 8888
+    LogLevel: Info
