@@ -5,11 +5,15 @@ import (
 	"fmt"
 	"log"
 	"log/slog"
+	"strings"
 
 	core "github.com/SwissOpenEM/Ingestor/internal/core"
 	metadataextractor "github.com/SwissOpenEM/Ingestor/internal/metadataextractor"
+	"github.com/SwissOpenEM/Ingestor/internal/s3upload"
 	task "github.com/SwissOpenEM/Ingestor/internal/transfertask"
 	webserver "github.com/SwissOpenEM/Ingestor/internal/webserver"
+	"github.com/SwissOpenEM/Ingestor/internal/webserver/metadatatasks"
+	"github.com/alitto/pond/v2"
 
 	"github.com/google/uuid"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
@@ -80,22 +84,45 @@ func (b *App) beforeClose(ctx context.Context) (prevent bool) {
 // startup is called when the app starts. The context is saved
 // so we can call the runtime methods
 func (a *App) startup(ctx context.Context) {
-	a.ctx = ctx
-
-	a.extractorHandler = metadataextractor.NewExtractorHandler(a.config.MetadataExtractors)
-
-	a.taskqueue = core.TaskQueue{Config: a.config,
-		AppContext: a.ctx,
-		Notifier:   &WailsNotifier{AppContext: a.ctx},
+	totalConcurrencyLimit := a.config.Transfer.ConcurrencyLimit + a.config.WebServer.ConcurrencyLimit
+	if strings.ToLower(a.config.Transfer.Method) == "s3" {
+		totalConcurrencyLimit += a.config.Transfer.S3.PoolSize
 	}
-	a.taskqueue.Startup()
+	mainTaskPool := pond.NewPool(totalConcurrencyLimit)
+
+	s3upload.InitHttpUploaderWithPool(mainTaskPool.NewSubpool(a.config.Transfer.S3.PoolSize))
+
+	a.ctx = ctx
+	a.extractorHandler = metadataextractor.NewExtractorHandler(a.config.MetadataExtractors)
+	a.taskqueue = *core.NewTaskQueueFromPool(
+		a.ctx,
+		a.config,
+		&WailsNotifier{AppContext: a.ctx},
+		nil,
+		mainTaskPool.NewSubpool(a.config.Transfer.ConcurrencyLimit, pond.WithQueueSize(a.config.Transfer.QueueSize)),
+	)
 
 	go func(port int) {
-		ingestor, err := webserver.NewIngestorWebServer(a.version, &a.taskqueue, a.extractorHandler, a.config.WebServer)
-		if err != nil {
-			panic(err)
+		extractorHandler := metadataextractor.NewExtractorHandler(a.config.MetadataExtractors)
+
+		metadataExtractorPool := metadatatasks.NewTaskPoolFromPool(a.config.WebServer.MetadataExtJobsConf.ConcurrencyLimit,
+			a.config.WebServer.MetadataExtJobsConf.QueueSize,
+			extractorHandler,
+			&mainTaskPool)
+
+		taskQueuePool := mainTaskPool.NewSubpool(a.config.Transfer.ConcurrencyLimit, pond.WithNonBlocking(true))
+		taskqueue := core.NewTaskQueueFromPool(ctx, a.config, core.NewLoggingNotifier(), nil, taskQueuePool)
+
+		if strings.ToLower(a.config.Transfer.Method) == "s3" {
+			s3PoolSize := min(a.config.Transfer.S3.PoolSize, totalConcurrencyLimit-a.config.WebServer.MetadataExtJobsConf.ConcurrencyLimit-a.config.WebServer.ConcurrencyLimit)
+			s3upload.InitHttpUploaderWithPool(mainTaskPool.NewSubpool(s3PoolSize))
 		}
-		s := webserver.NewIngesterServer(ingestor, port)
+
+		ingestor, err := webserver.NewIngestorWebServer(version, taskqueue, extractorHandler, metadataExtractorPool, a.config.WebServer)
+		if err != nil {
+			log.Fatal(err)
+		}
+		s := webserver.NewIngesterServer(ingestor, a.config.WebServer.Port)
 		log.Fatal(s.ListenAndServe())
 	}(a.config.WebServer.Port)
 

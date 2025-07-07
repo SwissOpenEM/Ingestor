@@ -8,7 +8,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/SwissOpenEM/Ingestor/internal/globustransfer"
 	task "github.com/SwissOpenEM/Ingestor/internal/transfertask"
 	"github.com/alitto/pond/v2"
 	"github.com/elliotchance/orderedmap/v2"
@@ -19,22 +18,23 @@ import (
 type TaskQueue struct {
 	taskListLock       sync.RWMutex                                          // locking mechanism for uploadIds and datasetUploadTasks
 	datasetUploadTasks *orderedmap.OrderedMap[uuid.UUID, *task.TransferTask] // For storing requests, mapped to the id's above
-	inputChannel       chan *task.TransferTask                               // Requests to upload data are put into this channel
 	taskPool           pond.Pool
 
-	AppContext  context.Context
+	appContext  context.Context
 	Config      Config
-	Notifier    task.ProgressNotifier
-	ServiceUser *UserCreds
+	notifier    task.ProgressNotifier
+	serviceUser *UserCreds
 }
 
-func (w *TaskQueue) Startup() {
-	w.inputChannel = make(chan *task.TransferTask)
-	w.datasetUploadTasks = orderedmap.NewOrderedMap[uuid.UUID, *task.TransferTask]()
-	w.taskPool = pond.NewPool(w.Config.Transfer.ConcurrencyLimit, pond.WithQueueSize(w.Config.Transfer.QueueSize))
-	err := globustransfer.SetTemplateForDestinationPath(w.Config.Transfer.Globus.DestinationTemplate)
-	if err != nil {
-		panic(fmt.Sprintf("can't set destination path template for globus due to the following reason: %s", err.Error()))
+func NewTaskQueueFromPool(ctx context.Context, config Config, notifier task.ProgressNotifier, serviceUser *UserCreds, pool pond.Pool) *TaskQueue {
+
+	return &TaskQueue{
+		datasetUploadTasks: orderedmap.NewOrderedMap[uuid.UUID, *task.TransferTask](),
+		taskPool:           pool,
+		appContext:         ctx,
+		Config:             config,
+		notifier:           notifier,
+		serviceUser:        serviceUser,
 	}
 }
 
@@ -67,21 +67,20 @@ func (w *TaskQueue) AddTransferTask(datasetId string, fileList []datasetIngestor
 }
 
 func (w *TaskQueue) executeTransferTask(t *task.TransferTask) {
-	task_context, cancel := context.WithCancel(w.AppContext)
-
+	task_context, cancel := context.WithCancel(w.appContext)
 	t.Cancel = cancel
 
 	r := w.TransferDataset(task_context, t)
 	if r.Error != nil {
 		t.Failed(fmt.Sprintf("failed - error: %s", r.Error.Error()))
-		w.Notifier.OnTaskFailed(t.DatasetFolder.Id, r.Error)
+		w.notifier.OnTaskFailed(t.DatasetFolder.Id, r.Error)
 		return
 	}
 
 	// if not cancelled, mark as finished
 	if t.GetDetails().Status != task.Cancelled {
 		t.Finished()
-		w.Notifier.OnTaskCompleted(t.DatasetFolder.Id, r.Elapsed_seconds)
+		w.notifier.OnTaskCompleted(t.DatasetFolder.Id, r.Elapsed_seconds)
 	}
 }
 
@@ -95,7 +94,7 @@ func (w *TaskQueue) CancelTask(id uuid.UUID) {
 	if uploadTask.Cancel != nil {
 		// note: the task is marked as cancelled in advance in order for the task executer to not mark it as finished
 		uploadTask.Cancelled("transfer was cancelled by the user")
-		w.Notifier.OnTaskCanceled(id)
+		w.notifier.OnTaskCanceled(id)
 		uploadTask.Cancel()
 	}
 }
@@ -117,7 +116,7 @@ func (w *TaskQueue) RemoveTask(id uuid.UUID) error {
 	}
 
 	unlockOnce.Do(w.taskListLock.Unlock)
-	w.Notifier.OnTaskRemoved(id)
+	w.notifier.OnTaskRemoved(id)
 	return nil
 }
 
@@ -129,12 +128,12 @@ func (w *TaskQueue) ScheduleTask(id uuid.UUID) error {
 		return fmt.Errorf("task with id '%s' not found", id.String())
 	}
 
-	task_context, cancel := context.WithCancel(w.AppContext)
+	task_context, cancel := context.WithCancel(w.appContext)
 	transferTask.Context = task_context
 	transferTask.Cancel = cancel
 
 	transferTask.Queued()
-	w.Notifier.OnTaskScheduled(transferTask.DatasetFolder.Id)
+	w.notifier.OnTaskScheduled(transferTask.DatasetFolder.Id)
 
 	w.taskPool.Submit(func() { w.executeTransferTask(transferTask) })
 	return nil
@@ -177,6 +176,10 @@ func (w *TaskQueue) GetTaskCount() int {
 	return w.datasetUploadTasks.Len()
 }
 
+func (w *TaskQueue) CreateSubpool(size int) pond.Pool {
+	return w.taskPool.NewSubpool(size)
+}
+
 func (w *TaskQueue) GetTaskFolder(id uuid.UUID) string {
 	w.taskListLock.RLock()
 	defer w.taskListLock.RUnlock()
@@ -189,7 +192,7 @@ func (w *TaskQueue) GetTaskFolder(id uuid.UUID) string {
 
 func (w *TaskQueue) TransferDataset(taskCtx context.Context, it *task.TransferTask) task.Result {
 	start := time.Now()
-	err := TransferDataset(taskCtx, it, w.ServiceUser, w.Config, w.Notifier)
+	err := TransferDataset(taskCtx, it, w.serviceUser, w.Config, w.notifier)
 	end := time.Now()
 	elapsed := end.Sub(start)
 	return task.Result{Elapsed_seconds: int(elapsed.Seconds()), Error: err}
@@ -209,4 +212,8 @@ func (w *TaskQueue) GetTransferMethod() (transferMethod task.TransferMethod) {
 		panic("unknown transfer method")
 	}
 	return transferMethod
+}
+
+func (w *TaskQueue) IsServiceUserSet() bool {
+	return w.serviceUser != nil
 }

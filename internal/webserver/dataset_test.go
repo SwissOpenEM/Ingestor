@@ -42,7 +42,7 @@ func TestDatasetControllerBrowseFilesystem_LocationList(t *testing.T) {
 			DisableServiceAccountCheck: true,
 		},
 	}
-	i, err := NewIngestorWebServer("test", &core.TaskQueue{}, nil, wsConf)
+	i, err := NewIngestorWebServer("test", &core.TaskQueue{}, nil, nil, wsConf)
 	if err != nil {
 		t.Errorf("NewIngestorWebServer error: %s", err.Error())
 		return
@@ -134,7 +134,7 @@ func TestDatasetControllerBrowseFilesystem_ExampleListInCollection(t *testing.T)
 			DisableServiceAccountCheck: true,
 		},
 	}
-	i, err := NewIngestorWebServer("test", &core.TaskQueue{}, nil, wsConf)
+	i, err := NewIngestorWebServer("test", &core.TaskQueue{}, nil, nil, wsConf)
 	if err != nil {
 		t.Errorf("NewIngestorWebServer error: %s", err.Error())
 		return

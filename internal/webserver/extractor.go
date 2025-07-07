@@ -6,7 +6,7 @@ import (
 
 func (i *IngestorWebServerImplemenation) ExtractorControllerGetExtractorMethods(ctx context.Context, request ExtractorControllerGetExtractorMethodsRequestObject) (ExtractorControllerGetExtractorMethodsResponseObject, error) {
 	// get methods
-	methods := i.extractorHandler.AvailableMethods()
+	methods := i.metadataExtPool.GetHandler().AvailableMethods()
 	total := len(methods)
 
 	// get indices
