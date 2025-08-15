@@ -68,7 +68,8 @@ type OtherConf struct {
 	DisableServiceAccountCheck bool
 	// If true, all cookies will be set with Secure=true
 	// If false, Secure will only be set if TLS is detected
-	SecureCookies bool `bool:"SecureCookies"`
+	SecureCookies          bool `bool:"SecureCookies"`
+	GlobalConcurrencyLimit int  `int:"GlobalConcurrencyLimit" validate:"min=1"`
 }
 
 type WebServerConfig struct {
