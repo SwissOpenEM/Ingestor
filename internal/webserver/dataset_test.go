@@ -156,11 +156,22 @@ func TestDatasetControllerBrowseFilesystem_ExampleListInCollection(t *testing.T)
 	resp200, ok := resp.(DatasetControllerBrowseFilesystem200JSONResponse)
 	if !ok {
 		resp400, ok := resp.(DatasetControllerBrowseFilesystem400TextResponse)
-		if !ok {
-			t.Errorf("unknown error object received")
+		if ok {
+			t.Errorf("error 400 returned by controller: %s", resp400)
 			return
 		}
-		t.Errorf("error returned by controller: %s", resp400)
+		resp401, ok := resp.(DatasetControllerBrowseFilesystem401TextResponse)
+		if ok {
+			t.Errorf("error 401 returned by controller: %s", resp401)
+			return
+		}
+		resp500, ok := resp.(DatasetControllerBrowseFilesystem500TextResponse)
+		if ok {
+			t.Errorf("error 500 returned by controller: %s", resp500)
+			return
+		}
+		t.Errorf("unknown error object received")
+		return
 	}
 
 	if len(resp200.Folders) != len(testFolders) {

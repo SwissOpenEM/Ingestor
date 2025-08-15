@@ -14,6 +14,7 @@ type idTokenClaims struct {
 type keycloakClaims struct {
 	RealmAccess       rolesList            `json:"realm_access,omitempty"`
 	ResourceAccess    map[string]rolesList `json:"resource_access,omitempty"`
+	AccessGroups      []string             `json:"accessGroups,omitempty"`
 	Name              string               `json:"name,omitempty"`               // "name": "OIDC User"
 	PreferredUsername string               `json:"preferred_username,omitempty"` // "preferred_username": "oidc-user"
 	GivenName         string               `json:"given_name,omitempty"`         // "given_name": "OIDC"
@@ -44,4 +45,8 @@ func (c *keycloakClaims) GetAllResourceRoles() map[string][]string {
 		returnMap[k] = v.Roles
 	}
 	return returnMap
+}
+
+func (c *keycloakClaims) GetAccessGroups() []string {
+	return c.AccessGroups
 }

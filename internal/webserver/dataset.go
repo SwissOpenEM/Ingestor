@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"os"
 	"path"
@@ -11,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/SwissOpenEM/Ingestor/internal/core"
+	"github.com/SwissOpenEM/Ingestor/internal/datasetaccess"
 	"github.com/SwissOpenEM/Ingestor/internal/extglobusservice"
 	"github.com/SwissOpenEM/Ingestor/internal/s3upload"
 	"github.com/SwissOpenEM/Ingestor/internal/transfertask"
@@ -77,16 +79,20 @@ func (i *IngestorWebServerImplemenation) DatasetControllerBrowseFilesystem(ctx c
 	absPath := filepath.Join(collectionPath, relPath)
 
 	// check if path is dir
-	folder, err := os.Stat(absPath)
+	err = datasetaccess.IsFolderCheck(absPath)
 	if err != nil {
-		if os.IsNotExist(err) {
-			return DatasetControllerBrowseFilesystem400TextResponse("path does not exist or is invalid"), nil
-		} else {
-			return nil, err
-		}
+		return DatasetControllerBrowseFilesystem400TextResponse("path is directory check error: " + err.Error()), nil
 	}
-	if !folder.IsDir() {
-		return DatasetControllerBrowseFilesystem400TextResponse("path does not point to a folder"), nil
+
+	// dataset access checks
+	if !i.disableAuth {
+		err = datasetaccess.CheckUserAccess(ctx, absPath)
+		if _, ok := err.(*datasetaccess.AccessError); ok {
+			return DatasetControllerBrowseFilesystem401TextResponse("unauthorized: " + err.Error()), nil
+		} else if err != nil {
+			slog.Error("user access error", "error", err.Error())
+			return DatasetControllerBrowseFilesystem500TextResponse("internal server error: user access error"), nil
+		}
 	}
 
 	// get page values
@@ -111,13 +117,13 @@ func (i *IngestorWebServerImplemenation) DatasetControllerBrowseFilesystem(ctx c
 		}
 		if d.IsDir() && currPath != absPath {
 			if folderCounter >= start && folderCounter < end {
-				hasFiles, hasChildren := folderHasFilesOrSubFolders(currPath)
+				_, hasChildren := folderHasFilesOrSubFolders(currPath)
 				relativePath, _ := filepath.Rel(collectionPath, currPath)
 
 				folders[folderCounter-start].Name = d.Name()
 				folders[folderCounter-start].Path = "/" + collectionName + "/" + filepath.ToSlash(relativePath)
 				folders[folderCounter-start].Children = hasChildren
-				folders[folderCounter-start].ProbablyDataset = hasFiles
+				folders[folderCounter-start].ProbablyDataset = datasetaccess.IsDatasetFolder(currPath)
 			}
 			folderCounter++
 			return filepath.SkipDir // prevent recursing into subfolders
@@ -183,9 +189,20 @@ func (i *IngestorWebServerImplemenation) DatasetControllerIngestDataset(ctx cont
 	}
 
 	// check if folder exists
-	err = core.CheckIfFolderExists(folderPath)
+	err = datasetaccess.IsFolderCheck(folderPath)
 	if err != nil {
 		return DatasetControllerIngestDataset400TextResponse(fmt.Sprintf("dataset location lookup error: %s", err.Error())), nil
+	}
+
+	// dataset access checks
+	if !i.disableAuth {
+		err = datasetaccess.CheckUserAccess(ctx, folderPath)
+		if _, ok := err.(*datasetaccess.AccessError); ok {
+			return DatasetControllerIngestDataset401TextResponse("unauthorized: " + err.Error()), nil
+		} else if err != nil {
+			slog.Error("user access error", "error", err.Error())
+			return DatasetControllerIngestDataset500TextResponse("internal server error: user access error"), nil
+		}
 	}
 
 	// do catalogue insertion
