@@ -30,14 +30,12 @@ configs:
       Scicat:
         Host: ${SCICAT_BACKEND_URL}/api/v3
       Transfer:
-        Method: S3
-        S3:
-          Endpoint: http://scopem-openem.ethz.ch/api/v1
-          TokenUrl: https://keycloak.localhost/realms/facility/protocol/openid-connect/token
-          ClientID: archiver-service-api
-          ChunkSizeMB: 64
-          ConcurrentFiles: 4
-          PoolSize: 8
+        Method: ExtGlobus
+        ExtGlobus:
+          TransferServiceUrl: "https://globus-proxy.development.psi.ch/globus/service"
+          SrcFacility: "${EXTGLOBUS_FACILITY}"
+          DstFacility: "PSI_DEV" #
+          CollectionRootPath: "/" # the path at which the Source Globus Collection is mounted (eg. '/home')
       MetadataExtractors:
         InstallationPath: ./extractors/
         SchemasLocation: ./schemas/
@@ -50,7 +48,7 @@ configs:
           GithubProject: LS_Metadata_reader
           Version: v0.2.8
           Executable: LS_Metadata_reader
-          Checksum: e8a2abc7a0d8759edf4559e27879b7977000a868a2f7d39b7804ff5e5c0d1559 
+          Checksum: e8a2abc7a0d8759edf4559e27879b7977000a868a2f7d39b7804ff5e5c0d1559
           ChecksumAlg: sha256
           CommandLineTemplate: "-i '{{.SourceFolder}}' -o '{{.OutputFile}}'"
           Methods:
@@ -59,7 +57,7 @@ configs:
             Url: https://raw.githubusercontent.com/osc-em/OSCEM_Schemas/refs/heads/any_fix/project/spa/jsonschema/oscem_schemas_spa.schema.json
           - Name: Cellular Tomography
             Schema: oscem_cellular_tomo.json
-            Url: https://raw.githubusercontent.com/osc-em/OSCEM_Schemas/refs/heads/any_fix/project/cellular_tomo/jsonschema/oscem_schemas_cellular_tomo.schema.json      
+            Url: https://raw.githubusercontent.com/osc-em/OSCEM_Schemas/refs/heads/any_fix/project/cellular_tomo/jsonschema/oscem_schemas_cellular_tomo.schema.json
           - Name: Tomography
             Schema: oscem_tomo.json
             Url: https://raw.githubusercontent.com/osc-em/OSCEM_Schemas/refs/heads/any_fix/project/subtomo/jsonschema/oscem_schemas_subtomo.schema.json
@@ -67,6 +65,7 @@ configs:
             Schema: oscem_env_tomo.json
             Url: https://raw.githubusercontent.com/osc-em/OSCEM_Schemas/refs/heads/any_fix/project/env_tomo/jsonschema/oscem_schemas_env_tomo.schema.json
       WebServer:
+        BaseURL: "${INGESTOR_URL}"
         Auth:
           Disable: true
           Frontend:
@@ -75,20 +74,20 @@ configs:
           SessionDuration: 28800
           OAuth2:
             ClientID: "ingestor"
-            RedirectURL: "${KEYCLOAK_URL}callback"
+            RedirectURL: "${INGESTOR_URL}/callback"
             Scopes:
               - email
           OIDC:
-            IssuerURL: "${KEYCLOAK_URL}/realms/facility"
+            IssuerURL: "${KEYCLOAK_URL}/realms/${KEYCLOAK_REALM}"
           JWT:
             UseJWKS: true
-            JwksURL: "${KEYCLOAK_URL}/realms/facility/protocol/openid-connect/certs"
+            JwksURL: "${KEYCLOAK_URL}/realms/${KEYCLOAK_REALM}/protocol/openid-connect/certs"
             JwksSignatureMethods:
               - RS256
           RBAC:
-            AdminRole: "FACILITY-ingestor-admin"
-            CreateModifyTasksRole: "FACILITY-ingestor-write"
-            ViewTasksRole: "FACILITY-ingestor-read"
+            AdminRole: "ingestor-admin"
+            CreateModifyTasksRole: "ingestor-write"
+            ViewTasksRole: "ingestor-read"
         Paths:
           CollectionLocation: "/mnt/collection_location"
         MetadataExtJobs:
@@ -96,4 +95,6 @@ configs:
           QueueSize: 200
         Other:
           Port: 8080
-          LogLevel: Info
+          LogLevel: Debug
+          BackendAddress: ${SCICAT_BACKEND_URL}
+          DisableServiceAccountCheck: true
