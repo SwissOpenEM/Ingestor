@@ -62,7 +62,7 @@ The following environment variables need to be set (e.g. using an `.env` file):
 | `HOST_COLLECTION_PATH` | Path to folder on the host system where dataset are stored. Can also be a mounted folder.                    | `/mnt/datasets`                        |
 | `KEYCLOAK_URL`         | Url to keycloak instance used with Scicat                                                                    | `https://kc.psi.ch`                    |
 | `SCICAT_FRONTEND_URL`  | Url to Scicat brontend                                                                                       | `https://discovery.psi.ch`             |
-| `SCICAT_BACKEND_URL`   | Url to Scicat backend                                                                                        | `https://dacat.psi.ch`                 |
+| `SCICAT_BACKEND_URL`   | Url to Scicat backend                                                                                        | `https://scicat.psi.ch`                |
 | `INGESTOR_SERVICE_USER_NAME` | A service account used *only* for the (direct) Globus transfer method for marking datasets archivable  | `dataset-admin`                        |
 | `INGESTOR_SERVICE_USER_PASS` | Same as above, but the password of the service user                                                    | `password`                             |
 
@@ -83,7 +83,7 @@ See [configs/openem-ingestor-config.yaml](configs/openem-ingestor-config.yaml) f
 
 ### Summary
 
-The server can be setup with an SSO provider using OAuth2 AuthZ protocol with the OIDC AuthN extension in order to verify the user identity and create a session for them. 
+The server can be setup with an SSO provider using OAuth2 AuthZ protocol with the OIDC AuthN extension in order to verify the user identity and create a session for them.
 
 ### Technical details
 
@@ -108,14 +108,14 @@ The server can be setup with an SSO provider using OAuth2 AuthZ protocol with th
     - Valid redirect URIs: `*`
     - Valid post logout redirect URIs: `*`
     - Add the following roles:
-      - FACILITY-ingestor-read
-      - FACILITY-ingestor-write
-      - FACILITY-ingestor-admin
+      - ingestor-read
+      - ingestor-write
+      - ingestor-admin
 4. In the same realm, create a user:
     - username: `test`
     - password: `test`
     - email: `test@test.test`
-    - Role mapping: assign `FACILITY-ingestor-read`, `FACILITY-ingestor-write`
+    - Role mapping: assign `ingestor-read`, `ingestor-write`
 5. Make sure you have the following section in your ingestor config file:
 
 ```yaml
@@ -131,13 +131,13 @@ WebServerAuth:
     IssuerURL: "http://[KEYCLOAK_URL]/realms/facility"
   JWT:
     UseJWKS: true
-    JwksURL: "http://[KEYCLOAK_URL]/realms/facility/protocol/openid-connect/certs"
+    JwksURL: "http://[KEYCLOAK_URL]/realms/[REALM]/protocol/openid-connect/certs"
     JwksSignatureMethods:
       - RS256
   RBAC:
-    AdminRole: "FACILITY-ingestor-admin"
-    CreateModifyTasksRole: "FACILITY-ingestor-write"
-    ViewTasksRole: "FACILITY-ingestor-read"
+    AdminRole: "ingestor-admin"
+    CreateModifyTasksRole: "ingestor-write"
+    ViewTasksRole: "ingestor-read"
 ```
 
 6. To test if the auth works, go to [http://localhost:8888/login](http://localhost:8888/login) (if you haven't changed the defaults)

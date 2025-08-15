@@ -92,7 +92,7 @@ func NewIngestorWebServer(version string, tq *core.TaskQueue, eh *metadataextrac
 	)
 
 	if tq.ServiceUser == nil && !ws.DisableServiceAccountCheck {
-		panic(fmt.Errorf("no service account was set"))
+		panic(fmt.Errorf("no service account was set. Set INGESTOR_SERVICE_USER_NAME and INGESTOR_SERVICE_USER_PASSWORD environment variables."))
 	}
 
 	return &IngestorWebServerImplemenation{
