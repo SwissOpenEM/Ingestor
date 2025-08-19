@@ -10,7 +10,7 @@ require (
 	github.com/alitto/pond/v2 v2.3.2
 	github.com/getkin/kin-openapi v0.131.0
 	github.com/gin-contrib/cors v1.7.2
-	github.com/gin-gonic/gin v1.10.0
+	github.com/gin-gonic/gin v1.10.1
 	github.com/go-test/deep v1.0.8
 	github.com/golang-jwt/jwt/v5 v5.2.1
 	github.com/google/go-github v17.0.0+incompatible
