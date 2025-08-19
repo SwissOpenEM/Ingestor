@@ -28,8 +28,8 @@ github.com/Netflix/go-expect v0.0.0-20220104043353-73e0943537d2/go.mod h1:HBCaDe
 github.com/RaveNoX/go-jsoncommentstrip v1.0.0/go.mod h1:78ihd09MekBnJnxpICcwzCMzGrKSKYe4AqU6PDYYpjk=
 github.com/SwissOpenEM/globus v0.1.2 h1:TMe8UNVSW4DO+MTb0sPixiBwD+49g9nvgjRq8jGdJFE=
 github.com/SwissOpenEM/globus v0.1.2/go.mod h1:HiMwPdtUdztPpnA0TamNWBBRPGYjEJWXSRUIV5vjqXc=
-github.com/SwissOpenEM/globus-transfer-service v0.0.0-20250424094725-4d3f951a7e7e h1:03UPxGms8JKWbTnFocYg9B1oTzyFrZKKDItAUxElRII=
-github.com/SwissOpenEM/globus-transfer-service v0.0.0-20250424094725-4d3f951a7e7e/go.mod h1:fE6GuOyc7FBusuua+azAublbfOxnwufW2bqyD4zqWgI=
+github.com/SwissOpenEM/globus-transfer-service v0.2.2 h1:3z859DK0+N9VLV2yXPVs9r/xZgo4Ez3dD4zHbLg9gPY=
+github.com/SwissOpenEM/globus-transfer-service v0.2.2/go.mod h1:qAYTMma/haSUMCavtsJM6uerOZK8LbjC1gcaWA56Pec=
 github.com/alitto/pond/v2 v2.3.2 h1:EAwwpi4Re7OE7poKDHqIUhJlq/mUBmtZN2PmDYCgRLE=
 github.com/alitto/pond/v2 v2.3.2/go.mod h1:xkjYEgQ05RSpWdfSd1nM3OVv7TBhLdy7rMp3+2Nq+yE=
 github.com/andybalholm/brotli v1.0.5 h1:8uQZIdzKmjc/iuPu7O2ioW48L81FgatrcpfFmiq/cCs=
