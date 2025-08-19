@@ -48,7 +48,6 @@ The necessary fields to adapt are
 - `OIDC.IssuerURL`: replace `[KEYCLOAK_URL]` with URL of keycloak instance to be used
 - `JwksURL`: replace `[KEYCLOAK_URL]` with URL of keycloak instance to be used
 
-
 ### Installing Metadata Extractors
 
 Metadata extractors are external binaries called by the ingestor with a command line template.
@@ -84,10 +83,9 @@ When installing extractors manually, the executable is expected to be in the fol
 `{{.InstallationPath}}/{{.GithubOrg}}/{{.GithubProject}}/{{.Version}}/{{.Executable}}`
 
 #### 2. Download from Github
-  
+
 Alternatively, the ingestor can download metadata extractors from github releases if `DownloadMissingExtractors` is set to `true`. It will download and unpack the respective package into the correct folder, as well as verify the checksum of the downloaded package.
 The packages needs to contain the architecture designator in their name, e.g. `LS_Metadata_reader_Linux_x86_64.tar.gz`
-
 
 ### Metadata Schemas
 
@@ -100,5 +98,5 @@ Example config:
       - Name: Single Particle
         Schema: oscem_schemas_spa.schema.json
         Url: https://raw.githubusercontent.com/osc-em/OSCEM_Schemas/refs/heads/main/project/spa/jsonschema/oscem_schemas_spa.schema.json
-     
+
 ```
