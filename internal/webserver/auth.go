@@ -245,16 +245,45 @@ func (i *IngestorWebServerImplemenation) GetUserinfo(ctx context.Context, reques
 
 	userSession := sessions.DefaultMany(ginCtx, "user")
 	expiresAtString, ok1 := userSession.Get("expires_at").(string)
+	if !ok1 {
+		log().Debug("error", "expiresAtString", expiresAtString)
+	}
 	email, ok2 := userSession.Get("email").(string)
+	if !ok2 {
+		log().Debug("error", "email", email)
+	}
 	profile, ok3 := userSession.Get("profile").(string)
+	if !ok3 {
+		log().Debug("error", "profile", profile)
+	}
 	subject, ok4 := userSession.Get("subject").(string)
+	if !ok4 {
+		log().Debug("error", "subject", subject)
+	}
 	roles, ok5 := userSession.Get("roles").([]string)
+	if !ok5 {
+		log().Debug("error", "roles", roles)
+	}
 	preferredUsername, ok6 := userSession.Get("preferred_username").(string)
+	if !ok6 {
+		log().Debug("error", "preferredUsername", preferredUsername)
+	}
 	name, ok7 := userSession.Get("name").(string)
+	if !ok7 {
+		log().Debug("error", "name", name)
+	}
 	familyName, ok8 := userSession.Get("family_name").(string)
+	if !ok8 {
+		log().Debug("error", "familyName", familyName)
+	}
+
 	givenName, ok9 := userSession.Get("given_name").(string)
+	if !ok9 {
+		log().Debug("error", "expiresAtString", expiresAtString)
+	}
 
 	if !(ok1 && ok2 && ok3 && ok4 && ok5 && ok6 && ok7 && ok8 && ok9) {
+		log().Error("Getting user info failed")
 		return GetUserinfo200JSONResponse{LoggedIn: false}, nil
 	}
 
@@ -264,6 +293,7 @@ func (i *IngestorWebServerImplemenation) GetUserinfo(ctx context.Context, reques
 	}
 
 	if expiresAt.Before(time.Now()) {
+		log().Error("Session expired:", "exp", expiresAt, "now", time.Now())
 		return GetUserinfo200JSONResponse{LoggedIn: false}, nil
 	}
 
