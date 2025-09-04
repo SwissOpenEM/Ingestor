@@ -119,7 +119,8 @@ jobs:
         with:
           context: ./
           file: ./Dockerfile
-          push: ${{ github.event_name != 'pull_request' }}
+          # push: ${{ github.event_name != 'pull_request' }}
+          push:  true
           build-args: |
             VERSION=${{ steps.meta.outputs.tags }}
           tags: ${{ steps.meta.outputs.tags }}
