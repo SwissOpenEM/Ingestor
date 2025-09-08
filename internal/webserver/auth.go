@@ -128,8 +128,11 @@ func (i *IngestorWebServerImplemenation) GetCallback(ctx context.Context, reques
 	// userInfo
 	userInfo, err := i.oidcProvider.UserInfo(ctx, tokenSource)
 	if err != nil {
+		log().Error(("Failed to get userInfo"))
 		return GetCallback500TextResponse(err.Error()), nil
 	}
+
+	log().Debug("Userinfo", "email", userInfo.Email)
 
 	// get id token (not sure if needed here?)
 	rawIdToken, ok := oauthToken.Extra("id_token").(string)
@@ -159,6 +162,7 @@ func (i *IngestorWebServerImplemenation) GetCallback(ctx context.Context, reques
 
 	// set user session cookie
 	userSession.Set("expires_at", time.Now().Add(time.Second*time.Duration(i.sessionDuration)).Format(time.RFC3339Nano))
+	log().Debug("UserSession", "expires_at", userSession.Get("expires_at"))
 	userSession.Set("email", userInfo.Email)
 	userSession.Set("profile", userInfo.Profile)
 	userSession.Set("subject", userInfo.Subject)
