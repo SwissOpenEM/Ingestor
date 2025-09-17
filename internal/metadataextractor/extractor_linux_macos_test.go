@@ -29,9 +29,9 @@ func TestExtractorHandler_ExtractMetadata(t *testing.T) {
 		outputFolder string
 	}
 	type args struct {
-		extractor_name string
-		folder         string
-		output_file    string
+		extractorName string
+		folder        string
+		outputFile    string
 	}
 	tests := []struct {
 		name    string
@@ -52,9 +52,9 @@ func TestExtractorHandler_ExtractMetadata(t *testing.T) {
 				},
 			},
 			args: args{
-				extractor_name: "echoExtractor",
-				folder:         "./",
-				output_file:    path.Join(os.TempDir(), "output.txt"),
+				extractorName: "echoExtractor",
+				folder:        "./",
+				outputFile:    path.Join(os.TempDir(), "output.txt"),
 			},
 			want:    "{}\n", // size of a directory on linux
 			wantErr: false,
@@ -69,7 +69,7 @@ func TestExtractorHandler_ExtractMetadata(t *testing.T) {
 				timeout:      time.Minute,
 			}
 			ctx := context.Background()
-			got, err := e.ExtractMetadata(ctx, tt.args.extractor_name, tt.args.folder, tt.args.output_file, stdout_callback, stderr_callback)
+			got, err := e.ExtractMetadata(ctx, tt.args.extractorName, tt.args.folder, tt.args.outputFile, stdoutCallback, stderrCallback)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ExtractorHandler.ExtractMetadata() error = %v, wantErr %v", err, tt.wantErr)
 				return

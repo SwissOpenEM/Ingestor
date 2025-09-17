@@ -18,7 +18,7 @@ import (
 	"golang.org/x/oauth2"
 )
 
-func GetRedirectUrl(ctx context.Context, globusAuthConf *oauth2.Config, secureCookies bool) (string, error) {
+func GetRedirectURL(ctx context.Context, globusAuthConf *oauth2.Config, secureCookies bool) (string, error) {
 	// get sessions
 	ginCtx, ok := ctx.(*gin.Context)
 	if !ok {
@@ -157,7 +157,7 @@ func getNewTokens(ctx *gin.Context, globusConf *oauth2.Config, refreshToken stri
 	return t.AccessToken, t.RefreshToken, expiry, nil
 }
 
-func revokeToken(clientId string, clientSecret string, token string) error {
+func revokeToken(clientID string, clientSecret string, token string) error {
 	client := http.DefaultClient
 	req, err := http.NewRequest("POST", "https://auth.globus.org/v2/oauth2/token/revoke", nil)
 	if err != nil {
@@ -168,9 +168,9 @@ func revokeToken(clientId string, clientSecret string, token string) error {
 	q := req.URL.Query()
 	q.Set("token", token)
 	if clientSecret == "" {
-		q.Set("client_id", clientId)
+		q.Set("client_id", clientID)
 	} else {
-		req.Header.Add("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte(clientId+":"+clientSecret)))
+		req.Header.Add("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte(clientID+":"+clientSecret)))
 	}
 	req.URL.RawQuery = q.Encode()
 

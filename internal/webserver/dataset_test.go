@@ -181,7 +181,7 @@ func TestDatasetControllerBrowseFilesystem_ExampleListInCollection(t *testing.T)
 
 	mismatchedFolders := []string{}
 	for _, folder := range resp200.Folders {
-		if slices.Contains(testFolders, folder.Name); !ok {
+		if !slices.Contains(testFolders, folder.Name) {
 			mismatchedFolders = append(mismatchedFolders, folder.Name)
 		}
 	}

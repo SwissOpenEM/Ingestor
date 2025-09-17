@@ -20,7 +20,7 @@ import (
 	"github.com/paulscherrerinstitute/scicat-cli/v3/datasetUtils"
 )
 
-const MAX_FILES = 400000
+const MaxFiles = 400000
 
 func createLocalSymlinkCallbackForFileLister(skipSymlinks *string, skippedLinks *uint) func(symlinkPath string, sourceFolder string) (bool, error) {
 	scanner := bufio.NewScanner(os.Stdin)
@@ -124,41 +124,41 @@ func AddDatasetToScicat(
 	datasetFolder string,
 	storageLocation string,
 	userToken string,
-	scicatUrl string,
+	scicatURL string,
 	isOnCentralDisk bool,
-) (datasetId string, totalSize int64, fileList []datasetIngestor.Datafile, username string, err error) {
-	var http_client = &http.Client{
+) (datasetID string, totalSize int64, fileList []datasetIngestor.Datafile, username string, err error) {
+	var httpClient = &http.Client{
 		Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}},
 		Timeout:   120 * time.Second}
 
-	SCICAT_API_URL := scicatUrl
+	ScicatAPIURL := scicatURL
 
 	const TAPECOPIES = 2 // dummy value, unused
 	const DATASETFILELISTTXT = ""
 
-	var skipSymlinks string = "dA" // skip all simlinks
+	var skipSymlinks = "dA" // skip all simlinks
 
 	user := map[string]string{
 		"accessToken": userToken,
 	}
 
-	fullUser, accessGroups, err := datasetUtils.GetUserInfoFromToken(http_client, SCICAT_API_URL, userToken)
+	fullUser, accessGroups, err := datasetUtils.GetUserInfoFromToken(httpClient, ScicatAPIURL, userToken)
 	if err != nil {
-		return datasetId, totalSize, fileList, "", err
+		return datasetID, totalSize, fileList, "", err
 	}
 
 	if keys := datasetIngestor.CollectIllegalKeys(metaDataMap); len(keys) > 0 {
-		return datasetId, totalSize, fileList, "", errors.New(ErrIllegalKeys + ": \"" + strings.Join(keys, "\", \"") + "\"")
+		return datasetID, totalSize, fileList, "", errors.New(ErrIllegalKeys + ": \"" + strings.Join(keys, "\", \"") + "\"")
 	}
 
 	_, err = datasetIngestor.CheckUserAndOwnerGroup(user, accessGroups, metaDataMap)
 	if err != nil {
-		return datasetId, totalSize, fileList, "", err
+		return datasetID, totalSize, fileList, "", err
 	}
 
-	err = datasetIngestor.CheckMetadataValidity(http_client, SCICAT_API_URL, user["accessToken"], metaDataMap)
+	err = datasetIngestor.CheckMetadataValidity(httpClient, ScicatAPIURL, user["accessToken"], metaDataMap)
 	if err != nil {
-		return datasetId, totalSize, fileList, "", err
+		return datasetID, totalSize, fileList, "", err
 	}
 
 	var skippedLinks uint = 0
@@ -169,19 +169,19 @@ func AddDatasetToScicat(
 	// collect (local) files
 	fileList, startTime, endTime, owner, numFiles, totalSize, err := datasetIngestor.GetLocalFileList(datasetFolder, DATASETFILELISTTXT, localSymlinkCallback, localFilepathFilterCallback)
 	if err != nil {
-		return datasetId, totalSize, fileList, "", err
+		return datasetID, totalSize, fileList, "", err
 	}
 
 	// size & filecount checks
 	if totalSize == 0 {
-		return datasetId, totalSize, fileList, "", errors.New("can't ingest: the total size of the dataset is 0")
+		return datasetID, totalSize, fileList, "", errors.New("can't ingest: the total size of the dataset is 0")
 	}
-	if numFiles > MAX_FILES {
-		return datasetId, totalSize, fileList, "", fmt.Errorf("can't ingest: the number of files (%d) exceeds the max. allowed (%d)", numFiles, MAX_FILES)
+	if numFiles > MaxFiles {
+		return datasetID, totalSize, fileList, "", fmt.Errorf("can't ingest: the number of files (%d) exceeds the max. allowed (%d)", numFiles, MaxFiles)
 	}
 
 	originalMetaDataMap := map[string]string{}
-	datasetIngestor.UpdateMetaData(http_client, SCICAT_API_URL, user, originalMetaDataMap, metaDataMap, startTime, endTime, owner, TAPECOPIES)
+	datasetIngestor.UpdateMetaData(httpClient, ScicatAPIURL, user, originalMetaDataMap, metaDataMap, startTime, endTime, owner, TAPECOPIES)
 
 	metaDataMap["datasetlifecycle"] = map[string]interface{}{}
 	metaDataMap["datasetlifecycle"].(map[string]interface{})["isOnCentralDisk"] = isOnCentralDisk
@@ -194,15 +194,15 @@ func AddDatasetToScicat(
 	metaDataMap["datasetlifecycle"].(map[string]interface{})["storageLocation"] = storageLocation
 
 	// NOTE: scicat-cli considers "ingestion" as just inserting the dataset into scicat and adding the orig datablocks
-	datasetId, err = datasetIngestor.IngestDataset(http_client, SCICAT_API_URL, metaDataMap, fileList, user)
+	datasetID, err = datasetIngestor.IngestDataset(httpClient, ScicatAPIURL, metaDataMap, fileList, user)
 
 	// TODO: add attachments here if it's going to be needed
 
-	return datasetId, totalSize, fileList, fullUser["username"], err
+	return datasetID, totalSize, fileList, fullUser["username"], err
 }
 
 func TransferDataset(
-	task_context context.Context,
+	taskContext context.Context,
 	transferTask *transfertask.TransferTask,
 	serviceUser *UserCreds,
 	config Config,
@@ -221,18 +221,18 @@ func TransferDataset(
 		if !ok {
 			return fmt.Errorf("missing refresh token for s3 upload")
 		}
-		expires_in, ok := transferTask.GetTransferObject("expires_in").(int)
+		expiresIn, ok := transferTask.GetTransferObject("expires_in").(int)
 		if !ok {
 			return fmt.Errorf("missing expiration for s3 upload token")
 		}
 
-		tokenSource := s3upload.CreateTokenSource(context.Background(), config.Transfer.S3.ClientID, config.Transfer.S3.TokenUrl, accessToken, refreshToken, expires_in)
+		tokenSource := s3upload.CreateTokenSource(context.Background(), config.Transfer.S3.ClientID, config.Transfer.S3.TokenURL, accessToken, refreshToken, expiresIn)
 
-		err = s3upload.UploadS3(task_context, transferTask, config.Transfer.S3, tokenSource, notifier)
+		err = s3upload.UploadS3(taskContext, transferTask, config.Transfer.S3, tokenSource, notifier)
 
 		if err == nil {
 			archivalJobInfo := transferTask.GetArchivalJobInfo()
-			err = s3upload.FinalizeUpload(task_context, config.Transfer.S3, transferTask.GetDatasetId(), archivalJobInfo.OwnerUser, archivalJobInfo.OwnerGroup, archivalJobInfo.ContactEmail, archivalJobInfo.AutoArchive, tokenSource)
+			err = s3upload.FinalizeUpload(taskContext, config.Transfer.S3, transferTask.GetDatasetID(), archivalJobInfo.OwnerUser, archivalJobInfo.OwnerGroup, archivalJobInfo.ContactEmail, archivalJobInfo.AutoArchive, tokenSource)
 		}
 
 	case transfertask.TransferGlobus:
@@ -256,7 +256,7 @@ func TransferDataset(
 			bytesTotal += int64(file.Size)
 		}
 
-		transferNotifier := transfertask.NewTransferNotifier(bytesTotal, transferTask.DatasetFolder.Id, notifier, transferTask)
+		transferNotifier := transfertask.NewTransferNotifier(bytesTotal, transferTask.DatasetFolder.ID, notifier, transferTask)
 
 		transferTask.TransferStarted()
 		err = globustransfer.TransferFiles(
@@ -265,9 +265,9 @@ func TransferDataset(
 			config.Transfer.Globus.CollectionRootPath,
 			config.Transfer.Globus.DestinationCollectionID,
 			config.Transfer.Globus.DestinationTemplate,
-			transferTask.GetDatasetId(),
+			transferTask.GetDatasetID(),
 			username,
-			task_context,
+			taskContext,
 			datasetFolder,
 			files,
 			&transferNotifier,
@@ -276,7 +276,7 @@ func TransferDataset(
 			return err
 		}
 
-		err = FinalizeTransfer(serviceUser, config, transferTask.GetDatasetId(), transferTask.GetArchivalJobInfo())
+		err = FinalizeTransfer(serviceUser, config, transferTask.GetDatasetID(), transferTask.GetArchivalJobInfo())
 		if err != nil {
 			return err
 		}
@@ -288,19 +288,19 @@ func TransferDataset(
 	return err
 }
 
-func FinalizeTransfer(serviceUser *UserCreds, config Config, datasetId string, archivalJobInfo transfertask.ArchivalJobInfo) error {
-	var http_client = &http.Client{
+func FinalizeTransfer(serviceUser *UserCreds, config Config, datasetID string, archivalJobInfo transfertask.ArchivalJobInfo) error {
+	var httpClient = &http.Client{
 		Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}},
 		Timeout:   120 * time.Second}
 	// mark dataset archivable
 	if serviceUser == nil {
 		return fmt.Errorf("no service user was set, can't mark dataset as archivable")
 	}
-	user, _, err := datasetUtils.AuthenticateUser(http_client, config.Scicat.Host, serviceUser.Username, serviceUser.Password, false)
+	user, _, err := datasetUtils.AuthenticateUser(httpClient, config.Scicat.Host, serviceUser.Username, serviceUser.Password, false)
 	if err != nil {
 		return err
 	}
-	err = datasetIngestor.MarkFilesReady(http_client, config.Scicat.Host, datasetId, user)
+	err = datasetIngestor.MarkFilesReady(httpClient, config.Scicat.Host, datasetID, user)
 	if err != nil {
 		return err
 	}
@@ -313,7 +313,7 @@ func FinalizeTransfer(serviceUser *UserCreds, config Config, datasetId string, a
 	if archivalJobInfo.AutoArchive {
 		copies := 1
 		var executionTime time.Time // unspecified implies immediate execution
-		_, err = datasetUtils.CreateArchivalJob(http_client, config.Scicat.Host, user, archivalJobInfo.OwnerGroup, []string{datasetId}, &copies, &executionTime)
+		_, err = datasetUtils.CreateArchivalJob(httpClient, config.Scicat.Host, user, archivalJobInfo.OwnerGroup, []string{datasetID}, &copies, &executionTime)
 	}
 	return err
 }

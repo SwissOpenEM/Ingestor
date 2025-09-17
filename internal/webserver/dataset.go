@@ -207,7 +207,7 @@ func (i *IngestorWebServerImplemenation) DatasetControllerIngestDataset(ctx cont
 
 	// do catalogue insertion
 	isOnCentralDisk := i.taskQueue.GetTransferMethod() == transfertask.TransferNone
-	datasetId, _, fileList, username, err := core.AddDatasetToScicat(metadata, folderPath, i.taskQueue.Config.Transfer.StorageLocation, request.Body.UserToken, i.taskQueue.Config.Scicat.Host, isOnCentralDisk)
+	datasetID, _, fileList, username, err := core.AddDatasetToScicat(metadata, folderPath, i.taskQueue.Config.Transfer.StorageLocation, request.Body.UserToken, i.taskQueue.Config.Scicat.Host, isOnCentralDisk)
 	if err != nil {
 		return DatasetControllerIngestDataset400TextResponse(err.Error()), nil
 	}
@@ -219,12 +219,12 @@ func (i *IngestorWebServerImplemenation) DatasetControllerIngestDataset(ctx cont
 	}
 
 	// add transfer job
-	var taskId uuid.UUID
+	var taskID uuid.UUID
 	switch i.taskQueue.GetTransferMethod() {
 	case transfertask.TransferGlobus:
-		taskId, err = i.addGlobusTransferTask(ctx, datasetId, fileList, folderPath, username, ownerUser, ownerGroup, autoArchive, contactEmail)
+		taskID, err = i.addGlobusTransferTask(ctx, datasetID, fileList, folderPath, username, ownerUser, ownerGroup, autoArchive, contactEmail)
 	case transfertask.TransferExtGlobus:
-		jobId, err := i.addExtGlobusTransferTask(ctx, datasetId, fileList, autoArchive, request.Body.UserToken)
+		jobID, err := i.addExtGlobusTransferTask(ctx, datasetID, fileList, autoArchive, request.Body.UserToken)
 		if err != nil {
 			if reqErr, ok := err.(*extglobusservice.RequestError); ok {
 				if reqErr.Code() < 500 {
@@ -234,12 +234,12 @@ func (i *IngestorWebServerImplemenation) DatasetControllerIngestDataset(ctx cont
 			return DatasetControllerIngestDataset400TextResponse(fmt.Sprintf("Transfer request - unknown error: %s", err.Error())), nil
 		}
 		return DatasetControllerIngestDataset200JSONResponse{
-			DatasetId:  datasetId,
-			TransferId: getPointerOrNil(jobId),
+			DatasetId:  datasetID,
+			TransferId: getPointerOrNil(jobID),
 			Status:     getStrPointerOrNil("started"),
 		}, nil
 	case transfertask.TransferS3:
-		taskId, err = i.addS3TransferTask(ctx, datasetId, fileList, folderPath, ownerUser, ownerGroup, autoArchive, contactEmail, request.Body.UserToken)
+		taskID, err = i.addS3TransferTask(ctx, datasetID, fileList, folderPath, ownerUser, ownerGroup, autoArchive, contactEmail, request.Body.UserToken)
 	case transfertask.TransferNone:
 		if autoArchive {
 			user, _, err := datasetUtils.GetUserInfoFromToken(http.DefaultClient, i.taskQueue.Config.Scicat.Host, request.Body.UserToken)
@@ -248,7 +248,7 @@ func (i *IngestorWebServerImplemenation) DatasetControllerIngestDataset(ctx cont
 			}
 
 			copies := 1
-			_, err = datasetUtils.CreateArchivalJob(http.DefaultClient, i.taskQueue.Config.Scicat.Host, user, ownerGroup, []string{datasetId}, &copies, nil)
+			_, err = datasetUtils.CreateArchivalJob(http.DefaultClient, i.taskQueue.Config.Scicat.Host, user, ownerGroup, []string{datasetID}, &copies, nil)
 			if err != nil {
 				return nil, err
 			}
@@ -256,7 +256,7 @@ func (i *IngestorWebServerImplemenation) DatasetControllerIngestDataset(ctx cont
 
 		// return response
 		return DatasetControllerIngestDataset200JSONResponse{
-			DatasetId: datasetId,
+			DatasetId: datasetID,
 			Status:    getStrPointerOrNil("finished"),
 		}, nil
 	}
@@ -269,22 +269,22 @@ func (i *IngestorWebServerImplemenation) DatasetControllerIngestDataset(ctx cont
 	}
 
 	// schedule transfer job
-	err = i.taskQueue.ScheduleTask(taskId)
+	err = i.taskQueue.ScheduleTask(taskID)
 	if err != nil {
 		return DatasetControllerIngestDataset400TextResponse(fmt.Sprintf("error when scheduling task: %s", err.Error())), nil
 	}
 
 	status := "started"
-	idString := taskId.String()
+	idString := taskID.String()
 	return DatasetControllerIngestDataset200JSONResponse{
-		DatasetId:  datasetId,
+		DatasetId:  datasetID,
 		TransferId: getPointerOrNil(idString),
 		Status:     &status,
 	}, nil
 }
 
-func (i *IngestorWebServerImplemenation) addGlobusTransferTask(ctx context.Context, datasetId string, fileList []datasetIngestor.Datafile, folderPath string, username string, ownerUser string, ownerGroup string, autoArchive bool, contactEmail string) (uuid.UUID, error) {
-	taskId := uuid.New()
+func (i *IngestorWebServerImplemenation) addGlobusTransferTask(ctx context.Context, datasetID string, fileList []datasetIngestor.Datafile, folderPath string, username string, ownerUser string, ownerGroup string, autoArchive bool, contactEmail string) (uuid.UUID, error) {
+	taskID := uuid.New()
 	transferObjects := map[string]interface{}{}
 
 	client, err := globusauth.GetClientFromSession(ctx, i.globusAuthConf, i.sessionDuration, i.secureCookies)
@@ -297,14 +297,14 @@ func (i *IngestorWebServerImplemenation) addGlobusTransferTask(ctx context.Conte
 	transferObjects["globus_client"] = client
 	transferObjects["username"] = username
 
-	err = i.taskQueue.AddTransferTask(datasetId, fileList, taskId, folderPath, ownerUser, ownerGroup, contactEmail, autoArchive, transferObjects)
+	err = i.taskQueue.AddTransferTask(datasetID, fileList, taskID, folderPath, ownerUser, ownerGroup, contactEmail, autoArchive, transferObjects)
 	if err != nil {
 		return uuid.UUID{}, err
 	}
-	return taskId, nil
+	return taskID, nil
 }
 
-func (i *IngestorWebServerImplemenation) addExtGlobusTransferTask(ctx context.Context, datasetId string, fileList []datasetIngestor.Datafile, autoArchive bool, scicatToken string) (string, error) {
+func (i *IngestorWebServerImplemenation) addExtGlobusTransferTask(ctx context.Context, datasetID string, fileList []datasetIngestor.Datafile, autoArchive bool, scicatToken string) (string, error) {
 	filesToTransfer := make([]extglobusservice.FileToTransfer, len(fileList))
 	for i, file := range fileList {
 		filesToTransfer[i].Path = file.Path
@@ -312,33 +312,33 @@ func (i *IngestorWebServerImplemenation) addExtGlobusTransferTask(ctx context.Co
 	}
 	return extglobusservice.RequestExternalTransferTask(
 		ctx,
-		i.taskQueue.Config.Transfer.ExtGlobus.TransferServiceUrl,
+		i.taskQueue.Config.Transfer.ExtGlobus.TransferServiceURL,
 		scicatToken,
 		i.taskQueue.Config.Transfer.ExtGlobus.SrcFacility,
 		i.taskQueue.Config.Transfer.ExtGlobus.DstFacility,
-		datasetId,
+		datasetID,
 		&filesToTransfer,
 	)
 }
 
-func (i *IngestorWebServerImplemenation) addS3TransferTask(ctx context.Context, datasetId string, fileList []datasetIngestor.Datafile, folderPath string, ownerUser string, ownerGroup string, autoArchive bool, contactEmail string, scicatToken string) (uuid.UUID, error) {
-	taskId := uuid.New()
+func (i *IngestorWebServerImplemenation) addS3TransferTask(ctx context.Context, datasetID string, fileList []datasetIngestor.Datafile, folderPath string, ownerUser string, ownerGroup string, autoArchive bool, contactEmail string, scicatToken string) (uuid.UUID, error) {
+	taskID := uuid.New()
 	transferObjects := map[string]interface{}{}
 
 	// access and refresh token need be fetched at this point from the archiver backend since user token could expire
-	accessToken, refreshToken, expires_in, err := s3upload.GetTokens(ctx, i.taskQueue.Config.Transfer.S3.Endpoint, scicatToken)
+	accessToken, refreshToken, expiresIn, err := s3upload.GetTokens(ctx, i.taskQueue.Config.Transfer.S3.Endpoint, scicatToken)
 	if err != nil {
 		return uuid.UUID{}, err
 	}
 	transferObjects["accessToken"] = accessToken
 	transferObjects["refreshToken"] = refreshToken
-	transferObjects["expires_in"] = expires_in
+	transferObjects["expires_in"] = expiresIn
 
-	err = i.taskQueue.AddTransferTask(datasetId, fileList, taskId, folderPath, ownerUser, ownerGroup, contactEmail, autoArchive, transferObjects)
+	err = i.taskQueue.AddTransferTask(datasetID, fileList, taskID, folderPath, ownerUser, ownerGroup, contactEmail, autoArchive, transferObjects)
 	if err != nil {
 		return uuid.UUID{}, err
 	}
-	return taskId, nil
+	return taskID, nil
 }
 
 func safeSubslice[T any](s []T, start, end uint) []T {

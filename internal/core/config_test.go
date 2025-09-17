@@ -18,7 +18,7 @@ func createExpectedValidConfigS3() transfertask.TransferConfig {
 		ConcurrencyLimit: 10,
 		S3: transfertask.S3TransferConfig{
 			Endpoint:        "https://endpoint/api/v1",
-			TokenUrl:        "https://keycloak.localhost/realms/facility/protocol/openid-connect/token",
+			TokenURL:        "https://keycloak.localhost/realms/facility/protocol/openid-connect/token",
 			ClientID:        "archiver-service-api",
 			ChunkSizeMB:     64,
 			ConcurrentFiles: 4,
@@ -45,13 +45,13 @@ func createExpectedValidConfigGlobus() transfertask.TransferConfig {
 }
 
 func createExpectedValidConfig(transferConfig transfertask.TransferConfig) Config {
-	expected_scicat := ScicatConfig{
+	expectedScicat := ScicatConfig{
 		Host: "http://scicat:8080/api/v3",
 	}
 
-	expected_tranfer := transferConfig
+	expectedTransfer := transferConfig
 
-	expected_ws := wsconfig.WebServerConfig{
+	expectedWS := wsconfig.WebServerConfig{
 		AuthConf: wsconfig.AuthConf{
 			SessionDuration: 28800,
 			FrontendConf: wsconfig.FrontendConf{
@@ -94,30 +94,30 @@ func createExpectedValidConfig(transferConfig transfertask.TransferConfig) Confi
 		},
 	}
 
-	expected_LS_methods := []metadataextractor.MethodConfig{
+	expectedLSMethods := []metadataextractor.MethodConfig{
 		{
 			Name:   "Single Particle",
 			Schema: "singleParticleSchema.json",
-			Url:    "https://raw.githubusercontent.com/osc-em/OSCEM_Schemas/refs/heads/main/project/spa/jsonschema/oscem_schemas_spa.schema.json",
+			URL:    "https://raw.githubusercontent.com/osc-em/OSCEM_Schemas/refs/heads/main/project/spa/jsonschema/oscem_schemas_spa.schema.json",
 		},
 		{
 			Name:   "Cellular Tomography",
 			Schema: "cellularTomographySchema.json",
-			Url:    "https://raw.githubusercontent.com/osc-em/OSCEM_Schemas/refs/heads/main/project/cellular_tomo/jsonschema/oscem_schemas_cellular_tomo.schema.json",
+			URL:    "https://raw.githubusercontent.com/osc-em/OSCEM_Schemas/refs/heads/main/project/cellular_tomo/jsonschema/oscem_schemas_cellular_tomo.schema.json",
 		},
 		{
 			Name:   "Tomography",
 			Schema: "tomographySchema.json",
-			Url:    "https://raw.githubusercontent.com/osc-em/OSCEM_Schemas/refs/heads/main/project/subtomo/jsonschema/oscem_schemas_subtomo.schema.json",
+			URL:    "https://raw.githubusercontent.com/osc-em/OSCEM_Schemas/refs/heads/main/project/subtomo/jsonschema/oscem_schemas_subtomo.schema.json",
 		},
 		{
 			Name:   "Environmental Tomography",
 			Schema: "environmentalTomographySchema.json",
-			Url:    "https://raw.githubusercontent.com/osc-em/OSCEM_Schemas/refs/heads/main/project/env_tomo/jsonschema/oscem_schemas_env_tomo.schema.json",
+			URL:    "https://raw.githubusercontent.com/osc-em/OSCEM_Schemas/refs/heads/main/project/env_tomo/jsonschema/oscem_schemas_env_tomo.schema.json",
 		},
 	}
 
-	expected_meta := metadataextractor.ExtractorsConfig{
+	expectedMeta := metadataextractor.ExtractorsConfig{
 		Extractors: []metadataextractor.ExtractorConfig{
 			{
 				Name:                 "LS",
@@ -129,7 +129,7 @@ func createExpectedValidConfig(transferConfig transfertask.TransferConfig) Confi
 				ChecksumAlg:          "sha256",
 				CommandLineTemplate:  "-i '{{.SourceFolder}}' -o '{{.OutputFile}}' {{.AdditionalParameters}}",
 				AdditionalParameters: []string{"--param1=value1", "--param2=value2"},
-				Methods:              expected_LS_methods,
+				Methods:              expectedLSMethods,
 			},
 			{
 				Name:                "MS",
@@ -144,7 +144,7 @@ func createExpectedValidConfig(transferConfig transfertask.TransferConfig) Confi
 					{
 						Name:   "Material Science",
 						Schema: "some.json",
-						Url:    "https://url.com/some.json",
+						URL:    "https://url.com/some.json",
 					},
 				},
 			},
@@ -156,13 +156,13 @@ func createExpectedValidConfig(transferConfig transfertask.TransferConfig) Confi
 		Timeout:                   time.Minute * 4,
 	}
 
-	expected_config := Config{
-		MetadataExtractors: expected_meta,
-		Scicat:             expected_scicat,
-		Transfer:           expected_tranfer,
-		WebServer:          expected_ws,
+	expectedConfig := Config{
+		MetadataExtractors: expectedMeta,
+		Scicat:             expectedScicat,
+		Transfer:           expectedTransfer,
+		WebServer:          expectedWS,
 	}
-	return expected_config
+	return expectedConfig
 }
 
 func TestReadConfigS3(t *testing.T) {

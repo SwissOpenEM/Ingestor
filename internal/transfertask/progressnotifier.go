@@ -9,6 +9,6 @@ type ProgressNotifier interface {
 	OnTaskAdded(id uuid.UUID, folder string)
 	OnTaskRemoved(id uuid.UUID)
 	OnTaskFailed(id uuid.UUID, err error)
-	OnTaskCompleted(id uuid.UUID, seconds_elapsed int)
+	OnTaskCompleted(id uuid.UUID, secondsElapsed int)
 	OnTaskProgress(id uuid.UUID, percentage int)
 }

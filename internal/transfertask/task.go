@@ -20,8 +20,8 @@ const (
 )
 
 type TransferOptions struct {
-	S3_endpoint string
-	S3_Bucket   string
+	S3Endpoint  string
+	S3Bucket    string
 	Md5checksum bool
 }
 
@@ -73,7 +73,7 @@ type ArchivalJobInfo struct {
 
 type TransferTask struct {
 	DatasetFolder   DatasetFolder
-	datasetId       string
+	datasetID       string
 	fileList        []datasetIngestor.Datafile
 	archivalJobInfo ArchivalJobInfo
 	TransferMethod  TransferMethod
@@ -86,18 +86,18 @@ type TransferTask struct {
 }
 
 type Result struct {
-	Elapsed_seconds int
-	Dataset_PID     string
-	Error           error
+	ElapsedSeconds int
+	DatasetPID     string
+	Error          error
 }
 
-func CreateTransferTask(datasetId string, fileList []datasetIngestor.Datafile, datasetFolder DatasetFolder, datasetOwnerUser string, datasetOwnerGroup string, contactEmail string, autoArchive bool, transferMethod TransferMethod, transferObjects map[string]interface{}, cancel context.CancelFunc) TransferTask {
+func CreateTransferTask(datasetID string, fileList []datasetIngestor.Datafile, datasetFolder DatasetFolder, datasetOwnerUser string, datasetOwnerGroup string, contactEmail string, autoArchive bool, transferMethod TransferMethod, transferObjects map[string]interface{}, cancel context.CancelFunc) TransferTask {
 	totalBytes := int64(0)
 	for _, file := range fileList {
 		totalBytes += int64(file.Size)
 	}
 	return TransferTask{
-		datasetId:     datasetId,
+		datasetID:     datasetID,
 		fileList:      fileList,
 		DatasetFolder: datasetFolder,
 		archivalJobInfo: ArchivalJobInfo{
@@ -195,8 +195,8 @@ func (t *TransferTask) Cancelled(msg string) {
 	t.details.Message = msg
 }
 
-func (t *TransferTask) GetDatasetId() string {
-	return t.datasetId
+func (t *TransferTask) GetDatasetID() string {
+	return t.datasetID
 }
 
 func (t *TransferTask) GetArchivalJobInfo() ArchivalJobInfo {
@@ -222,11 +222,11 @@ type TransferNotifier struct {
 	TaskProgress     *TransferTask
 }
 
-func NewTransferNotifier(total int64, uploadId uuid.UUID, notifier ProgressNotifier, task *TransferTask) TransferNotifier {
+func NewTransferNotifier(total int64, uploadID uuid.UUID, notifier ProgressNotifier, task *TransferTask) TransferNotifier {
 	return TransferNotifier{totalBytes: total,
 		bytesTransferred: 0,
 		startTime:        time.Now(),
-		id:               uploadId,
+		id:               uploadID,
 		notifier:         notifier,
 		TaskProgress:     task,
 	}

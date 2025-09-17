@@ -99,18 +99,18 @@ func NewExtractorHandler(config ExtractorsConfig) *ExtractorHandler {
 	for _, extractorConfig := range config.Extractors {
 		log().Info("Installing Extractor", "name", extractorConfig.Name)
 
-		full_install_path := path.Join(config.InstallationPath, extractorConfig.GithubOrg, extractorConfig.GithubProject, extractorConfig.Version, extractorConfig.Executable)
+		fullInstallPath := path.Join(config.InstallationPath, extractorConfig.GithubOrg, extractorConfig.GithubProject, extractorConfig.Version, extractorConfig.Executable)
 
 		if config.DownloadMissingExtractors {
-			err := downloadExtractor(full_install_path, extractorConfig)
+			err := downloadExtractor(fullInstallPath, extractorConfig)
 			if err != nil {
 				log().Error("Failed to download extractor", "name", extractorConfig.Name)
 				continue
 			}
 		}
 
-		if err := verifyInstallation(full_install_path, extractorConfig); err != nil {
-			log().Error("Installation verification failed", "error", err.Error(), "name", extractorConfig.Name, "path", full_install_path)
+		if err := verifyInstallation(fullInstallPath, extractorConfig); err != nil {
+			log().Error("Installation verification failed", "error", err.Error(), "name", extractorConfig.Name, "path", fullInstallPath)
 			continue
 		}
 
@@ -131,10 +131,10 @@ func NewExtractorHandler(config ExtractorsConfig) *ExtractorHandler {
 			schemaPath := path.Join(config.SchemasLocation, m.Schema)
 
 			if config.DownloadSchemas {
-				response, err := http.Get(m.Url)
+				response, err := http.Get(m.URL)
 				if err != nil {
 					fmt.Println(err)
-					log().Error("Failed to download schema for method. Skipping.", "method", m.Name, "url", m.Url)
+					log().Error("Failed to download schema for method. Skipping.", "method", m.Name, "url", m.URL)
 					continue
 				}
 
@@ -184,7 +184,7 @@ func NewExtractorHandler(config ExtractorsConfig) *ExtractorHandler {
 		}
 
 		h.extractors[extractorConfig.Name] = Extractor{
-			ExecutablePath: full_install_path,
+			ExecutablePath: fullInstallPath,
 			AdditionalArgs: strings.Join(extractorConfig.AdditionalParameters, " "),
 			Version:        extractorConfig.Version,
 			templ:          tmpl,
@@ -194,8 +194,8 @@ func NewExtractorHandler(config ExtractorsConfig) *ExtractorHandler {
 	return &h
 }
 
-func verifyInstallation(full_install_path string, extractorConfig ExtractorConfig) error {
-	if _, err := os.Stat(full_install_path); errors.Is(err, os.ErrNotExist) {
+func verifyInstallation(fullInstallPath string, extractorConfig ExtractorConfig) error {
+	if _, err := os.Stat(fullInstallPath); errors.Is(err, os.ErrNotExist) {
 		return errors.New("expected extractor executable does not exist")
 	}
 	if _, lookError := exec.LookPath(extractorConfig.Executable); lookError == nil {
@@ -207,16 +207,16 @@ func verifyInstallation(full_install_path string, extractorConfig ExtractorConfi
 func MetadataFilePath(folder string) string {
 	hasher := md5.New()
 	hasher.Write([]byte(folder))
-	hashed_folder := hex.EncodeToString(hasher.Sum(nil))
-	return path.Join(os.TempDir(), "openem", "metadata", fmt.Sprintf("%s.json", hashed_folder))
+	hashedFolder := hex.EncodeToString(hasher.Sum(nil))
+	return path.Join(os.TempDir(), "openem", "metadata", fmt.Sprintf("%s.json", hashedFolder))
 }
 
-func downloadRelease(github_org string, github_proj string, version string, targetFolder string) (string, error) {
+func downloadRelease(githubOrg string, githubProj string, version string, targetFolder string) (string, error) {
 	client := github.NewClient(nil)
 	opt := &github.ListOptions{Page: 1, PerPage: 10}
 
 	var ctx = context.Background()
-	releases, _, err := client.Repositories.ListReleases(ctx, github_org, github_proj, opt)
+	releases, _, err := client.Repositories.ListReleases(ctx, githubOrg, githubProj, opt)
 
 	if err != nil {
 		fmt.Println(err)
@@ -228,7 +228,7 @@ func downloadRelease(github_org string, github_proj string, version string, targ
 	}
 	OS := runtime.GOOS
 
-	r, _ := regexp.Compile(fmt.Sprintf("(?i)%s_%s_%s", github_proj, OS, arch) + "(\\.tar\\.gz|\\.zip)")
+	r, _ := regexp.Compile(fmt.Sprintf("(?i)%s_%s_%s", githubProj, OS, arch) + "(\\.tar\\.gz|\\.zip)")
 
 	for _, release := range releases {
 
@@ -259,9 +259,9 @@ func downloadRelease(github_org string, github_proj string, version string, targ
 	return "", nil
 }
 
-func verifyFile(file_path string, config ExtractorConfig) (bool, string, error) {
+func verifyFile(filePath string, config ExtractorConfig) (bool, string, error) {
 
-	f, err := os.Open(file_path)
+	f, err := os.Open(filePath)
 	if err != nil {
 		return false, "", err
 	}
@@ -277,8 +277,8 @@ func verifyFile(file_path string, config ExtractorConfig) (bool, string, error) 
 
 }
 
-func downloadExtractor(full_install_path string, config ExtractorConfig) error {
-	if _, err := os.Stat(full_install_path); errors.Is(err, os.ErrNotExist) {
+func downloadExtractor(fullInstallPath string, config ExtractorConfig) error {
+	if _, err := os.Stat(fullInstallPath); errors.Is(err, os.ErrNotExist) {
 		targetFolder := os.TempDir()
 		file, err := downloadRelease(config.GithubOrg, config.GithubProject, config.Version, targetFolder)
 		if err != nil {
@@ -298,19 +298,19 @@ func downloadExtractor(full_install_path string, config ExtractorConfig) error {
 			return err
 		}
 
-		err = os.MkdirAll(path.Dir(full_install_path), 0777)
+		err = os.MkdirAll(path.Dir(fullInstallPath), 0777)
 		if err != nil {
-			log().Error("Failed to create folder", "folder", path.Dir(full_install_path))
+			log().Error("Failed to create folder", "folder", path.Dir(fullInstallPath))
 			return err
 		}
 		x := &xtractr.XFile{
 			FilePath:  path.Clean(file),
-			OutputDir: path.Dir(full_install_path),
+			OutputDir: path.Dir(fullInstallPath),
 		}
 
 		size, files, _, err := x.Extract()
 		if err != nil || files == nil {
-			return fmt.Errorf("Extraction failed %d, %s, %s", size, files, err.Error())
+			return fmt.Errorf("extraction failed %d, %s, %s", size, files, err.Error())
 		}
 	}
 	return nil
@@ -351,13 +351,13 @@ func SplitString(str string, r rune) []string {
 	})
 }
 
-func buildCommandline(templ *template.Template, template_params ExtractorInvokationParameters) (string, []string, error) {
-	string_builder := new(strings.Builder)
-	err := templ.Execute(string_builder, template_params)
+func buildCommandline(templ *template.Template, templateParams ExtractorInvokationParameters) (string, []string, error) {
+	stringBuilder := new(strings.Builder)
+	err := templ.Execute(stringBuilder, templateParams)
 	if err != nil {
 		return "", nil, err
 	}
-	cmdline := strings.TrimSpace(string_builder.String())
+	cmdline := strings.TrimSpace(stringBuilder.String())
 
 	// in order to split cmdline template correctly, quotes are necessary
 	args := SplitString(cmdline, ' ')
@@ -371,13 +371,13 @@ func buildCommandline(templ *template.Template, template_params ExtractorInvokat
 
 	// args should be something like ["-i", "/path/to/file1", "-o", "/path/to/file2"]
 
-	binary_path := template_params.Executable
-	return binary_path, args, nil
+	binaryPath := templateParams.Executable
+	return binaryPath, args, nil
 }
 
 type outputCallback func(string)
 
-func runExtractor(ctx context.Context, executable string, args []string, stdout_callback outputCallback, stderr_callback outputCallback) error {
+func runExtractor(ctx context.Context, executable string, args []string, stdoutCallback outputCallback, stderrCallback outputCallback) error {
 	cmd := exec.CommandContext(ctx, executable, args...)
 
 	stdout, _ := cmd.StdoutPipe()
@@ -387,7 +387,7 @@ func runExtractor(ctx context.Context, executable string, args []string, stdout_
 	wg.Add(1)
 	go func(scanner *bufio.Scanner) {
 		for scanner.Scan() {
-			stdout_callback(scanner.Text())
+			stdoutCallback(scanner.Text())
 		}
 		wg.Done()
 	}(bufio.NewScanner(stdout))
@@ -395,7 +395,7 @@ func runExtractor(ctx context.Context, executable string, args []string, stdout_
 	wg.Add(1)
 	go func(scanner *bufio.Scanner) {
 		for scanner.Scan() {
-			stderr_callback(scanner.Text())
+			stderrCallback(scanner.Text())
 		}
 		wg.Done()
 	}(bufio.NewScanner(stderr))
@@ -414,11 +414,11 @@ func runExtractor(ctx context.Context, executable string, args []string, stdout_
 	return err
 }
 
-func (e *ExtractorHandler) ExtractMetadata(ctx context.Context, method_name string, folder string, output_file string, stdout_callback outputCallback, stderr_callback outputCallback) (string, error) {
-	method, ok := e.methods[method_name]
+func (e *ExtractorHandler) ExtractMetadata(ctx context.Context, methodName string, folder string, outputFile string, stdoutCallback outputCallback, stderrCallback outputCallback) (string, error) {
+	method, ok := e.methods[methodName]
 
 	if !ok {
-		return "", reqErrorf("method not found: '%s'", method_name)
+		return "", reqErrorf("method not found: '%s'", methodName)
 	}
 
 	if _, err := os.Stat(folder); err != nil {
@@ -427,17 +427,17 @@ func (e *ExtractorHandler) ExtractMetadata(ctx context.Context, method_name stri
 
 	extractor, ok := e.extractors[method.Extractor]
 	if !ok {
-		log().Error("Extractor not found.", "method", method_name)
-		return "", fmt.Errorf("extractor not found for the following method: '%s'", method_name)
+		log().Error("Extractor not found.", "method", methodName)
+		return "", fmt.Errorf("extractor not found for the following method: '%s'", methodName)
 	}
 
-	err := os.MkdirAll(path.Dir(output_file), 0777)
+	err := os.MkdirAll(path.Dir(outputFile), 0777)
 	if err != nil {
 		return "", err
 	}
 
-	if _, err := os.Stat(output_file); err == nil {
-		err := os.Remove(output_file)
+	if _, err := os.Stat(outputFile); err == nil {
+		err := os.Remove(outputFile)
 		if err != nil {
 			return "", err
 		}
@@ -446,18 +446,18 @@ func (e *ExtractorHandler) ExtractMetadata(ctx context.Context, method_name stri
 	params := ExtractorInvokationParameters{
 		Executable:           extractor.ExecutablePath,
 		SourceFolder:         folder,
-		OutputFile:           output_file,
+		OutputFile:           outputFile,
 		AdditionalParameters: extractor.AdditionalArgs,
 	}
 
-	binary_path, args, err := buildCommandline(extractor.templ, params)
+	binaryPath, args, err := buildCommandline(extractor.templ, params)
 	if err != nil {
 		return "", err
 	}
 	ctx, cancel := context.WithTimeout(ctx, e.timeout)
 	defer cancel()
 
-	err = runExtractor(ctx, binary_path, args, stdout_callback, stderr_callback)
+	err = runExtractor(ctx, binaryPath, args, stdoutCallback, stderrCallback)
 	if err != nil {
 		return "", err // couldn't run extractor
 	}
@@ -466,7 +466,7 @@ func (e *ExtractorHandler) ExtractMetadata(ctx context.Context, method_name stri
 		return "", ctx.Err()
 	}
 
-	b, err := os.ReadFile(output_file)
+	b, err := os.ReadFile(outputFile)
 	if err != nil {
 		return "", err
 	}
