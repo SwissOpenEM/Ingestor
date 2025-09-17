@@ -11,7 +11,7 @@ require (
 	github.com/getkin/kin-openapi v0.131.0
 	github.com/gin-contrib/cors v1.7.6
 	github.com/gin-gonic/gin v1.10.1
-	github.com/go-test/deep v1.0.8
+	github.com/go-test/deep v1.1.1
 	github.com/golang-jwt/jwt/v5 v5.2.1
 	github.com/google/go-github v17.0.0+incompatible
 	github.com/google/uuid v1.6.0
