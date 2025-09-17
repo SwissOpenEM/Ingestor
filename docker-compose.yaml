@@ -46,7 +46,7 @@ configs:
         - Name: LS
           GithubOrg: SwissOpenEM
           GithubProject: LS_Metadata_reader
-          Version: v0.2.8
+          Version: v2.0.0
           Executable: LS_Metadata_reader
           Checksum: e8a2abc7a0d8759edf4559e27879b7977000a868a2f7d39b7804ff5e5c0d1559
           ChecksumAlg: sha256
@@ -54,16 +54,16 @@ configs:
           Methods:
           - Name: Single Particle
             Schema: oscem_schemas_spa.schema.json
-            Url: https://raw.githubusercontent.com/osc-em/OSCEM_Schemas/refs/heads/any_fix/project/spa/jsonschema/oscem_schemas_spa.schema.json
+            Url: https://raw.githubusercontent.com/osc-em/OSCEM_Schemas/refs/heads/main/project/spa/jsonschema/oscem_schemas_spa.schema.json
           - Name: Cellular Tomography
             Schema: oscem_cellular_tomo.json
-            Url: https://raw.githubusercontent.com/osc-em/OSCEM_Schemas/refs/heads/any_fix/project/cellular_tomo/jsonschema/oscem_schemas_cellular_tomo.schema.json
+            Url: https://raw.githubusercontent.com/osc-em/OSCEM_Schemas/refs/heads/main/project/cellular_tomo/jsonschema/oscem_schemas_cellular_tomo.schema.json
           - Name: Tomography
             Schema: oscem_tomo.json
-            Url: https://raw.githubusercontent.com/osc-em/OSCEM_Schemas/refs/heads/any_fix/project/subtomo/jsonschema/oscem_schemas_subtomo.schema.json
+            Url: https://raw.githubusercontent.com/osc-em/OSCEM_Schemas/refs/heads/main/project/subtomo/jsonschema/oscem_schemas_subtomo.schema.json
           - Name: EnvironmentalTomography
             Schema: oscem_env_tomo.json
-            Url: https://raw.githubusercontent.com/osc-em/OSCEM_Schemas/refs/heads/any_fix/project/env_tomo/jsonschema/oscem_schemas_env_tomo.schema.json
+            Url: https://raw.githubusercontent.com/osc-em/OSCEM_Schemas/refs/heads/main/project/env_tomo/jsonschema/oscem_schemas_env_tomo.schema.json
       WebServer:
         BaseURL: "${INGESTOR_URL}"
         Auth:
@@ -96,5 +96,5 @@ configs:
         Other:
           Port: 8080
           LogLevel: Debug
-          BackendAddress: ${SCICAT_BACKEND_URL}
+          BackendAddress: ${INGESTOR_URL}
           DisableServiceAccountCheck: true
