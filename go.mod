@@ -7,7 +7,7 @@ toolchain go1.23.6
 require (
 	github.com/SwissOpenEM/globus v0.1.2
 	github.com/SwissOpenEM/globus-transfer-service v0.2.2
-	github.com/alitto/pond/v2 v2.3.2
+	github.com/alitto/pond/v2 v2.5.0
 	github.com/getkin/kin-openapi v0.131.0
 	github.com/gin-contrib/cors v1.7.6
 	github.com/gin-gonic/gin v1.10.1
