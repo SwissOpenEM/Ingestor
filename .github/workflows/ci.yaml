@@ -25,7 +25,7 @@ jobs:
         with:
           version: v1.60.3
       - name: Run markdownlint
-        uses: DavidAnson/markdownlint-cli2-action@v15
+        uses: DavidAnson/markdownlint-cli2-action@v20
         with:
           # Lint all markdown files in the repo
           globs: '**/*.md'
