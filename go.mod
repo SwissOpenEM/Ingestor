@@ -12,7 +12,7 @@ require (
 	github.com/gin-contrib/cors v1.7.6
 	github.com/gin-gonic/gin v1.10.1
 	github.com/go-test/deep v1.1.1
-	github.com/golang-jwt/jwt/v5 v5.2.1
+	github.com/golang-jwt/jwt/v5 v5.2.2
 	github.com/google/go-github v17.0.0+incompatible
 	github.com/google/uuid v1.6.0
 	github.com/hashicorp/go-retryablehttp v0.7.8
@@ -31,7 +31,7 @@ require (
 )
 
 require (
-	github.com/MicahParks/jwkset v0.5.19 // indirect
+	github.com/MicahParks/jwkset v0.8.0 // indirect
 	github.com/andybalholm/brotli v1.0.5 // indirect
 	github.com/bodgit/plumbing v1.3.0 // indirect
 	github.com/bodgit/sevenzip v1.4.0 // indirect
@@ -74,14 +74,14 @@ require (
 	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/multierr v1.9.0 // indirect
 	go4.org v0.0.0-20230225012048-214862532bf5 // indirect
-	golang.org/x/time v0.8.0 // indirect
+	golang.org/x/time v0.9.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	sigs.k8s.io/yaml v1.3.0 // indirect
 )
 
 require (
 	github.com/KyleBanks/depth v1.2.1 // indirect
-	github.com/MicahParks/keyfunc/v3 v3.3.5
+	github.com/MicahParks/keyfunc/v3 v3.6.1
 	github.com/Netflix/go-expect v0.0.0-20220104043353-73e0943537d2 // indirect
 	github.com/apapsch/go-jsonmerge/v2 v2.0.0 // indirect
 	github.com/bep/debounce v1.2.1 // indirect
