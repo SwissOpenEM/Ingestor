@@ -38,16 +38,16 @@ func NewTaskQueueFromPool(ctx context.Context, config Config, notifier task.Prog
 	}
 }
 
-func (w *TaskQueue) AddTransferTask(datasetId string, fileList []datasetIngestor.Datafile, taskId uuid.UUID, folderPath string, ownerUser string, ownerGroup string, contactEmail string, autoArchive bool, transferObjects map[string]interface{}) error {
+func (w *TaskQueue) AddTransferTask(datasetID string, fileList []datasetIngestor.Datafile, taskID uuid.UUID, folderPath string, ownerUser string, ownerGroup string, contactEmail string, autoArchive bool, transferObjects map[string]interface{}) error {
 	transferMethod := w.GetTransferMethod()
 	if transferMethod == task.TransferNone {
 		return nil
 	}
 	t := task.CreateTransferTask(
-		datasetId,
+		datasetID,
 		fileList,
 		task.DatasetFolder{
-			Id:         taskId,
+			ID:         taskID,
 			FolderPath: folderPath,
 		},
 		ownerUser,
@@ -61,26 +61,26 @@ func (w *TaskQueue) AddTransferTask(datasetId string, fileList []datasetIngestor
 
 	w.taskListLock.Lock()
 	defer w.taskListLock.Unlock()
-	w.datasetUploadTasks.Set(taskId, &t)
+	w.datasetUploadTasks.Set(taskID, &t)
 
 	return nil
 }
 
 func (w *TaskQueue) executeTransferTask(t *task.TransferTask) {
-	task_context, cancel := context.WithCancel(w.appContext)
+	taskContext, cancel := context.WithCancel(w.appContext)
 	t.Cancel = cancel
 
-	r := w.TransferDataset(task_context, t)
+	r := w.TransferDataset(taskContext, t)
 	if r.Error != nil {
 		t.Failed(fmt.Sprintf("failed - error: %s", r.Error.Error()))
-		w.notifier.OnTaskFailed(t.DatasetFolder.Id, r.Error)
+		w.notifier.OnTaskFailed(t.DatasetFolder.ID, r.Error)
 		return
 	}
 
 	// if not cancelled, mark as finished
 	if t.GetDetails().Status != task.Cancelled {
 		t.Finished()
-		w.notifier.OnTaskCompleted(t.DatasetFolder.Id, r.Elapsed_seconds)
+		w.notifier.OnTaskCompleted(t.DatasetFolder.ID, r.ElapsedSeconds)
 	}
 }
 
@@ -128,12 +128,12 @@ func (w *TaskQueue) ScheduleTask(id uuid.UUID) error {
 		return fmt.Errorf("task with id '%s' not found", id.String())
 	}
 
-	task_context, cancel := context.WithCancel(w.appContext)
-	transferTask.Context = task_context
+	taskContext, cancel := context.WithCancel(w.appContext)
+	transferTask.Context = taskContext
 	transferTask.Cancel = cancel
 
 	transferTask.Queued()
-	w.notifier.OnTaskScheduled(transferTask.DatasetFolder.Id)
+	w.notifier.OnTaskScheduled(transferTask.DatasetFolder.ID)
 
 	w.taskPool.Submit(func() { w.executeTransferTask(transferTask) })
 	return nil
@@ -195,7 +195,7 @@ func (w *TaskQueue) TransferDataset(taskCtx context.Context, it *task.TransferTa
 	err := TransferDataset(taskCtx, it, w.serviceUser, w.Config, w.notifier)
 	end := time.Now()
 	elapsed := end.Sub(start)
-	return task.Result{Elapsed_seconds: int(elapsed.Seconds()), Error: err}
+	return task.Result{ElapsedSeconds: int(elapsed.Seconds()), Error: err}
 }
 
 func (w *TaskQueue) GetTransferMethod() (transferMethod task.TransferMethod) {

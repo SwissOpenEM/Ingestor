@@ -6,7 +6,7 @@ import (
 	"github.com/SwissOpenEM/globus-transfer-service/jobs"
 )
 
-func GetGlobusTransferJobsFromScicat(scicatUrl string, scicatToken string, skip uint, limit uint) ([]jobs.ScicatJob, uint, error) {
+func GetGlobusTransferJobsFromScicat(scicatURL string, scicatToken string, skip uint, limit uint) ([]jobs.ScicatJob, uint, error) {
 	jobListFilter := `{"where":{"type":"globus_transfer_job"}`
 	if skip > 0 || limit > 0 {
 		jobListFilter += `,"limits":{`
@@ -22,11 +22,11 @@ func GetGlobusTransferJobsFromScicat(scicatUrl string, scicatToken string, skip 
 		jobListFilter += `}`
 	}
 	jobListFilter += `}`
-	jobsResult, err := jobs.GetJobList(scicatUrl, scicatToken, jobListFilter)
+	jobsResult, err := jobs.GetJobList(scicatURL, scicatToken, jobListFilter)
 	if err != nil {
 		return []jobs.ScicatJob{}, 0, err
 	}
 
-	totalJobs, err := jobs.GetJobCount(scicatUrl, scicatToken, `{"type":"globus_transfer_job"}`)
+	totalJobs, err := jobs.GetJobCount(scicatURL, scicatToken, `{"type":"globus_transfer_job"}`)
 	return jobsResult, totalJobs, err
 }

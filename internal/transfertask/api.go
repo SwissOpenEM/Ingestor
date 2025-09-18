@@ -9,7 +9,7 @@ import (
 )
 
 type DatasetFolder struct {
-	Id         uuid.UUID
+	ID         uuid.UUID
 	FolderPath string
 }
 
@@ -27,6 +27,6 @@ func SelectFolder(context context.Context) (DatasetFolder, error) {
 
 	id := uuid.New()
 
-	selected_folder := DatasetFolder{FolderPath: path.Clean(folder), Id: id}
-	return selected_folder, nil
+	selectedFolder := DatasetFolder{FolderPath: path.Clean(folder), ID: id}
+	return selectedFolder, nil
 }

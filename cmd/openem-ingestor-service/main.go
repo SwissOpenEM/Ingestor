@@ -88,7 +88,7 @@ func main() {
 
 	if strings.ToLower(config.Transfer.Method) == "s3" {
 		s3PoolSize := min(config.Transfer.S3.PoolSize, totalConcurrencyLimit-config.WebServer.MetadataExtJobsConf.ConcurrencyLimit-config.WebServer.ConcurrencyLimit)
-		s3upload.InitHttpUploaderWithPool(mainPool.NewSubpool(s3PoolSize))
+		s3upload.InitHTTPUploaderWithPool(mainPool.NewSubpool(s3PoolSize))
 	}
 
 	ingestor, err := webserver.NewIngestorWebServer(version, taskqueue, extractorHandler, metadataExtractorPool, config.WebServer)

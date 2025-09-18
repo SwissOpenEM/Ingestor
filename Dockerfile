@@ -1,4 +1,4 @@
-FROM golang:1.23 AS builder
+FROM golang:1.25.1-alpine AS builder
 
 # Set destination for COPY
 WORKDIR /app

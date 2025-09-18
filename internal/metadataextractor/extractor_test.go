@@ -54,8 +54,8 @@ func TestMetadataFilePath(t *testing.T) {
 
 func Test_downloadRelease(t *testing.T) {
 	type args struct {
-		github_org   string
-		github_proj  string
+		githubOrg    string
+		githubProj   string
 		version      string
 		targetFolder string
 	}
@@ -69,7 +69,7 @@ func Test_downloadRelease(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := downloadRelease(tt.args.github_org, tt.args.github_proj, tt.args.version, tt.args.targetFolder)
+			got, err := downloadRelease(tt.args.githubOrg, tt.args.githubProj, tt.args.version, tt.args.targetFolder)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("downloadRelease() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -209,8 +209,8 @@ func Test_buildCommandline(t *testing.T) {
 	templ, _ := template.New("name").Parse("{{.SourceFolder}} {{.OutputFile}} {{.AdditionalParameters}}")
 
 	type args struct {
-		templ           *template.Template
-		template_params ExtractorInvokationParameters
+		templ          *template.Template
+		templateParams ExtractorInvokationParameters
 	}
 	tests := []struct {
 		name    string
@@ -223,7 +223,7 @@ func Test_buildCommandline(t *testing.T) {
 			name: "AdditionalParameters",
 			args: args{
 				templ: templ,
-				template_params: ExtractorInvokationParameters{
+				templateParams: ExtractorInvokationParameters{
 					Executable:           "test.exe",
 					SourceFolder:         "/path/to/sourcefolder",
 					OutputFile:           "/path/to/output.json",
@@ -244,7 +244,7 @@ func Test_buildCommandline(t *testing.T) {
 			name: "NoAdditionalParameters",
 			args: args{
 				templ: templ,
-				template_params: ExtractorInvokationParameters{
+				templateParams: ExtractorInvokationParameters{
 					Executable:   "test.exe",
 					SourceFolder: "/path/to/sourcefolder",
 					OutputFile:   "/path/to/output.json",
@@ -259,7 +259,7 @@ func Test_buildCommandline(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, got1, err := buildCommandline(tt.args.templ, tt.args.template_params)
+			got, got1, err := buildCommandline(tt.args.templ, tt.args.templateParams)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("buildCommandline() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -274,8 +274,8 @@ func Test_buildCommandline(t *testing.T) {
 	}
 }
 
-func stdout_callback(m string) { slog.Info(m) }
-func stderr_callback(m string) { slog.Info(m) }
+func stdoutCallback(m string) { slog.Info(m) }
+func stderrCallback(m string) { slog.Info(m) }
 
 func Test_runExtractor(t *testing.T) {
 	type args struct {
@@ -302,7 +302,7 @@ func Test_runExtractor(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := context.Background()
-			if err := runExtractor(ctx, tt.args.executable, tt.args.args, stdout_callback, stderr_callback); (err != nil) != tt.wantErr {
+			if err := runExtractor(ctx, tt.args.executable, tt.args.args, stdoutCallback, stderrCallback); (err != nil) != tt.wantErr {
 				t.Errorf("runExtractor() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})

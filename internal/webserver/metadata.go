@@ -38,7 +38,7 @@ func (r ResponseWriter) VisitExtractMetadataResponse(writer http.ResponseWriter)
 	cancelCtx, cancel := context.WithCancel(r.ctx)
 	defer cancel() // cancel ongoing job if client drops connection (TODO: test whether solution works)
 	var progress *metadatatasks.ExtractionProgress
-	var sleep, queueing, waitForWorker bool = false, true, true
+	var sleep, queueing, waitForWorker = false, true, true
 	var workerWaitingTimer <-chan time.Time
 	g.Stream(func(w io.Writer) bool {
 		// queue the task

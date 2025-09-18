@@ -44,9 +44,9 @@ func (w *WailsNotifier) OnTaskFailed(id uuid.UUID, err error) {
 	w.loggingNotifier.OnTaskFailed(id, err)
 	runtime.EventsEmit(w.AppContext, "upload-failed", id, err.Error())
 }
-func (w *WailsNotifier) OnTaskCompleted(id uuid.UUID, seconds_elapsed int) {
-	w.loggingNotifier.OnTaskCompleted(id, seconds_elapsed)
-	runtime.EventsEmit(w.AppContext, "upload-completed", id, seconds_elapsed)
+func (w *WailsNotifier) OnTaskCompleted(id uuid.UUID, secondsElapsed int) {
+	w.loggingNotifier.OnTaskCompleted(id, secondsElapsed)
+	runtime.EventsEmit(w.AppContext, "upload-completed", id, secondsElapsed)
 }
 func (w *WailsNotifier) OnTaskProgress(id uuid.UUID, percentage int) {
 	w.loggingNotifier.OnTaskProgress(id, percentage)
@@ -90,7 +90,7 @@ func (a *App) startup(ctx context.Context) {
 	}
 	mainTaskPool := pond.NewPool(totalConcurrencyLimit)
 
-	s3upload.InitHttpUploaderWithPool(mainTaskPool.NewSubpool(a.config.Transfer.S3.PoolSize))
+	s3upload.InitHTTPUploaderWithPool(mainTaskPool.NewSubpool(a.config.Transfer.S3.PoolSize))
 
 	a.ctx = ctx
 	a.extractorHandler = metadataextractor.NewExtractorHandler(a.config.MetadataExtractors)
@@ -115,7 +115,7 @@ func (a *App) startup(ctx context.Context) {
 
 		if strings.ToLower(a.config.Transfer.Method) == "s3" {
 			s3PoolSize := min(a.config.Transfer.S3.PoolSize, totalConcurrencyLimit-a.config.WebServer.MetadataExtJobsConf.ConcurrencyLimit-a.config.WebServer.ConcurrencyLimit)
-			s3upload.InitHttpUploaderWithPool(mainTaskPool.NewSubpool(s3PoolSize))
+			s3upload.InitHTTPUploaderWithPool(mainTaskPool.NewSubpool(s3PoolSize))
 		}
 
 		ingestor, err := webserver.NewIngestorWebServer(version, taskqueue, extractorHandler, metadataExtractorPool, a.config.WebServer)
@@ -140,26 +140,26 @@ func (a *App) SelectFolder() {
 	}
 }
 
-func (a *App) ExtractMetadata(extractor_name string, id uuid.UUID) string {
+func (a *App) ExtractMetadata(extractorName string, id uuid.UUID) string {
 
 	folder := a.taskqueue.GetTaskFolder(id)
 	if folder == "" {
 		return ""
 	}
 
-	log_message := func(id uuid.UUID, msg string) {
+	logMessage := func(id uuid.UUID, msg string) {
 		slog.Info("Extractor output: ", "message", msg)
 		runtime.EventsEmit(a.ctx, "log-update", id, msg)
 	}
 
-	log_error := func(id uuid.UUID, msg string) {
+	logError := func(id uuid.UUID, msg string) {
 		slog.Info("Extractor error: ", "message", msg)
 		runtime.EventsEmit(a.ctx, "log-update", id, msg)
 	}
 
 	outputfile := metadataextractor.MetadataFilePath(folder)
 
-	metadata, err := a.extractorHandler.ExtractMetadata(a.ctx, extractor_name, folder, outputfile, func(message string) { log_message(id, message) }, func(message string) { log_error(id, message) })
+	metadata, err := a.extractorHandler.ExtractMetadata(a.ctx, extractorName, folder, outputfile, func(message string) { logMessage(id, message) }, func(message string) { logError(id, message) })
 
 	if err != nil {
 		slog.Error("Metadata extraction failed", "error", err.Error())

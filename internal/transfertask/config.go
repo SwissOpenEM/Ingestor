@@ -2,7 +2,7 @@ package transfertask
 
 type S3TransferConfig struct {
 	ClientID        string `string:"ClientID"`
-	TokenUrl        string `string:"TokenUrl" validate:"http_url"`
+	TokenURL        string `string:"TokenUrl" validate:"http_url"`
 	Endpoint        string `string:"Endpoint" validate:"http_url"`
 	ChunkSizeMB     int64  `int64:"ChunkSizeMB" validate:"required"`
 	ConcurrentFiles int    `int:"ConcurrentFiles" validate:"required"`
@@ -21,7 +21,7 @@ type GlobusTransferConfig struct {
 }
 
 type ExtGlobusTransferConfig struct {
-	TransferServiceUrl string `string:"TransferServiceUrl" validate:"http_url"`
+	TransferServiceURL string `string:"TransferServiceUrl" validate:"http_url"`
 	CollectionRootPath string `string:"CollectionRootPath"`
 	SrcFacility        string `string:"SourceFacility" validate:"required"`
 	DstFacility        string `string:"DestinationFacility" validate:"required"`

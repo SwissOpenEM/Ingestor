@@ -42,8 +42,8 @@ func newRequestError(code uint, message *string, details *string) error {
 	}
 }
 
-func RequestExternalTransferTask(ctx context.Context, serviceUrl string, scicatToken string, srcFacility string, dstFacility string, scicatPid string, fileList *[]FileToTransfer) (string, error) {
-	client, err := NewClient(serviceUrl)
+func RequestExternalTransferTask(ctx context.Context, serviceURL string, scicatToken string, srcFacility string, dstFacility string, scicatPid string, fileList *[]FileToTransfer) (string, error) {
+	client, err := NewClient(serviceURL)
 	if err != nil {
 		return "", err
 	}

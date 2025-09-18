@@ -23,7 +23,7 @@ func (i *IngestorWebServerImplemenation) TransferControllerDeleteTransfer(ctx co
 		if request.Body.DeleteTask != nil {
 			delete = *request.Body.DeleteTask
 		}
-		err := extglobusservice.CancelTask(ctx, i.taskQueue.Config.Transfer.ExtGlobus.TransferServiceUrl, *request.Body.ScicatToken, request.Body.TransferId, delete)
+		err := extglobusservice.CancelTask(ctx, i.taskQueue.Config.Transfer.ExtGlobus.TransferServiceURL, *request.Body.ScicatToken, request.Body.TransferId, delete)
 		if err != nil {
 			return TransferControllerDeleteTransfer400TextResponse(fmt.Sprintf("Couldn't cancel or delete task: %s", err.Error())), nil
 		}
@@ -57,7 +57,7 @@ func (i *IngestorWebServerImplemenation) TransferControllerGetTransfer(ctx conte
 			if request.Params.ScicatAPIToken == nil {
 				return TransferControllerGetTransfer400TextResponse("no Scicat API token was provided"), nil
 			}
-			return GetTaskByJobIdFromScicat(i.taskQueue.Config.Scicat.Host, *request.Params.ScicatAPIToken, *request.Params.TransferId)
+			return GetTaskByJobIDFromScicat(i.taskQueue.Config.Scicat.Host, *request.Params.ScicatAPIToken, *request.Params.TransferId)
 		}
 
 		id := *request.Params.TransferId
@@ -126,9 +126,9 @@ func (i *IngestorWebServerImplemenation) TransferControllerGetTransfer(ctx conte
 	}, nil
 }
 
-func GetTaskByJobIdFromScicat(scicatServer string, scicatToken string, jobId string) (TransferControllerGetTransferResponseObject, error) {
-	scicatUrl, _ := url.Parse(scicatServer)
-	job, err := jobs.GetJobById(fmt.Sprintf("%s://%s", scicatUrl.Scheme, scicatUrl.Host), scicatToken, jobId)
+func GetTaskByJobIDFromScicat(scicatServer string, scicatToken string, jobID string) (TransferControllerGetTransferResponseObject, error) {
+	scicatURL, _ := url.Parse(scicatServer)
+	job, err := jobs.GetJobById(fmt.Sprintf("%s://%s", scicatURL.Scheme, scicatURL.Host), scicatToken, jobID)
 	if err != nil {
 		return TransferControllerGetTransfer400TextResponse(err.Error()), nil
 	}
@@ -140,9 +140,9 @@ func GetTaskByJobIdFromScicat(scicatServer string, scicatToken string, jobId str
 }
 
 func GetTasksFromScicat(scicatServer string, scicatToken string, skip uint, limit uint) (TransferControllerGetTransferResponseObject, error) {
-	scicatUrl, _ := url.Parse(scicatServer)
+	scicatURL, _ := url.Parse(scicatServer)
 
-	jobs, total, err := extglobusservice.GetGlobusTransferJobsFromScicat(fmt.Sprintf("%s://%s", scicatUrl.Scheme, scicatUrl.Host), scicatToken, skip, limit)
+	jobs, total, err := extglobusservice.GetGlobusTransferJobsFromScicat(fmt.Sprintf("%s://%s", scicatURL.Scheme, scicatURL.Host), scicatToken, skip, limit)
 	if err != nil {
 		return TransferControllerGetTransfer400TextResponse(err.Error()), nil
 	}
@@ -157,7 +157,7 @@ func GetTasksFromScicat(scicatServer string, scicatToken string, skip uint, limi
 }
 
 func JobToTransferItem(job jobs.ScicatJob) TransferItem {
-	var status TransferItemStatus = InvalidStatus
+	var status = InvalidStatus
 	switch job.JobResultObject.Status {
 	case jobs.Finished:
 		status = Finished

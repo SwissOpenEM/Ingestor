@@ -22,7 +22,7 @@ type S3Objects struct {
 }
 
 func GetTokens(ctx context.Context, endpoint string, userToken string) (string, string, int, error) {
-	resp, err := GetPresignedUrlServer(endpoint).CreateNewServiceTokenWithResponse(ctx,
+	resp, err := GetPresignedURLServer(endpoint).CreateNewServiceTokenWithResponse(ctx,
 		createAddAuthorizationHeaderFunction(userToken))
 
 	if err != nil {
@@ -36,10 +36,10 @@ func GetTokens(ctx context.Context, endpoint string, userToken string) (string, 
 	return resp.JSON201.AccessToken, resp.JSON201.RefreshToken, *resp.JSON201.ExpiresIn, nil
 }
 
-func CreateTokenSource(ctx context.Context, clientID string, tokenUrl string, accessToken string, refreshToken string, expires_in int) oauth2.TokenSource {
+func CreateTokenSource(ctx context.Context, clientID string, tokenURL string, accessToken string, refreshToken string, expiresIn int) oauth2.TokenSource {
 	config := &oauth2.Config{
 		ClientID: clientID,
-		Endpoint: oauth2.Endpoint{TokenURL: tokenUrl},
+		Endpoint: oauth2.Endpoint{TokenURL: tokenURL},
 		// required for the refresh token to be updated
 		Scopes: []string{"offline_access"},
 	}
@@ -47,7 +47,7 @@ func CreateTokenSource(ctx context.Context, clientID string, tokenUrl string, ac
 	token := &oauth2.Token{
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
-		Expiry:       time.Now().Add(time.Duration(expires_in)),
+		Expiry:       time.Now().Add(time.Duration(expiresIn)),
 	}
 
 	return config.TokenSource(ctx, token)
@@ -61,8 +61,8 @@ func UploadS3(ctx context.Context, task *transfertask.TransferTask, options tran
 	}
 
 	datasetFolder := task.DatasetFolder.FolderPath
-	datasetId := task.GetDatasetId()
-	uploadId := task.DatasetFolder.Id
+	datasetID := task.GetDatasetID()
+	uploadID := task.DatasetFolder.ID
 
 	s3Objects := S3Objects{}
 	for _, f := range task.GetFileList() {
@@ -72,17 +72,17 @@ func UploadS3(ctx context.Context, task *transfertask.TransferTask, options tran
 		}
 		s3Objects.TotalBytes += info.Size()
 		s3Objects.Files = append(s3Objects.Files, path.Join(datasetFolder, f.Path))
-		s3Objects.ObjectNames = append(s3Objects.ObjectNames, "openem-network/datasets/"+datasetId+"/raw_files/"+f.Path)
+		s3Objects.ObjectNames = append(s3Objects.ObjectNames, "openem-network/datasets/"+datasetID+"/raw_files/"+f.Path)
 	}
 
-	transferNotifier := transfertask.NewTransferNotifier(s3Objects.TotalBytes, uploadId, notifier, task)
+	transferNotifier := transfertask.NewTransferNotifier(s3Objects.TotalBytes, uploadID, notifier, task)
 
 	task.TransferStarted()
 
-	return uploadFiles(ctx, &s3Objects, options, &transferNotifier, uploadId, tokenSource)
+	return uploadFiles(ctx, &s3Objects, options, &transferNotifier, uploadID, tokenSource)
 }
 
-func uploadFiles(ctx context.Context, s3Objects *S3Objects, options transfertask.S3TransferConfig, transferNotifier *transfertask.TransferNotifier, uploadId uuid.UUID, tokenSource oauth2.TokenSource) error {
+func uploadFiles(ctx context.Context, s3Objects *S3Objects, options transfertask.S3TransferConfig, transferNotifier *transfertask.TransferNotifier, uploadID uuid.UUID, tokenSource oauth2.TokenSource) error {
 	errorGroup, context := errgroup.WithContext(ctx)
 	objectsChannel := make(chan int, len(s3Objects.Files))
 
@@ -94,7 +94,7 @@ func uploadFiles(ctx context.Context, s3Objects *S3Objects, options transfertask
 				for idx := range objectsChannel {
 					select {
 					case <-context.Done():
-						transferNotifier.OnTaskCanceled(uploadId)
+						transferNotifier.OnTaskCanceled(uploadID)
 						return context.Err()
 					default:
 						err := uploadFile(context, s3Objects.Files[idx], s3Objects.ObjectNames[idx], options, transferNotifier, tokenSource)
@@ -114,15 +114,15 @@ func uploadFiles(ctx context.Context, s3Objects *S3Objects, options transfertask
 
 }
 
-func FinalizeUpload(ctx context.Context, config transfertask.S3TransferConfig, dataset_pid string, ownerUser string, ownerGroup string, email string, autoArchive bool, tokenSource oauth2.TokenSource) error {
+func FinalizeUpload(ctx context.Context, config transfertask.S3TransferConfig, datasetPID string, ownerUser string, ownerGroup string, email string, autoArchive bool, tokenSource oauth2.TokenSource) error {
 
 	token, err := tokenSource.Token()
 	if err != nil {
 		return fmt.Errorf("finalizing upload failed: error fetching a new token: %w", err)
 	}
 
-	resp, err := GetPresignedUrlServer(config.Endpoint).FinalizeDatasetUploadWithResponse(ctx, FinalizeDatasetUploadBody{
-		DatasetPID:         dataset_pid,
+	resp, err := GetPresignedURLServer(config.Endpoint).FinalizeDatasetUploadWithResponse(ctx, FinalizeDatasetUploadBody{
+		DatasetPID:         datasetPID,
 		OwnerUser:          ownerUser,
 		OwnerGroup:         ownerGroup,
 		ContactEmail:       openapi_types.Email(email),

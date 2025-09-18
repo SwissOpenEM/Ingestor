@@ -6,8 +6,8 @@ import (
 	"net/http"
 )
 
-func CancelTask(ctx context.Context, serviceUrl string, scicatToken string, jobId string, deleteEntry bool) error {
-	client, err := NewClient(serviceUrl)
+func CancelTask(ctx context.Context, serviceURL string, scicatToken string, jobID string, deleteEntry bool) error {
+	client, err := NewClient(serviceURL)
 	if err != nil {
 		return err
 	}
@@ -17,7 +17,7 @@ func CancelTask(ctx context.Context, serviceUrl string, scicatToken string, jobI
 		return nil
 	}
 
-	rawResp, err := client.DeleteTransferTask(ctx, jobId, &DeleteTransferTaskParams{&deleteEntry}, scicatKeyAuth)
+	rawResp, err := client.DeleteTransferTask(ctx, jobID, &DeleteTransferTaskParams{&deleteEntry}, scicatKeyAuth)
 	if err != nil {
 		return err
 	}

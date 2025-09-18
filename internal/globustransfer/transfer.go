@@ -18,10 +18,10 @@ type File struct {
 	IsSymlink bool
 }
 
-func checkTransfer(client *globus.GlobusClient, globusTaskId string) (bytesTransferred int, filesTransferred int, totalFiles int, completed bool, err error) {
-	globusTask, err := client.TransferGetTaskByID(globusTaskId)
+func checkTransfer(client *globus.GlobusClient, globusTaskID string) (bytesTransferred int, filesTransferred int, totalFiles int, completed bool, err error) {
+	globusTask, err := client.TransferGetTaskByID(globusTaskID)
 	if err != nil {
-		return 0, 0, 1, false, fmt.Errorf("globus: can't continue transfer because an error occured while polling the task \"%s\": %v", globusTaskId, err)
+		return 0, 0, 1, false, fmt.Errorf("globus: can't continue transfer because an error occured while polling the task \"%s\": %v", globusTaskID, err)
 	}
 	switch globusTask.Status {
 	case "ACTIVE":
@@ -52,7 +52,7 @@ func TransferFiles(
 	CollectionRootPath string,
 	DestinationCollectionID string,
 	DestinationPathTemplate string,
-	datasetId string,
+	datasetID string,
 	username string,
 	taskCtx context.Context,
 	datasetPath string,
@@ -71,10 +71,10 @@ func TransferFiles(
 	destParams := destPathParamsStruct{
 		DatasetFolder: path.Base(datasetPath),
 		SourceFolder:  datasetPath,
-		Pid:           datasetId,
-		PidShort:      path.Base(datasetId),
-		PidPrefix:     path.Dir(datasetId),
-		PidEncoded:    url.PathEscape(datasetId),
+		Pid:           datasetID,
+		PidShort:      path.Base(datasetID),
+		PidPrefix:     path.Dir(datasetID),
+		PidEncoded:    url.PathEscape(datasetID),
 		Username:      username,
 	}
 
@@ -100,7 +100,7 @@ func TransferFiles(
 	}
 
 	// task monitoring
-	globusTaskId := result.TaskId
+	globusTaskID := result.TaskId
 	var taskCompleted bool
 	var bytesTransferred, filesTransferred int
 
@@ -108,7 +108,7 @@ func TransferFiles(
 	//   this can change over the course of the transfer, as Globus succeeds in finding the files
 	//   (recursion, checking their existence...)
 
-	bytesTransferred, filesTransferred, _, taskCompleted, err = checkTransfer(client, globusTaskId)
+	bytesTransferred, filesTransferred, _, taskCompleted, err = checkTransfer(client, globusTaskID)
 	if err != nil {
 		return err
 	}
@@ -126,7 +126,7 @@ func TransferFiles(
 		select {
 		case <-taskCtx.Done():
 			// we're cancelling the task
-			result, err := client.TransferCancelTaskByID(globusTaskId)
+			result, err := client.TransferCancelTaskByID(globusTaskID)
 			if err != nil {
 				return fmt.Errorf("globus: couldn't cancel task: %v", err)
 			}
@@ -137,7 +137,7 @@ func TransferFiles(
 		case <-transferUpdater:
 			// check state of transfer
 			transferUpdater = time.After(1 * time.Minute)
-			bytesTransferred, filesTransferred, _, taskCompleted, err = checkTransfer(client, globusTaskId)
+			bytesTransferred, filesTransferred, _, taskCompleted, err = checkTransfer(client, globusTaskID)
 			if err != nil {
 				return err // transfer cannot be finished: irrecoverable error
 			}

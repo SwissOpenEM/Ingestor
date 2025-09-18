@@ -132,11 +132,11 @@ func (i *IngestorWebServerImplemenation) GetCallback(ctx context.Context, reques
 	}
 
 	// get id token (not sure if needed here?)
-	rawIdToken, ok := oauthToken.Extra("id_token").(string)
+	rawIDToken, ok := oauthToken.Extra("id_token").(string)
 	if !ok {
 		return GetCallback400TextResponse("'id_token' field was not found in oauth2 token"), nil
 	}
-	idToken, err := i.oidcVerifier.Verify(ctx, rawIdToken)
+	idToken, err := i.oidcVerifier.Verify(ctx, rawIDToken)
 	if err != nil {
 		return GetCallback400TextResponse(fmt.Sprintf("idToken verification failed: %s", err.Error())), nil
 	}
@@ -188,12 +188,12 @@ func (i *IngestorWebServerImplemenation) GetCallback(ctx context.Context, reques
 		return globusCallbackRedirect(ctx, i.globusAuthConf, i.secureCookies)
 	}
 
-	redirectUrl := i.frontend.origin + i.frontend.redirectPath + "?backendUrl=" + url.QueryEscape(i.taskQueue.Config.WebServer.BackendAddress)
+	redirectURL := i.frontend.origin + i.frontend.redirectPath + "?backendUrl=" + url.QueryEscape(i.taskQueue.Config.WebServer.BackendAddress)
 
 	// standard redirect to frontend if there's nothing else to do
 	return GetCallback302Response{
 		Headers: GetCallback302ResponseHeaders{
-			Location: redirectUrl,
+			Location: redirectURL,
 		},
 	}, nil
 }
@@ -344,26 +344,26 @@ func (i *IngestorWebServerImplemenation) GetGlobusCallback(ctx context.Context, 
 		return GetGlobusCallback400TextResponse(fmt.Sprintf("creating globus session cookie failed: %s", err.Error())), nil
 	}
 
-	redirectUrl := i.frontend.origin + i.frontend.redirectPath
+	redirectURL := i.frontend.origin + i.frontend.redirectPath
 	if i.taskQueue.Config.WebServer.BackendAddress != "" {
-		redirectUrl += "?backendUrl=" + url.QueryEscape(i.taskQueue.Config.WebServer.BackendAddress) // add connected backend url
+		redirectURL += "?backendUrl=" + url.QueryEscape(i.taskQueue.Config.WebServer.BackendAddress) // add connected backend url
 	}
 	return GetGlobusCallback302Response{
 		Headers: GetGlobusCallback302ResponseHeaders{
-			Location: redirectUrl,
+			Location: redirectURL,
 		},
 	}, nil
 }
 
 func globusCallbackRedirect(ctx context.Context, globusAuthConf *oauth2.Config, secureCookies bool) (GetCallbackResponseObject, error) {
-	redirectUrl, err := globusauth.GetRedirectUrl(ctx, globusAuthConf, secureCookies)
+	redirectURL, err := globusauth.GetRedirectURL(ctx, globusAuthConf, secureCookies)
 	if err != nil {
 		return GetCallback500TextResponse(err.Error()), nil
 	}
 
 	return GetCallback302Response{
 		Headers: GetCallback302ResponseHeaders{
-			Location: redirectUrl,
+			Location: redirectURL,
 		},
 	}, nil
 }
