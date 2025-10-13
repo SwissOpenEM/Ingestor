@@ -29,7 +29,7 @@ require (
 )
 
 require (
-	github.com/MicahParks/jwkset v0.10.0 // indirect
+	github.com/MicahParks/jwkset v0.11.0 // indirect
 	github.com/andybalholm/brotli v1.2.0 // indirect
 	github.com/bodgit/plumbing v1.3.0 // indirect
 	github.com/bodgit/sevenzip v1.6.1 // indirect
@@ -90,7 +90,7 @@ require (
 
 require (
 	github.com/KyleBanks/depth v1.2.1 // indirect
-	github.com/MicahParks/keyfunc/v3 v3.6.1
+	github.com/MicahParks/keyfunc/v3 v3.7.0
 	github.com/Netflix/go-expect v0.0.0-20220104043353-73e0943537d2 // indirect
 	github.com/apapsch/go-jsonmerge/v2 v2.0.0 // indirect
 	github.com/bep/debounce v1.2.1 // indirect
