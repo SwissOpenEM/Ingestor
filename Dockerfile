@@ -18,7 +18,11 @@ ARG VERSION=1.2.3
 RUN CGO_ENABLED=0 GOOS=linux go generate ./internal/webserver
 RUN CGO_ENABLED=0 GOOS=linux go build -C ./cmd/openem-ingestor-service/ -v -o /app/ingestor  -ldflags="-s -w  -X 'main.version=${VERSION}'"
 
-FROM alpine
+FROM ubuntu:24.04
+
+RUN apt-get update && \
+    apt-get install -y ca-certificates 
+
 COPY --from=builder /app/ingestor /app/ingestor
 
 EXPOSE 8080
