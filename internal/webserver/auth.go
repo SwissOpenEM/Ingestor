@@ -227,9 +227,13 @@ func (i *IngestorWebServerImplemenation) GetLogout(ctx context.Context, request 
 			return GetLogout500TextResponse(err.Error()), nil
 		}
 	}
+	logoutURI := i.taskQueue.Config.WebServer.AuthConf.IssuerURL + "/protocol/openid-connect/logout"
+	redirectURI := i.frontend.origin + i.frontend.redirectPath + "?backendUrl=" + url.QueryEscape(i.taskQueue.Config.WebServer.BackendAddress)
+
+	ginCtx.Redirect(302, fmt.Sprintf("%s?post_logout_redirect_uri=%s&client_id=%s", logoutURI, redirectURI, i.oauth2Config.ClientID))
 
 	return GetLogout302Response{GetLogout302ResponseHeaders{
-		Location: i.frontend.origin + i.frontend.redirectPath,
+		Location: redirectURI,
 	}}, nil
 }
 
