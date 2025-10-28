@@ -122,7 +122,7 @@ func FinalizeUpload(ctx context.Context, config transfertask.S3TransferConfig, d
 	}
 
 	resp, err := GetPresignedURLServer(config.Endpoint).FinalizeDatasetUploadWithResponse(ctx, FinalizeDatasetUploadBody{
-		DatasetPID:         datasetPID,
+		DatasetPid:         datasetPID,
 		OwnerUser:          ownerUser,
 		OwnerGroup:         ownerGroup,
 		ContactEmail:       openapi_types.Email(email),
@@ -136,7 +136,7 @@ func FinalizeUpload(ctx context.Context, config transfertask.S3TransferConfig, d
 	if resp.HTTPResponse.StatusCode == 500 {
 		return fmt.Errorf("failed to finalize upload: %d, %s, %s ", resp.HTTPResponse.StatusCode, resp.HTTPResponse.Status, *resp.JSON500.Details)
 	} else if resp.HTTPResponse.StatusCode == 201 {
-		log().Debug("Upload finalized", "dataset pid", resp.JSON201.DatasetID, "message", resp.JSON201.Message)
+		log().Debug("Upload finalized", "dataset pid", resp.JSON201.DatasetId, "message", resp.JSON201.Message)
 	} else {
 		return fmt.Errorf("failed to finalize upload: %d, %s", resp.HTTPResponse.StatusCode, resp.HTTPResponse.Status)
 	}

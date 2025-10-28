@@ -8,6 +8,76 @@ servers:
 security:
   - BearerAuth: []
 paths:
+  /health/livez:
+    get:
+      security: []
+      summary: Health Check
+      description: Returns the health status of the service
+      tags:
+        - health
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "healthy"
+                  timestamp:
+                    type: string
+                    format: date-time
+                    example: "2023-10-01T12:00:00Z"
+        '503':
+          description: Service is unavailable
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "unhealthy"
+                  error:
+                    type: string
+                    example: "Service is down"
+  /health/readyz:
+    get:
+      security: []
+      summary: Readiness Check
+      description: Returns the Readiness status of the service
+      tags:
+        - health
+      responses:
+        '200':
+          description: Service is ready
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "Ready"
+                  timestamp:
+                    type: string
+                    format: date-time
+                    example: "2023-10-01T12:00:00Z"
+        '503':
+          description: Service is not ready 
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "not ready"
+                  error:
+                    type: string
+                    example: "Service is not ready"
   /token:
     post:
       security:
@@ -63,7 +133,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/InternalError"
           description: Internal Server Error
-      summary: Get Presigned Urls
+      summary: Get Presigned urls
       tags:
         - s3upload
   /s3/completeUpload:
@@ -192,7 +262,7 @@ components:
           example: 0
         session_state:
           type: string
-          description: Session ID, identifier that uniquely ties the session to the authenticated user
+          description: Session id, identifier that uniquely ties the session to the authenticated user
           example: ec313d7a-df9d-4390-865e-c6d606156fdc
         scope:
           type: string
@@ -204,152 +274,152 @@ components:
       title: CreateServiceTokenResp
     AbortUploadBody:
       example:
-        UploadID: UploadID
-        ObjectName: ObjectName
+        upload_id: upload_id
+        object_name: object_name
       properties:
-        UploadID:
-          title: Uploadid
+        upload_id:
+          title: upload_id
           type: string
-        ObjectName:
-          title: Objectname
+        object_name:
+          title: object_name
           type: string
       required:
-        - ObjectName
-        - UploadID
+        - object_name
+        - upload_id
       title: AbortUploadBody
     AbortUploadResp:
       example:
-        UploadID: UploadID
-        ObjectName: ObjectName
-        Message: Succeeded
+        upload_id: upload_id
+        object_name: object_name
+        message: Succeeded
       properties:
-        Message:
-          title: Message
+        message:
+          title: message
           type: string
-        UploadID:
-          title: Uploadid
+        upload_id:
+          title: upload_id
           type: string
-        ObjectName:
-          title: Objectname
+        object_name:
+          title: object_name
           type: string
       required:
-        - ObjectName
-        - UploadID
-        - Message
+        - object_name
+        - upload_id
+        - message
       title: AbortUploadResp
     CompletePart:
       example:
-        PartNumber: 0
-        ETag: ETag
-        ChecksumSHA256: ChecksumSHA256
+        part_number: 0
+        etag: etag
+        checksum_sha256: checksum_sha256
       properties:
-        PartNumber:
-          title: Partnumber
+        part_number:
+          title: part_number
           type: integer
-        ETag:
-          title: Etag
+        etag:
+          title: etag
           type: string
-        ChecksumSHA256:
-          title: Checksumsha256
+        checksum_sha256:
+          title: checksum_sha256
           type: string
       required:
-        - ChecksumSHA256
-        - ETag
-        - PartNumber
+        - checksum_sha256
+        - etag
+        - part_number
       title: CompletePart
     CompleteUploadBody:
       example:
-        Parts:
-          - PartNumber: 0
-            ETag: ETag
-            ChecksumSHA256: ChecksumSHA256
-          - PartNumber: 0
-            ETag: ETag
-            ChecksumSHA256: ChecksumSHA256
-        UploadID: UploadID
-        ObjectName: ObjectName
-        ChecksumSHA256: ChecksumSHA256
+        parts:
+          - part_number: 0
+            etag: etag
+            checksum_sha256: checksum_sha256
+          - part_number: 0
+            etag: etag
+            checksum_sha256: checksum_sha256
+        upload_id: upload_id
+        object_name: object_name
+        checksum_sha256: checksum_sha256
       properties:
-        ObjectName:
-          title: Objectname
+        object_name:
+          title: object_name
           type: string
-        UploadID:
-          title: Uploadid
+        upload_id:
+          title: upload_id
           type: string
-        Parts:
+        parts:
           items:
             $ref: "#/components/schemas/CompletePart"
-          title: Parts
+          title: parts
           type: array
-        ChecksumSHA256:
-          title: Checksumsha256
+        checksum_sha256:
+          title: checksum_sha256
           type: string
       required:
-        - ChecksumSHA256
-        - ObjectName
-        - Parts
-        - UploadID
+        - checksum_sha256
+        - object_name
+        - parts
+        - upload_id
       title: CompleteUploadBody
     CompleteUploadResp:
       example:
-        Location: http://minio/object
-        Key: ObjectName
+        location: http://minio/object
+        key: object_name
       properties:
-        Location:
-          title: Location
+        location:
+          title: location
           type: string
-        Key:
-          title: Key
+        key:
+          title: key
           type: string
       required:
-        - Location
-        - Key
+        - location
+        - key
       title: CompleteUploadResp
     FinalizeDatasetUploadBody:
       example:
-        DatasetPID: c2c6bc13-2c14-43d7-91a9-46cd556b258d
-        CreateArchivingJob: true
-        OwnerGroup: Group
-        OwnerUser: User
-        ContactEmail: user@mail.com
+        dataset_pid: c2c6bc13-2c14-43d7-91a9-46cd556b258d
+        create_archiving_job: true
+        owner_group: Group
+        owner_user: User
+        contact_email: user@mail.com
       properties:
-        DatasetPID:
-          title: DatasetPID
+        dataset_pid:
+          title: dataset_pid
           type: string
-        CreateArchivingJob:
-          title: CreateArchivingJob
+        create_archiving_job:
+          title: create_archiving_job
           type: boolean
-        OwnerGroup:
-          title: OwnerGroup
+        owner_group:
+          title: owner_group
           type: string
-        OwnerUser:
-          title: OwnerUser
+        owner_user:
+          title: owner_user
           type: string
-        ContactEmail:
-          title: ContactEmail
+        contact_email:
+          title: contact_email
           type: string
           format: email
       required:
-        - DatasetPID
-        - CreateArchivingJob
-        - OwnerGroup
-        - OwnerUser
-        - ContactEmail
+        - dataset_pid
+        - create_archiving_job
+        - owner_group
+        - owner_user
+        - contact_email
       title: FinalizeDatasetUploadBody
     FinalizeDatasetUploadResp:
       example:
-        DatasetID: DatasetID
-        Message: "Upload finalized"
+        dataset_id: dataset_id
+        message: "Upload finalized"
       properties:
-        DatasetID:
-          title: DatasetID
+        dataset_id:
+          title: dataset_id
           type: string
-        Message:
-          title: Message
+        message:
+          title: message
           type: string
       required:
-        - DatasetID
-        - Message
+        - dataset_id
+        - message
       title: FinalizeDatasetUploadResp
     HTTPValidationError:
       example:
@@ -392,38 +462,38 @@ components:
           description: The time when the error occurred
     PresignedUrlBody:
       example:
-        Parts: 0
-        ObjectName: ObjectName
+        parts: 0
+        object_name: object_name
       properties:
-        ObjectName:
-          title: Objectname
+        object_name:
+          title: object_name
           type: string
-        Parts:
-          title: Parts
+        parts:
+          title: parts
           type: integer
           minimum: 1
       required:
-        - ObjectName
-        - Parts
+        - object_name
+        - parts
       title: PresignedUrlBody
     PresignedUrlResp:
       example:
-        Urls:
-          - Urls
-          - Urls
-        UploadID: UploadID
+        urls:
+          - urls
+          - urls
+        upload_id: upload_id
       properties:
-        UploadID:
-          title: Uploadid
+        upload_id:
+          title: upload_id
           type: string
-        Urls:
+        urls:
           items:
             type: string
-          title: Urls
+          title: urls
           type: array
       required:
-        - UploadID
-        - Urls
+        - upload_id
+        - urls
       title: PresignedUrlResp
     ValidationError:
       example:
@@ -439,10 +509,10 @@ components:
           title: loc
           type: array
         msg:
-          title: Message
+          title: message
           type: string
         type:
-          title: Error Type
+          title: Error type
           type: string
       required:
         - loc
