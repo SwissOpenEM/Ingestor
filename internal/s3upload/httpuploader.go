@@ -95,15 +95,15 @@ func getPresignedURLs(objectName string, part int, endpoint string, userToken st
 		}
 		return "", nil, fmt.Errorf("%s", errString)
 	}
-	return response.JSON201.UploadID, response.JSON201.Urls, nil
+	return response.JSON201.UploadId, response.JSON201.Urls, nil
 }
 
 func completeMultipartUpload(objectName string, uploadID string, endpoint string, parts []CompletePart, fullFileChecksum string, userToken string) error {
 	response, err := GetPresignedURLServer(endpoint).CompleteUploadWithResponse(context.Background(), CompleteUploadBody{
 		ObjectName:     objectName,
-		UploadID:       uploadID,
+		UploadId:       uploadID,
 		Parts:          parts,
-		ChecksumSHA256: fullFileChecksum,
+		ChecksumSha256: fullFileChecksum,
 	}, createAddAuthorizationHeaderFunction(userToken))
 
 	if err != nil {
@@ -167,7 +167,7 @@ func uploadFile(ctx context.Context, filePath string, objectName string, options
 func abortMultipartUpload(uploadID string, objectName string, endpoint string, userToken string) error {
 	response, err := GetPresignedURLServer(endpoint).AbortMultipartUploadWithResponse(context.Background(), AbortUploadBody{
 		ObjectName: objectName,
-		UploadID:   uploadID,
+		UploadId:   uploadID,
 	}, createAddAuthorizationHeaderFunction(userToken))
 
 	if err != nil {
@@ -236,7 +236,7 @@ func doUploadMultipart(ctx context.Context, totalSize int64, objectName string, 
 
 			notifier.AddUploadedBytes(int64(n))
 
-			parts[partNumber] = CompletePart{ETag: etag, PartNumber: partNumber + 1, ChecksumSHA256: base64Hash}
+			parts[partNumber] = CompletePart{Etag: etag, PartNumber: partNumber + 1, ChecksumSha256: base64Hash}
 
 			return nil
 		})
