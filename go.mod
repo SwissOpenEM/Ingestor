@@ -24,7 +24,7 @@ require (
 	github.com/swaggo/gin-swagger v1.6.1
 	github.com/swaggo/swag v1.16.6
 	github.com/wailsapp/wails/v2 v2.10.2
-	golang.org/x/oauth2 v0.32.0
+	golang.org/x/oauth2 v0.33.0
 	golift.io/xtractr v0.2.2
 )
 
