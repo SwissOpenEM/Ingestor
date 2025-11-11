@@ -31,6 +31,8 @@ import (
 type Method struct {
 	// Id and display name of the method
 	Name string
+	// Valid link to the schema
+	URL string
 	// Base64 encoded schema
 	Schema string
 	// Id and name of the corresponding extractor
@@ -178,6 +180,7 @@ func NewExtractorHandler(config ExtractorsConfig) *ExtractorHandler {
 			h.methods[m.Name] = Method{
 				Name:      m.Name,
 				Schema:    b64.StdEncoding.EncodeToString(schema),
+				URL:       m.URL,
 				Extractor: extractorConfig.Name,
 			}
 			log().Debug("Successfully added extractor", "method", m.Name, "extractor", extractorConfig.Name)
@@ -319,6 +322,7 @@ func downloadExtractor(fullInstallPath string, config ExtractorConfig) error {
 type MethodAndSchema struct {
 	Name   string
 	Schema string
+	URL    string
 }
 
 func (e *ExtractorHandler) AvailableMethods() []MethodAndSchema {
@@ -329,8 +333,9 @@ func (e *ExtractorHandler) AvailableMethods() []MethodAndSchema {
 
 	for k, v := range e.methods {
 		methods = append(methods, MethodAndSchema{
-			k,
-			v.Schema,
+			Name:   k,
+			Schema: v.Schema,
+			URL:    v.URL,
 		})
 	}
 
