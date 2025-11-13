@@ -658,9 +658,12 @@ components:
           type: string
         schema:
           type: string
+        url:
+          type: string
       required:
         - name
         - schema
+        - url
       description: a method item describes the method's name and schema
     GetBrowseDatasetResponse:
       type: object

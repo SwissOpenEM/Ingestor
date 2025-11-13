@@ -23,7 +23,11 @@ func (i *IngestorWebServerImplemenation) ExtractorControllerGetExtractorMethods(
 	methods = safeSubslice(methods, (page-1)*pageSize, page*pageSize)
 	methodsDTO := make([]MethodItem, len(methods))
 	for i, method := range methods {
-		methodsDTO[i] = MethodItem(method)
+		methodsDTO[i] = MethodItem{
+			Name:   method.Name,
+			Schema: method.Schema,
+			Url:    method.URL,
+		}
 	}
 
 	// return result
