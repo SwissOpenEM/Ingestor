@@ -1,4 +1,4 @@
-//go:generate wget https://raw.githubusercontent.com/SwissOpenEM/globus-transfer-service/refs/heads/master/internal/api/openapi.yaml -O openapi.yaml
+//go:generate wget https://raw.githubusercontent.com/SwissOpenEM/scicat-globus-proxy/refs/heads/main/internal/api/openapi.yaml -O openapi.yaml
 //go:generate go run github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen --config=./oapi-codegen-conf.yaml ./openapi.yaml
 package extglobusservice
 
