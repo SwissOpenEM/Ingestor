@@ -144,6 +144,9 @@ type ClientInterface interface {
 
 	// DeleteTransferTask request
 	DeleteTransferTask(ctx context.Context, scicatJobId string, params *DeleteTransferTaskParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetVersion request
+	GetVersion(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 }
 
 func (c *Client) PostTransferTaskWithBody(ctx context.Context, params *PostTransferTaskParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -172,6 +175,18 @@ func (c *Client) PostTransferTask(ctx context.Context, params *PostTransferTaskP
 
 func (c *Client) DeleteTransferTask(ctx context.Context, scicatJobId string, params *DeleteTransferTaskParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewDeleteTransferTaskRequest(c.Server, scicatJobId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetVersion(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetVersionRequest(c.Server)
 	if err != nil {
 		return nil, err
 	}
@@ -320,6 +335,33 @@ func NewDeleteTransferTaskRequest(server string, scicatJobId string, params *Del
 	return req, nil
 }
 
+// NewGetVersionRequest generates requests for GetVersion
+func NewGetVersionRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/version")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 func (c *Client) applyEditors(ctx context.Context, req *http.Request, additionalEditors []RequestEditorFn) error {
 	for _, r := range c.RequestEditors {
 		if err := r(ctx, req); err != nil {
@@ -370,6 +412,9 @@ type ClientWithResponsesInterface interface {
 
 	// DeleteTransferTaskWithResponse request
 	DeleteTransferTaskWithResponse(ctx context.Context, scicatJobId string, params *DeleteTransferTaskParams, reqEditors ...RequestEditorFn) (*DeleteTransferTaskResponse, error)
+
+	// GetVersionWithResponse request
+	GetVersionWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetVersionResponse, error)
 }
 
 type PostTransferTaskResponse struct {
@@ -427,6 +472,31 @@ func (r DeleteTransferTaskResponse) StatusCode() int {
 	return 0
 }
 
+type GetVersionResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *struct {
+		// Version the current version of the service
+		Version string `json:"version"`
+	}
+}
+
+// Status returns HTTPResponse.Status
+func (r GetVersionResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetVersionResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
 // PostTransferTaskWithBodyWithResponse request with arbitrary body returning *PostTransferTaskResponse
 func (c *ClientWithResponses) PostTransferTaskWithBodyWithResponse(ctx context.Context, params *PostTransferTaskParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostTransferTaskResponse, error) {
 	rsp, err := c.PostTransferTaskWithBody(ctx, params, contentType, body, reqEditors...)
@@ -451,6 +521,15 @@ func (c *ClientWithResponses) DeleteTransferTaskWithResponse(ctx context.Context
 		return nil, err
 	}
 	return ParseDeleteTransferTaskResponse(rsp)
+}
+
+// GetVersionWithResponse request returning *GetVersionResponse
+func (c *ClientWithResponses) GetVersionWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetVersionResponse, error) {
+	rsp, err := c.GetVersion(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetVersionResponse(rsp)
 }
 
 // ParsePostTransferTaskResponse parses an HTTP response from a PostTransferTaskWithResponse call
@@ -558,6 +637,35 @@ func ParseDeleteTransferTaskResponse(rsp *http.Response) (*DeleteTransferTaskRes
 			return nil, err
 		}
 		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetVersionResponse parses an HTTP response from a GetVersionWithResponse call
+func ParseGetVersionResponse(rsp *http.Response) (*GetVersionResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetVersionResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			// Version the current version of the service
+			Version string `json:"version"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
 
 	}
 

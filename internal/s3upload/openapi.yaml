@@ -105,6 +105,77 @@ paths:
       summary: Create New Service Token
       tags:
         - service_token
+  /archiver/jobs:
+    post:
+      security: 
+        - BasicAuth: []
+      operationId: create_job
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateJobBody"
+        required: true
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreateJobResp"
+          description: Job Created
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+          description: Data Validation Error
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InternalError"
+          description: Internal Server Error
+      summary: Create Archiver Job
+      tags:
+        - archiving
+  /s3/requestDatasetUpload:
+    post:
+      operationId: request_dataset_upload
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UploadRequestBody"
+        required: true
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UploadRequestSuccessfulResp"
+          description: Upload request successful
+        "507":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UploadRequestUnsuccessfulResp"
+          description: Upload request unsuccessful
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+          description: Validation Error
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InternalError"
+          description: Internal Server Error
+      summary: Request a new upload
+      tags:
+        - s3upload
+
   /s3/presignedUrls:
     post:
       operationId: get_presigned_urls
@@ -227,6 +298,37 @@ paths:
                 $ref: "#/components/schemas/InternalError"
           description: Internal Server Error
       summary: Finalize Dataset Upload
+      tags:
+        - s3upload
+  /s3/requestDatasetUpload:
+    post:
+      operationId: request_dataset_upload
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UploadRequestBody"
+        required: true
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UploadRequestResp"
+          description: Upload requested
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+          description: Validation Error
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InternalError"
+          description: Internal Server Error
+      summary: Request a new upload
       tags:
         - s3upload
 components:
@@ -421,6 +523,32 @@ components:
         - dataset_id
         - message
       title: FinalizeDatasetUploadResp
+    UploadRequestBody:
+      example:
+        dataset_id:
+          - dataset/pid
+        total_gigabytes: 1000
+      properties:
+        dataset_id:
+          title: DatasetPID
+          type: string
+        total_gigabytes:
+          title: TotalGigabytes
+          type: integer
+      required:
+        - dataset_id
+        - total_gigabytes
+      title: UploadRequestBody
+    UploadRequestResp:
+      example:
+        Ok: true
+      properties:
+        Ok:
+          title: Ok
+          type: boolean
+      required:
+        - Ok 
+      title: UploadRequestResp
     HTTPValidationError:
       example:
         detail:
@@ -495,6 +623,50 @@ components:
         - upload_id
         - urls
       title: PresignedUrlResp
+    UploadRequestBody:
+      example:
+        dataset_id:
+          - dataset/pid
+        dataset_size_gib: 1000
+      properties:
+        dataset_id:
+          title: DatasetPID
+          type: string
+        dataset_size_gib:
+          title: Size in GiB
+          type: integer
+      required:
+        - dataset_id
+        - dataset_size_gib
+      title: UploadRequestBody
+    UploadRequestSuccessfulResp:
+      example:
+        message: upload granted
+      properties:
+        message:
+          title: message
+          type: string
+      required:
+        - message
+      title: UploadRequestSuccessfulResp
+    UploadRequestUnsuccessfulResp:
+      example:
+        message: not enough storage
+      properties:
+        message:
+          title: message
+          type: string
+        dataset_id:
+          title: dataset_id
+          type: string
+        requested_size_gib:
+          title: requested size in GiB
+          type: integer
+      required:
+        - message 
+        - dataset_id
+        - requested_size_gib
+      title: UploadRequestUnsuccessfulResp
     ValidationError:
       example:
         msg: msg
