@@ -27,8 +27,20 @@ const (
 	SciCatAuthScopes = "SciCatAuth.Scopes"
 )
 
+// AbortDatasetUploadBody defines model for AbortDatasetUploadBody.
+type AbortDatasetUploadBody struct {
+	DatasetId string `json:"dataset_id"`
+}
+
+// AbortDatasetUploadResp defines model for AbortDatasetUploadResp.
+type AbortDatasetUploadResp struct {
+	DatasetId string `json:"dataset_id"`
+	Message   string `json:"message"`
+}
+
 // AbortUploadBody defines model for AbortUploadBody.
 type AbortUploadBody struct {
+	DatasetId  string `json:"dataset_id"`
 	ObjectName string `json:"object_name"`
 	UploadId   string `json:"upload_id"`
 }
@@ -50,6 +62,7 @@ type CompletePart struct {
 // CompleteUploadBody defines model for CompleteUploadBody.
 type CompleteUploadBody struct {
 	ChecksumSha256 string         `json:"checksum_sha256"`
+	DatasetId      string         `json:"dataset_id"`
 	ObjectName     string         `json:"object_name"`
 	Parts          []CompletePart `json:"parts"`
 	UploadId       string         `json:"upload_id"`
@@ -92,7 +105,7 @@ type CreateServiceTokenResp struct {
 type FinalizeDatasetUploadBody struct {
 	ContactEmail       openapi_types.Email `json:"contact_email"`
 	CreateArchivingJob bool                `json:"create_archiving_job"`
-	DatasetPid         string              `json:"dataset_pid"`
+	DatasetId          string              `json:"dataset_id"`
 	OwnerGroup         string              `json:"owner_group"`
 	OwnerUser          string              `json:"owner_user"`
 }
@@ -125,6 +138,7 @@ type InternalError struct {
 
 // PresignedUrlBody defines model for PresignedUrlBody.
 type PresignedUrlBody struct {
+	DatasetId  string `json:"dataset_id"`
 	ObjectName string `json:"object_name"`
 	Parts      int    `json:"parts"`
 }
@@ -170,6 +184,9 @@ type ValidationErrorLocInner0 = string
 
 // ValidationErrorLocInner1 defines model for .
 type ValidationErrorLocInner1 = int
+
+// AbortDatasetUploadJSONRequestBody defines body for AbortDatasetUpload for application/json ContentType.
+type AbortDatasetUploadJSONRequestBody = AbortDatasetUploadBody
 
 // AbortMultipartUploadJSONRequestBody defines body for AbortMultipartUpload for application/json ContentType.
 type AbortMultipartUploadJSONRequestBody = AbortUploadBody
@@ -321,6 +338,11 @@ func WithRequestEditorFn(fn RequestEditorFn) ClientOption {
 
 // The interface specification for the client above.
 type ClientInterface interface {
+	// AbortDatasetUploadWithBody request with any body
+	AbortDatasetUploadWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	AbortDatasetUpload(ctx context.Context, body AbortDatasetUploadJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// AbortMultipartUploadWithBody request with any body
 	AbortMultipartUploadWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -348,6 +370,30 @@ type ClientInterface interface {
 
 	// CreateNewServiceToken request
 	CreateNewServiceToken(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+}
+
+func (c *Client) AbortDatasetUploadWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAbortDatasetUploadRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) AbortDatasetUpload(ctx context.Context, body AbortDatasetUploadJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAbortDatasetUploadRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
 }
 
 func (c *Client) AbortMultipartUploadWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -480,6 +526,46 @@ func (c *Client) CreateNewServiceToken(ctx context.Context, reqEditors ...Reques
 		return nil, err
 	}
 	return c.Client.Do(req)
+}
+
+// NewAbortDatasetUploadRequest calls the generic AbortDatasetUpload builder with application/json body
+func NewAbortDatasetUploadRequest(server string, body AbortDatasetUploadJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewAbortDatasetUploadRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewAbortDatasetUploadRequestWithBody generates requests for AbortDatasetUpload with any type of body
+func NewAbortDatasetUploadRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/s3/abortDatasetUpload")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
 }
 
 // NewAbortMultipartUploadRequest calls the generic AbortMultipartUpload builder with application/json body
@@ -752,6 +838,11 @@ func WithBaseURL(baseURL string) ClientOption {
 
 // ClientWithResponsesInterface is the interface specification for the client with responses above.
 type ClientWithResponsesInterface interface {
+	// AbortDatasetUploadWithBodyWithResponse request with any body
+	AbortDatasetUploadWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AbortDatasetUploadResponse, error)
+
+	AbortDatasetUploadWithResponse(ctx context.Context, body AbortDatasetUploadJSONRequestBody, reqEditors ...RequestEditorFn) (*AbortDatasetUploadResponse, error)
+
 	// AbortMultipartUploadWithBodyWithResponse request with any body
 	AbortMultipartUploadWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AbortMultipartUploadResponse, error)
 
@@ -779,6 +870,30 @@ type ClientWithResponsesInterface interface {
 
 	// CreateNewServiceTokenWithResponse request
 	CreateNewServiceTokenWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*CreateNewServiceTokenResponse, error)
+}
+
+type AbortDatasetUploadResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON201      *AbortDatasetUploadResp
+	JSON422      *HTTPValidationError
+	JSON500      *InternalError
+}
+
+// Status returns HTTPResponse.Status
+func (r AbortDatasetUploadResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AbortDatasetUploadResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
 }
 
 type AbortMultipartUploadResponse struct {
@@ -926,6 +1041,23 @@ func (r CreateNewServiceTokenResponse) StatusCode() int {
 	return 0
 }
 
+// AbortDatasetUploadWithBodyWithResponse request with arbitrary body returning *AbortDatasetUploadResponse
+func (c *ClientWithResponses) AbortDatasetUploadWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AbortDatasetUploadResponse, error) {
+	rsp, err := c.AbortDatasetUploadWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAbortDatasetUploadResponse(rsp)
+}
+
+func (c *ClientWithResponses) AbortDatasetUploadWithResponse(ctx context.Context, body AbortDatasetUploadJSONRequestBody, reqEditors ...RequestEditorFn) (*AbortDatasetUploadResponse, error) {
+	rsp, err := c.AbortDatasetUpload(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAbortDatasetUploadResponse(rsp)
+}
+
 // AbortMultipartUploadWithBodyWithResponse request with arbitrary body returning *AbortMultipartUploadResponse
 func (c *ClientWithResponses) AbortMultipartUploadWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AbortMultipartUploadResponse, error) {
 	rsp, err := c.AbortMultipartUploadWithBody(ctx, contentType, body, reqEditors...)
@@ -1018,6 +1150,46 @@ func (c *ClientWithResponses) CreateNewServiceTokenWithResponse(ctx context.Cont
 		return nil, err
 	}
 	return ParseCreateNewServiceTokenResponse(rsp)
+}
+
+// ParseAbortDatasetUploadResponse parses an HTTP response from a AbortDatasetUploadWithResponse call
+func ParseAbortDatasetUploadResponse(rsp *http.Response) (*AbortDatasetUploadResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AbortDatasetUploadResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest AbortDatasetUploadResp
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest HTTPValidationError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
 }
 
 // ParseAbortMultipartUploadResponse parses an HTTP response from a AbortMultipartUploadWithResponse call

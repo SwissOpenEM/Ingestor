@@ -70,10 +70,11 @@ func createAddAuthorizationHeaderFunction(token string) func(ctx context.Context
 }
 
 // Fetches presigned url(s) from API server. If parts > 1, multipart upload is initiated
-func getPresignedURLs(objectName string, part int, endpoint string, userToken string) (string, []string, error) {
+func getPresignedURLs(datasetID string, objectName string, part int, endpoint string, userToken string) (string, []string, error) {
 	response, err := GetPresignedURLServer(endpoint).GetPresignedUrlsWithResponse(context.Background(), PresignedUrlBody{
 		ObjectName: objectName,
 		Parts:      part,
+		DatasetId:  datasetID,
 	}, createAddAuthorizationHeaderFunction(userToken))
 
 	if err != nil {
@@ -98,8 +99,9 @@ func getPresignedURLs(objectName string, part int, endpoint string, userToken st
 	return response.JSON201.UploadId, response.JSON201.Urls, nil
 }
 
-func completeMultipartUpload(objectName string, uploadID string, endpoint string, parts []CompletePart, fullFileChecksum string, userToken string) error {
+func completeMultipartUpload(datasetID string, objectName string, uploadID string, endpoint string, parts []CompletePart, fullFileChecksum string, userToken string) error {
 	response, err := GetPresignedURLServer(endpoint).CompleteUploadWithResponse(context.Background(), CompleteUploadBody{
+		DatasetId:      datasetID,
 		ObjectName:     objectName,
 		UploadId:       uploadID,
 		Parts:          parts,
@@ -128,7 +130,7 @@ func completeMultipartUpload(objectName string, uploadID string, endpoint string
 	return nil
 }
 
-func uploadFile(ctx context.Context, filePath string, objectName string, options transfertask.S3TransferConfig, notifier *transfertask.TransferNotifier, tokenSource oauth2.TokenSource) error {
+func uploadFile(ctx context.Context, datasetID string, filePath string, objectName string, options transfertask.S3TransferConfig, notifier *transfertask.TransferNotifier, tokenSource oauth2.TokenSource) error {
 	file, err := os.Open(filePath)
 	if err != nil {
 		return fmt.Errorf("error opening file: %w", err)
@@ -149,10 +151,10 @@ func uploadFile(ctx context.Context, filePath string, objectName string, options
 	}
 
 	if totalSize < options.ChunkSizeMB*MiB {
-		return doUploadSingleFile(ctx, objectName, file, httpClient, options.Endpoint, token.AccessToken, notifier)
+		return doUploadSingleFile(ctx, datasetID, objectName, file, httpClient, options.Endpoint, token.AccessToken, notifier)
 	}
 
-	uploadID, err := doUploadMultipart(ctx, totalSize, objectName, file, httpClient, options, token.AccessToken, notifier)
+	uploadID, err := doUploadMultipart(ctx, datasetID, totalSize, objectName, file, httpClient, options, token.AccessToken, notifier)
 	if err != nil {
 		errUpload := fmt.Errorf("failed to do multipart upload: uploadID=%s, objectName=%s, error=%s", uploadID, objectName, err.Error())
 		errAbort := abortMultipartUpload(uploadID, objectName, options.Endpoint, token.AccessToken)
@@ -179,8 +181,8 @@ func abortMultipartUpload(uploadID string, objectName string, endpoint string, u
 	return nil
 }
 
-func doUploadSingleFile(ctx context.Context, objectName string, file *os.File, httpClient *HTTPUploader, endpoint string, userToken string, notifier *transfertask.TransferNotifier) error {
-	_, urls, err := getPresignedURLs(objectName, 1, endpoint, userToken)
+func doUploadSingleFile(ctx context.Context, datasetID string, objectName string, file *os.File, httpClient *HTTPUploader, endpoint string, userToken string, notifier *transfertask.TransferNotifier) error {
+	_, urls, err := getPresignedURLs(datasetID, objectName, 1, endpoint, userToken)
 	if err != nil {
 		return fmt.Errorf("doUploadSingleFile: %w", err)
 	}
@@ -205,10 +207,10 @@ func doUploadSingleFile(ctx context.Context, objectName string, file *os.File, h
 	return nil
 }
 
-func doUploadMultipart(ctx context.Context, totalSize int64, objectName string, file *os.File, httpClient *HTTPUploader, options transfertask.S3TransferConfig, userToken string, notifier *transfertask.TransferNotifier) (string, error) {
+func doUploadMultipart(ctx context.Context, datasetID string, totalSize int64, objectName string, file *os.File, httpClient *HTTPUploader, options transfertask.S3TransferConfig, userToken string, notifier *transfertask.TransferNotifier) (string, error) {
 	partCount := int(math.Ceil(float64(totalSize) / float64(options.ChunkSizeMB*MiB)))
 
-	uploadID, presignedURLs, err := getPresignedURLs(objectName, partCount, options.Endpoint, userToken)
+	uploadID, presignedURLs, err := getPresignedURLs(datasetID, objectName, partCount, options.Endpoint, userToken)
 	if err != nil {
 		return uploadID, fmt.Errorf("doUploadMultipart: %w", err)
 	}
@@ -244,6 +246,7 @@ func doUploadMultipart(ctx context.Context, totalSize int64, objectName string, 
 
 	err = group.Wait()
 	if err != nil {
+
 		return uploadID, fmt.Errorf("doUploadMultipart: %w", err)
 	}
 	if ctx.Err() != nil {
@@ -254,7 +257,7 @@ func doUploadMultipart(ctx context.Context, totalSize int64, objectName string, 
 	n := sha256.Sum256([]byte(c))
 	base64Hash := base64.StdEncoding.EncodeToString(n[:])
 
-	err = completeMultipartUpload(objectName, uploadID, options.Endpoint, parts, base64Hash, userToken)
+	err = completeMultipartUpload(datasetID, objectName, uploadID, options.Endpoint, parts, base64Hash, userToken)
 	if err != nil {
 		return uploadID, fmt.Errorf("error completing multipart upload: %w", err)
 	}

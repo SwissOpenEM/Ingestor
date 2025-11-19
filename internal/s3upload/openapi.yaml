@@ -300,22 +300,22 @@ paths:
       summary: Finalize Dataset Upload
       tags:
         - s3upload
-  /s3/requestDatasetUpload:
+  /s3/abortDatasetUpload:
     post:
-      operationId: request_dataset_upload
+      operationId: AbortDatasetUpload
       requestBody:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/UploadRequestBody"
+              $ref: "#/components/schemas/AbortDatasetUploadBody"
         required: true
       responses:
         "201":
+          description: Finalize dataset upload requested
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/UploadRequestResp"
-          description: Upload requested
+                $ref: "#/components/schemas/AbortDatasetUploadResp"
         "422":
           content:
             application/json:
@@ -328,12 +328,19 @@ paths:
               schema:
                 $ref: "#/components/schemas/InternalError"
           description: Internal Server Error
-      summary: Request a new upload
+      summary: Abort Dataset Upload
       tags:
         - s3upload
 components:
   securitySchemes:
-    BearerAuth: # arbitrary name for the security scheme
+    BasicAuth:
+      type: http
+      scheme: basic
+    BearerAuth: # RS256 tokens signed by Keycloak
+      type: http
+      scheme: bearer
+      bearerFormat: JWT # optional, but indicates the format of the token
+    SciCatAuth: # HS256 tokens signed by SciCat
       type: http
       scheme: bearer
       bearerFormat: JWT # optional, but indicates the format of the token
@@ -379,6 +386,9 @@ components:
         upload_id: upload_id
         object_name: object_name
       properties:
+        dataset_id:
+          title: dataset_id
+          type: string
         upload_id:
           title: upload_id
           type: string
@@ -388,6 +398,7 @@ components:
       required:
         - object_name
         - upload_id
+        - dataset_id
       title: AbortUploadBody
     AbortUploadResp:
       example:
@@ -442,6 +453,9 @@ components:
         object_name: object_name
         checksum_sha256: checksum_sha256
       properties:
+        dataset_id:
+          title: dataset_id
+          type: string
         object_name:
           title: object_name
           type: string
@@ -457,6 +471,7 @@ components:
           title: checksum_sha256
           type: string
       required:
+        - dataset_id
         - checksum_sha256
         - object_name
         - parts
@@ -477,16 +492,68 @@ components:
         - location
         - key
       title: CompleteUploadResp
+    CreateJobBody:
+      properties:
+        id:
+          title: id
+          type: string
+          format: uuid
+        type:
+          title: type
+          type: string
+          enum: [archive, retrieve]
+      required:
+        - id
+        - type
+      title: CreateJobBody
+    CreateJobResp:
+      properties:
+        uuid:
+          title: JobID
+          type: string
+          format: uuid
+        name:
+          title: JobName
+          type: string
+      required:
+        - uuid
+        - name
+      title: CreateJobResp
+    AbortDatasetUploadBody:
+      example:
+        dataset_id: c2c6bc13-2c14-43d7-91a9-46cd556b258d
+      properties:
+        dataset_id:
+          title: dataset_id
+          type: string
+      required:
+        - dataset_id
+      title: AbortDatasetUploadBody
+    AbortDatasetUploadResp:
+      example:
+        dataset_id: dataset_id
+        message: "Upload finalized"
+      properties:
+        dataset_id:
+          title: dataset_id
+          type: string
+        message:
+          title: message
+          type: string
+      required:
+        - dataset_id
+        - message
+      title: AbortDatasetUploadResp
     FinalizeDatasetUploadBody:
       example:
-        dataset_pid: c2c6bc13-2c14-43d7-91a9-46cd556b258d
+        dataset_id: c2c6bc13-2c14-43d7-91a9-46cd556b258d
         create_archiving_job: true
         owner_group: Group
         owner_user: User
         contact_email: user@mail.com
       properties:
-        dataset_pid:
-          title: dataset_pid
+        dataset_id:
+          title: dataset_id
           type: string
         create_archiving_job:
           title: create_archiving_job
@@ -502,7 +569,7 @@ components:
           type: string
           format: email
       required:
-        - dataset_pid
+        - dataset_id
         - create_archiving_job
         - owner_group
         - owner_user
@@ -523,32 +590,6 @@ components:
         - dataset_id
         - message
       title: FinalizeDatasetUploadResp
-    UploadRequestBody:
-      example:
-        dataset_id:
-          - dataset/pid
-        total_gigabytes: 1000
-      properties:
-        dataset_id:
-          title: DatasetPID
-          type: string
-        total_gigabytes:
-          title: TotalGigabytes
-          type: integer
-      required:
-        - dataset_id
-        - total_gigabytes
-      title: UploadRequestBody
-    UploadRequestResp:
-      example:
-        Ok: true
-      properties:
-        Ok:
-          title: Ok
-          type: boolean
-      required:
-        - Ok 
-      title: UploadRequestResp
     HTTPValidationError:
       example:
         detail:
@@ -593,6 +634,9 @@ components:
         parts: 0
         object_name: object_name
       properties:
+        dataset_id:
+          title: DatasetPID
+          type: string
         object_name:
           title: object_name
           type: string
@@ -603,6 +647,7 @@ components:
       required:
         - object_name
         - parts
+        - dataset_id
       title: PresignedUrlBody
     PresignedUrlResp:
       example:
