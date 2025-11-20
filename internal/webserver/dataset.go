@@ -182,6 +182,9 @@ func (i *IngestorWebServerImplemenation) DatasetControllerIngestDataset(ctx cont
 		return DatasetControllerIngestDataset400TextResponse(err.Error()), nil
 	}
 
+	// the convention for the sourceFolder in Scicat is to have the full path where the dataset was collected from
+	metadata["sourceFolder"] = folderPath
+
 	// adapt source folder attribute to Globus collection path **only if** using external Globus transfer request service
 	//   as the service uses it to find the dataset's folder (due to security concerns)
 	if i.taskQueue.GetTransferMethod() == transfertask.TransferExtGlobus {
