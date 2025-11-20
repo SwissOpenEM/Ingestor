@@ -60,6 +60,12 @@ func main() {
 		panic(fmt.Sprintf("Only Scicat API v3 is supported. No v3 suffix found in API path. Got '%s'", config.Scicat.Host))
 	}
 
+	for location := range config.WebServer.CollectionLocations {
+		if strings.Contains(location, "/") {
+			panic(fmt.Sprintf("Invalid name `%s` in 'Collectionlocations`. Cannot be a path or contain `/`", location))
+		}
+	}
+
 	ctx := context.Background()
 
 	u, foundName := os.LookupEnv("INGESTOR_SERVICE_USER_NAME")
