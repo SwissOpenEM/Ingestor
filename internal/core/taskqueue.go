@@ -72,7 +72,7 @@ func (w *TaskQueue) executeTransferTask(t *task.TransferTask) {
 
 	r := w.TransferDataset(taskContext, t)
 	if r.Error != nil {
-		t.Failed(fmt.Sprintf("failed - error: %s", r.Error.Error()))
+		t.Failed(r.Error.Error())
 		w.notifier.OnTaskFailed(t.DatasetFolder.ID, r.Error)
 		return
 	}
