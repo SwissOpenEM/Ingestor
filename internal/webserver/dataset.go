@@ -334,7 +334,15 @@ func (i *IngestorWebServerImplemenation) addS3TransferTask(ctx context.Context, 
 	transferObjects["refreshToken"] = refreshToken
 	transferObjects["expires_in"] = expiresIn
 
-	err = i.taskQueue.AddTransferTask(datasetID, fileList, taskID, folderPath, ownerUser, ownerGroup, contactEmail, autoArchive, transferObjects)
+	filteredFileList := []datasetIngestor.Datafile{}
+	for _, f := range fileList {
+		info, _ := os.Stat(path.Join(folderPath, f.Path))
+		if info.IsDir() {
+			continue
+		}
+		filteredFileList = append(filteredFileList, f)
+	}
+	err = i.taskQueue.AddTransferTask(datasetID, filteredFileList, taskID, folderPath, ownerUser, ownerGroup, contactEmail, autoArchive, transferObjects)
 	if err != nil {
 		return uuid.UUID{}, err
 	}
