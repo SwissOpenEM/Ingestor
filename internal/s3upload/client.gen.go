@@ -27,8 +27,20 @@ const (
 	SciCatAuthScopes = "SciCatAuth.Scopes"
 )
 
+// AbortDatasetUploadBody defines model for AbortDatasetUploadBody.
+type AbortDatasetUploadBody struct {
+	DatasetId string `json:"dataset_id"`
+}
+
+// AbortDatasetUploadResp defines model for AbortDatasetUploadResp.
+type AbortDatasetUploadResp struct {
+	DatasetId string `json:"dataset_id"`
+	Message   string `json:"message"`
+}
+
 // AbortUploadBody defines model for AbortUploadBody.
 type AbortUploadBody struct {
+	DatasetId  string `json:"dataset_id"`
 	ObjectName string `json:"object_name"`
 	UploadId   string `json:"upload_id"`
 }
@@ -50,6 +62,7 @@ type CompletePart struct {
 // CompleteUploadBody defines model for CompleteUploadBody.
 type CompleteUploadBody struct {
 	ChecksumSha256 string         `json:"checksum_sha256"`
+	DatasetId      string         `json:"dataset_id"`
 	ObjectName     string         `json:"object_name"`
 	Parts          []CompletePart `json:"parts"`
 	UploadId       string         `json:"upload_id"`
@@ -92,7 +105,7 @@ type CreateServiceTokenResp struct {
 type FinalizeDatasetUploadBody struct {
 	ContactEmail       openapi_types.Email `json:"contact_email"`
 	CreateArchivingJob bool                `json:"create_archiving_job"`
-	DatasetPid         string              `json:"dataset_pid"`
+	DatasetId          string              `json:"dataset_id"`
 	OwnerGroup         string              `json:"owner_group"`
 	OwnerUser          string              `json:"owner_user"`
 }
@@ -125,6 +138,7 @@ type InternalError struct {
 
 // PresignedUrlBody defines model for PresignedUrlBody.
 type PresignedUrlBody struct {
+	DatasetId  string `json:"dataset_id"`
 	ObjectName string `json:"object_name"`
 	Parts      int    `json:"parts"`
 }
@@ -133,6 +147,24 @@ type PresignedUrlBody struct {
 type PresignedUrlResp struct {
 	UploadId string   `json:"upload_id"`
 	Urls     []string `json:"urls"`
+}
+
+// UploadRequestBody defines model for UploadRequestBody.
+type UploadRequestBody struct {
+	DatasetId      string `json:"dataset_id"`
+	DatasetSizeGib int    `json:"dataset_size_gib"`
+}
+
+// UploadRequestSuccessfulResp defines model for UploadRequestSuccessfulResp.
+type UploadRequestSuccessfulResp struct {
+	Message string `json:"message"`
+}
+
+// UploadRequestUnsuccessfulResp defines model for UploadRequestUnsuccessfulResp.
+type UploadRequestUnsuccessfulResp struct {
+	DatasetId        string `json:"dataset_id"`
+	Message          string `json:"message"`
+	RequestedSizeGib int    `json:"requested_size_gib"`
 }
 
 // ValidationError defines model for ValidationError.
@@ -153,6 +185,9 @@ type ValidationErrorLocInner0 = string
 // ValidationErrorLocInner1 defines model for .
 type ValidationErrorLocInner1 = int
 
+// AbortDatasetUploadJSONRequestBody defines body for AbortDatasetUpload for application/json ContentType.
+type AbortDatasetUploadJSONRequestBody = AbortDatasetUploadBody
+
 // AbortMultipartUploadJSONRequestBody defines body for AbortMultipartUpload for application/json ContentType.
 type AbortMultipartUploadJSONRequestBody = AbortUploadBody
 
@@ -164,6 +199,9 @@ type FinalizeDatasetUploadJSONRequestBody = FinalizeDatasetUploadBody
 
 // GetPresignedUrlsJSONRequestBody defines body for GetPresignedUrls for application/json ContentType.
 type GetPresignedUrlsJSONRequestBody = PresignedUrlBody
+
+// RequestDatasetUploadJSONRequestBody defines body for RequestDatasetUpload for application/json ContentType.
+type RequestDatasetUploadJSONRequestBody = UploadRequestBody
 
 // AsValidationErrorLocInner0 returns the union data inside the ValidationErrorLocInner as a ValidationErrorLocInner0
 func (t ValidationErrorLocInner) AsValidationErrorLocInner0() (ValidationErrorLocInner0, error) {
@@ -300,6 +338,11 @@ func WithRequestEditorFn(fn RequestEditorFn) ClientOption {
 
 // The interface specification for the client above.
 type ClientInterface interface {
+	// AbortDatasetUploadWithBody request with any body
+	AbortDatasetUploadWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	AbortDatasetUpload(ctx context.Context, body AbortDatasetUploadJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// AbortMultipartUploadWithBody request with any body
 	AbortMultipartUploadWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -320,8 +363,37 @@ type ClientInterface interface {
 
 	GetPresignedUrls(ctx context.Context, body GetPresignedUrlsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// RequestDatasetUploadWithBody request with any body
+	RequestDatasetUploadWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	RequestDatasetUpload(ctx context.Context, body RequestDatasetUploadJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// CreateNewServiceToken request
 	CreateNewServiceToken(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+}
+
+func (c *Client) AbortDatasetUploadWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAbortDatasetUploadRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) AbortDatasetUpload(ctx context.Context, body AbortDatasetUploadJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAbortDatasetUploadRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
 }
 
 func (c *Client) AbortMultipartUploadWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -420,6 +492,30 @@ func (c *Client) GetPresignedUrls(ctx context.Context, body GetPresignedUrlsJSON
 	return c.Client.Do(req)
 }
 
+func (c *Client) RequestDatasetUploadWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRequestDatasetUploadRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) RequestDatasetUpload(ctx context.Context, body RequestDatasetUploadJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRequestDatasetUploadRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 func (c *Client) CreateNewServiceToken(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewCreateNewServiceTokenRequest(c.Server)
 	if err != nil {
@@ -430,6 +526,46 @@ func (c *Client) CreateNewServiceToken(ctx context.Context, reqEditors ...Reques
 		return nil, err
 	}
 	return c.Client.Do(req)
+}
+
+// NewAbortDatasetUploadRequest calls the generic AbortDatasetUpload builder with application/json body
+func NewAbortDatasetUploadRequest(server string, body AbortDatasetUploadJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewAbortDatasetUploadRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewAbortDatasetUploadRequestWithBody generates requests for AbortDatasetUpload with any type of body
+func NewAbortDatasetUploadRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/s3/abortDatasetUpload")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
 }
 
 // NewAbortMultipartUploadRequest calls the generic AbortMultipartUpload builder with application/json body
@@ -592,6 +728,46 @@ func NewGetPresignedUrlsRequestWithBody(server string, contentType string, body 
 	return req, nil
 }
 
+// NewRequestDatasetUploadRequest calls the generic RequestDatasetUpload builder with application/json body
+func NewRequestDatasetUploadRequest(server string, body RequestDatasetUploadJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewRequestDatasetUploadRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewRequestDatasetUploadRequestWithBody generates requests for RequestDatasetUpload with any type of body
+func NewRequestDatasetUploadRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/s3/requestDatasetUpload")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewCreateNewServiceTokenRequest generates requests for CreateNewServiceToken
 func NewCreateNewServiceTokenRequest(server string) (*http.Request, error) {
 	var err error
@@ -662,6 +838,11 @@ func WithBaseURL(baseURL string) ClientOption {
 
 // ClientWithResponsesInterface is the interface specification for the client with responses above.
 type ClientWithResponsesInterface interface {
+	// AbortDatasetUploadWithBodyWithResponse request with any body
+	AbortDatasetUploadWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AbortDatasetUploadResponse, error)
+
+	AbortDatasetUploadWithResponse(ctx context.Context, body AbortDatasetUploadJSONRequestBody, reqEditors ...RequestEditorFn) (*AbortDatasetUploadResponse, error)
+
 	// AbortMultipartUploadWithBodyWithResponse request with any body
 	AbortMultipartUploadWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AbortMultipartUploadResponse, error)
 
@@ -682,8 +863,37 @@ type ClientWithResponsesInterface interface {
 
 	GetPresignedUrlsWithResponse(ctx context.Context, body GetPresignedUrlsJSONRequestBody, reqEditors ...RequestEditorFn) (*GetPresignedUrlsResponse, error)
 
+	// RequestDatasetUploadWithBodyWithResponse request with any body
+	RequestDatasetUploadWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RequestDatasetUploadResponse, error)
+
+	RequestDatasetUploadWithResponse(ctx context.Context, body RequestDatasetUploadJSONRequestBody, reqEditors ...RequestEditorFn) (*RequestDatasetUploadResponse, error)
+
 	// CreateNewServiceTokenWithResponse request
 	CreateNewServiceTokenWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*CreateNewServiceTokenResponse, error)
+}
+
+type AbortDatasetUploadResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON201      *AbortDatasetUploadResp
+	JSON422      *HTTPValidationError
+	JSON500      *InternalError
+}
+
+// Status returns HTTPResponse.Status
+func (r AbortDatasetUploadResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AbortDatasetUploadResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
 }
 
 type AbortMultipartUploadResponse struct {
@@ -782,6 +992,31 @@ func (r GetPresignedUrlsResponse) StatusCode() int {
 	return 0
 }
 
+type RequestDatasetUploadResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON201      *UploadRequestSuccessfulResp
+	JSON422      *HTTPValidationError
+	JSON500      *InternalError
+	JSON507      *UploadRequestUnsuccessfulResp
+}
+
+// Status returns HTTPResponse.Status
+func (r RequestDatasetUploadResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r RequestDatasetUploadResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
 type CreateNewServiceTokenResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -804,6 +1039,23 @@ func (r CreateNewServiceTokenResponse) StatusCode() int {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
+}
+
+// AbortDatasetUploadWithBodyWithResponse request with arbitrary body returning *AbortDatasetUploadResponse
+func (c *ClientWithResponses) AbortDatasetUploadWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AbortDatasetUploadResponse, error) {
+	rsp, err := c.AbortDatasetUploadWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAbortDatasetUploadResponse(rsp)
+}
+
+func (c *ClientWithResponses) AbortDatasetUploadWithResponse(ctx context.Context, body AbortDatasetUploadJSONRequestBody, reqEditors ...RequestEditorFn) (*AbortDatasetUploadResponse, error) {
+	rsp, err := c.AbortDatasetUpload(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAbortDatasetUploadResponse(rsp)
 }
 
 // AbortMultipartUploadWithBodyWithResponse request with arbitrary body returning *AbortMultipartUploadResponse
@@ -874,6 +1126,23 @@ func (c *ClientWithResponses) GetPresignedUrlsWithResponse(ctx context.Context, 
 	return ParseGetPresignedUrlsResponse(rsp)
 }
 
+// RequestDatasetUploadWithBodyWithResponse request with arbitrary body returning *RequestDatasetUploadResponse
+func (c *ClientWithResponses) RequestDatasetUploadWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RequestDatasetUploadResponse, error) {
+	rsp, err := c.RequestDatasetUploadWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRequestDatasetUploadResponse(rsp)
+}
+
+func (c *ClientWithResponses) RequestDatasetUploadWithResponse(ctx context.Context, body RequestDatasetUploadJSONRequestBody, reqEditors ...RequestEditorFn) (*RequestDatasetUploadResponse, error) {
+	rsp, err := c.RequestDatasetUpload(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRequestDatasetUploadResponse(rsp)
+}
+
 // CreateNewServiceTokenWithResponse request returning *CreateNewServiceTokenResponse
 func (c *ClientWithResponses) CreateNewServiceTokenWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*CreateNewServiceTokenResponse, error) {
 	rsp, err := c.CreateNewServiceToken(ctx, reqEditors...)
@@ -881,6 +1150,46 @@ func (c *ClientWithResponses) CreateNewServiceTokenWithResponse(ctx context.Cont
 		return nil, err
 	}
 	return ParseCreateNewServiceTokenResponse(rsp)
+}
+
+// ParseAbortDatasetUploadResponse parses an HTTP response from a AbortDatasetUploadWithResponse call
+func ParseAbortDatasetUploadResponse(rsp *http.Response) (*AbortDatasetUploadResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AbortDatasetUploadResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest AbortDatasetUploadResp
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest HTTPValidationError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
 }
 
 // ParseAbortMultipartUploadResponse parses an HTTP response from a AbortMultipartUploadWithResponse call
@@ -1043,6 +1352,53 @@ func ParseGetPresignedUrlsResponse(rsp *http.Response) (*GetPresignedUrlsRespons
 	return response, nil
 }
 
+// ParseRequestDatasetUploadResponse parses an HTTP response from a RequestDatasetUploadWithResponse call
+func ParseRequestDatasetUploadResponse(rsp *http.Response) (*RequestDatasetUploadResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &RequestDatasetUploadResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest UploadRequestSuccessfulResp
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest HTTPValidationError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 507:
+		var dest UploadRequestUnsuccessfulResp
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON507 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseCreateNewServiceTokenResponse parses an HTTP response from a CreateNewServiceTokenWithResponse call
 func ParseCreateNewServiceTokenResponse(rsp *http.Response) (*CreateNewServiceTokenResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -1086,38 +1442,43 @@ func ParseCreateNewServiceTokenResponse(rsp *http.Response) (*CreateNewServiceTo
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
+	"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",
+	"AP//dDQqLhAxAAA=",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file
