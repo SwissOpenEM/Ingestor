@@ -224,7 +224,7 @@ func (i *IngestorWebServerImplemenation) DatasetControllerIngestDataset(ctx cont
 	case transfertask.TransferGlobus:
 		taskID, err = i.addGlobusTransferTask(ctx, datasetID, fileList, folderPath, username, ownerUser, ownerGroup, autoArchive, contactEmail)
 	case transfertask.TransferExtGlobus:
-		jobID, err := i.addExtGlobusTransferTask(ctx, datasetID, fileList, autoArchive, request.Body.UserToken)
+		jobID, err := i.addExtGlobusTransferTask(ctx, datasetID, autoArchive, request.Body.UserToken)
 		if err != nil {
 			if reqErr, ok := err.(*extglobusservice.RequestError); ok {
 				if reqErr.Code() < 500 {
@@ -304,12 +304,7 @@ func (i *IngestorWebServerImplemenation) addGlobusTransferTask(ctx context.Conte
 	return taskID, nil
 }
 
-func (i *IngestorWebServerImplemenation) addExtGlobusTransferTask(ctx context.Context, datasetID string, fileList []datasetIngestor.Datafile, autoArchive bool, scicatToken string) (string, error) {
-	filesToTransfer := make([]extglobusservice.FileToTransfer, len(fileList))
-	for i, file := range fileList {
-		filesToTransfer[i].Path = file.Path
-		filesToTransfer[i].IsSymlink = file.IsSymlink
-	}
+func (i *IngestorWebServerImplemenation) addExtGlobusTransferTask(ctx context.Context, datasetID string, autoArchive bool, scicatToken string) (string, error) {
 	return extglobusservice.RequestExternalTransferTask(
 		ctx,
 		i.taskQueue.Config.Transfer.ExtGlobus.TransferServiceURL,
@@ -317,7 +312,7 @@ func (i *IngestorWebServerImplemenation) addExtGlobusTransferTask(ctx context.Co
 		i.taskQueue.Config.Transfer.ExtGlobus.SrcFacility,
 		i.taskQueue.Config.Transfer.ExtGlobus.DstFacility,
 		datasetID,
-		&filesToTransfer,
+		i.taskQueue.Config.Transfer.ExtGlobus.CollectionRootPath,
 	)
 }
 

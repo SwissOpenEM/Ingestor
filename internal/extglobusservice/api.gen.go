@@ -4,7 +4,6 @@
 package extglobusservice
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -20,15 +19,6 @@ const (
 	ScicatKeyAuthScopes = "ScicatKeyAuth.Scopes"
 )
 
-// FileToTransfer the file to transfer as part of a transfer request
-type FileToTransfer struct {
-	// IsSymlink specifies whether this file is a symlink
-	IsSymlink bool `json:"isSymlink"`
-
-	// Path the path of the file, it has to be relative to the dataset source folder
-	Path string `json:"path"`
-}
-
 // GeneralErrorResponse defines model for GeneralErrorResponse.
 type GeneralErrorResponse struct {
 	// Details further details, debugging information
@@ -36,11 +26,6 @@ type GeneralErrorResponse struct {
 
 	// Message the error message
 	Message *string `json:"message,omitempty"`
-}
-
-// PostTransferTaskJSONBody defines parameters for PostTransferTask.
-type PostTransferTaskJSONBody struct {
-	FileList *[]FileToTransfer `json:"fileList,omitempty"`
 }
 
 // PostTransferTaskParams defines parameters for PostTransferTask.
@@ -53,6 +38,9 @@ type PostTransferTaskParams struct {
 
 	// ScicatPid the pid of the dataset being transferred
 	ScicatPid string `form:"scicatPid" json:"scicatPid"`
+
+	// CollectionRootPath Path to the root of the globus collection on the source facility
+	CollectionRootPath string `form:"collectionRootPath" json:"collectionRootPath"`
 }
 
 // DeleteTransferTaskParams defines parameters for DeleteTransferTask.
@@ -60,9 +48,6 @@ type DeleteTransferTaskParams struct {
 	// Delete Enables/disables deleting from scicat job system. By default, it's disabled (false).
 	Delete *bool `form:"delete,omitempty" json:"delete,omitempty"`
 }
-
-// PostTransferTaskJSONRequestBody defines body for PostTransferTask for application/json ContentType.
-type PostTransferTaskJSONRequestBody PostTransferTaskJSONBody
 
 // RequestEditorFn  is the function signature for the RequestEditor callback function
 type RequestEditorFn func(ctx context.Context, req *http.Request) error
@@ -137,10 +122,8 @@ func WithRequestEditorFn(fn RequestEditorFn) ClientOption {
 
 // The interface specification for the client above.
 type ClientInterface interface {
-	// PostTransferTaskWithBody request with any body
-	PostTransferTaskWithBody(ctx context.Context, params *PostTransferTaskParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	PostTransferTask(ctx context.Context, params *PostTransferTaskParams, body PostTransferTaskJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// PostTransferTask request
+	PostTransferTask(ctx context.Context, params *PostTransferTaskParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// DeleteTransferTask request
 	DeleteTransferTask(ctx context.Context, scicatJobId string, params *DeleteTransferTaskParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -149,20 +132,8 @@ type ClientInterface interface {
 	GetVersion(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 }
 
-func (c *Client) PostTransferTaskWithBody(ctx context.Context, params *PostTransferTaskParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPostTransferTaskRequestWithBody(c.Server, params, contentType, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) PostTransferTask(ctx context.Context, params *PostTransferTaskParams, body PostTransferTaskJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPostTransferTaskRequest(c.Server, params, body)
+func (c *Client) PostTransferTask(ctx context.Context, params *PostTransferTaskParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostTransferTaskRequest(c.Server, params)
 	if err != nil {
 		return nil, err
 	}
@@ -197,19 +168,8 @@ func (c *Client) GetVersion(ctx context.Context, reqEditors ...RequestEditorFn) 
 	return c.Client.Do(req)
 }
 
-// NewPostTransferTaskRequest calls the generic PostTransferTask builder with application/json body
-func NewPostTransferTaskRequest(server string, params *PostTransferTaskParams, body PostTransferTaskJSONRequestBody) (*http.Request, error) {
-	var bodyReader io.Reader
-	buf, err := json.Marshal(body)
-	if err != nil {
-		return nil, err
-	}
-	bodyReader = bytes.NewReader(buf)
-	return NewPostTransferTaskRequestWithBody(server, params, "application/json", bodyReader)
-}
-
-// NewPostTransferTaskRequestWithBody generates requests for PostTransferTask with any type of body
-func NewPostTransferTaskRequestWithBody(server string, params *PostTransferTaskParams, contentType string, body io.Reader) (*http.Request, error) {
+// NewPostTransferTaskRequest generates requests for PostTransferTask
+func NewPostTransferTaskRequest(server string, params *PostTransferTaskParams) (*http.Request, error) {
 	var err error
 
 	serverURL, err := url.Parse(server)
@@ -266,15 +226,25 @@ func NewPostTransferTaskRequestWithBody(server string, params *PostTransferTaskP
 			}
 		}
 
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "collectionRootPath", runtime.ParamLocationQuery, params.CollectionRootPath); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
 		queryURL.RawQuery = queryValues.Encode()
 	}
 
-	req, err := http.NewRequest("POST", queryURL.String(), body)
+	req, err := http.NewRequest("POST", queryURL.String(), nil)
 	if err != nil {
 		return nil, err
 	}
-
-	req.Header.Add("Content-Type", contentType)
 
 	return req, nil
 }
@@ -405,10 +375,8 @@ func WithBaseURL(baseURL string) ClientOption {
 
 // ClientWithResponsesInterface is the interface specification for the client with responses above.
 type ClientWithResponsesInterface interface {
-	// PostTransferTaskWithBodyWithResponse request with any body
-	PostTransferTaskWithBodyWithResponse(ctx context.Context, params *PostTransferTaskParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostTransferTaskResponse, error)
-
-	PostTransferTaskWithResponse(ctx context.Context, params *PostTransferTaskParams, body PostTransferTaskJSONRequestBody, reqEditors ...RequestEditorFn) (*PostTransferTaskResponse, error)
+	// PostTransferTaskWithResponse request
+	PostTransferTaskWithResponse(ctx context.Context, params *PostTransferTaskParams, reqEditors ...RequestEditorFn) (*PostTransferTaskResponse, error)
 
 	// DeleteTransferTaskWithResponse request
 	DeleteTransferTaskWithResponse(ctx context.Context, scicatJobId string, params *DeleteTransferTaskParams, reqEditors ...RequestEditorFn) (*DeleteTransferTaskResponse, error)
@@ -497,17 +465,9 @@ func (r GetVersionResponse) StatusCode() int {
 	return 0
 }
 
-// PostTransferTaskWithBodyWithResponse request with arbitrary body returning *PostTransferTaskResponse
-func (c *ClientWithResponses) PostTransferTaskWithBodyWithResponse(ctx context.Context, params *PostTransferTaskParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostTransferTaskResponse, error) {
-	rsp, err := c.PostTransferTaskWithBody(ctx, params, contentType, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParsePostTransferTaskResponse(rsp)
-}
-
-func (c *ClientWithResponses) PostTransferTaskWithResponse(ctx context.Context, params *PostTransferTaskParams, body PostTransferTaskJSONRequestBody, reqEditors ...RequestEditorFn) (*PostTransferTaskResponse, error) {
-	rsp, err := c.PostTransferTask(ctx, params, body, reqEditors...)
+// PostTransferTaskWithResponse request returning *PostTransferTaskResponse
+func (c *ClientWithResponses) PostTransferTaskWithResponse(ctx context.Context, params *PostTransferTaskParams, reqEditors ...RequestEditorFn) (*PostTransferTaskResponse, error) {
+	rsp, err := c.PostTransferTask(ctx, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
