@@ -2,6 +2,8 @@ package transfertask
 
 import (
 	"context"
+	"fmt"
+	"path"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -64,6 +66,10 @@ func (i *Status) ToStr() string {
 	}
 }
 
+func buildMessage(datasetID string, datasetFolder DatasetFolder, message string) string {
+	return fmt.Sprintf("%s (pid: %s): %s", path.Base(datasetFolder.FolderPath), datasetID, message)
+}
+
 type ArchivalJobInfo struct {
 	OwnerUser    string
 	OwnerGroup   string
@@ -115,7 +121,7 @@ func CreateTransferTask(datasetID string, fileList []datasetIngestor.Datafile, d
 			FilesTransferred: 0,
 			FilesTotal:       int32(len(fileList)),
 			Status:           Waiting,
-			Message:          "in waiting list",
+			Message:          buildMessage(datasetID, datasetFolder, "in waiting list"),
 		},
 		statusLock: &sync.RWMutex{},
 	}
@@ -134,7 +140,7 @@ func (t *TransferTask) Queued() {
 	if t.details.Status != Waiting {
 		return
 	}
-	t.details.Message = "queued"
+	t.details.Message = buildMessage(t.datasetID, t.DatasetFolder, "queued")
 }
 
 func (t *TransferTask) TransferStarted() {
@@ -144,7 +150,7 @@ func (t *TransferTask) TransferStarted() {
 		return
 	}
 	t.details.Status = Transferring
-	t.details.Message = "transferring files"
+	t.details.Message = buildMessage(t.datasetID, t.DatasetFolder, "transferring")
 }
 
 func (t *TransferTask) UpdateProgress(bytesTransferred *int64, filesTransferred *int32) {
@@ -168,7 +174,7 @@ func (t *TransferTask) Finished() {
 		return
 	}
 	t.details.Status = Finished
-	t.details.Message = "transfer has finished"
+	t.details.Message = buildMessage(t.datasetID, t.DatasetFolder, "transfer finished")
 }
 
 func (t *TransferTask) Failed(msg string) {
@@ -180,7 +186,7 @@ func (t *TransferTask) Failed(msg string) {
 		return
 	}
 	t.details.Status = Failed
-	t.details.Message = msg
+	t.details.Message = buildMessage(t.datasetID, t.DatasetFolder, msg)
 }
 
 func (t *TransferTask) Cancelled(msg string) {
@@ -192,7 +198,7 @@ func (t *TransferTask) Cancelled(msg string) {
 		return
 	}
 	t.details.Status = Cancelled
-	t.details.Message = msg
+	t.details.Message = buildMessage(t.datasetID, t.DatasetFolder, msg)
 }
 
 func (t *TransferTask) GetDatasetID() string {
