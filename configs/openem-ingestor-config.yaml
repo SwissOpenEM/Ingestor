@@ -1,53 +1,92 @@
+Scicat:
+  Host: https://scicat.example.ch/api/v3
 Transfer:
-  Method: Globus
-  StorageLocation: "SomeFacility"
-  Globus:
-    ClientId: "clientid_registered_with_globus"
-    RedirectUrl: "https://auth.globus.org/v2/web/auth-code"
-    SourceCollectionID: "collectionid1"
-    CollectionRootPath: "/some/optional/path"
-    DestinationCollectionID: "collectionid2"
-    DestinationTemplate: "/{{ .Username }}/{{ replace .Pid \".\" \"_\" }}/{{ .DatasetFolder }}"
-    Scopes:
-      - "urn:globus:auth:scope:transfer.api.globus.org:all[*https://auth.globus.org/scopes/[collection_id1]/data_access]"
+  StorageLocation: PSI
+  Method: ExtGlobus
+  S3:
+    Endpoint: https://s3.example.ethz.ch/archiver/api/v1
+    TokenUrl: https://kc.psi.ch/keycloak/realms/facility/protocol/openid-connect/token
+    ClientID: archiver-service-api
+    ChunkSizeMB: 128
+    ConcurrentFiles: 4
+    PoolSize: 12
+  ExtGlobus:
+    TransferServiceUrl: https://globus-proxy.example.ch
+    SrcFacility: SRCFAC
+    DstFacility: DSTFAC
+    CollectionRootPath: /mnt/data
 
 MetadataExtractors:
+  InstallationPath: ./extractors/
+  SchemasLocation: ./schemas/
   Extractors:
-  - Name: LS
-    GithubOrg: SwissOpenEM
-    GithubProject: LS_Metadata_reader
-    Version: v2.0.0
-    Executable: LS_Metadata_reader
-    Checksum: e8a2abc7a0d8759edf4559e27879b7977000a868a2f7d39b7804ff5e5c0d1559 
-    ChecksumAlg: sha256
-    CommandLineTemplate: "-i '{{.SourceFolder}}' -o '{{.OutputFile}}'"
-    Methods:
-      - Name: Single Particle
-        Schema: oscem_schemas_spa.schema.json
-        Url: https://raw.githubusercontent.com/osc-em/OSCEM_Schemas/refs/heads/main/project/spa/jsonschema/oscem_schemas_spa.schema.json
-      - Name: Cellular Tomography
-        Schema: oscem_cellular_tomo.json
-        Url: https://raw.githubusercontent.com/osc-em/OSCEM_Schemas/refs/heads/main/project/cellular_tomo/jsonschema/oscem_schemas_cellular_tomo.schema.json      
-      - Name: Tomography
-        Schema: oscem_tomo.json
-        Url: https://raw.githubusercontent.com/osc-em/OSCEM_Schemas/refs/heads/main/project/subtomo/jsonschema/oscem_schemas_subtomo.schema.json
-      - Name: EnvironmentalTomography
-        Schema: oscem_env_tomo.json
-        Url: https://raw.githubusercontent.com/osc-em/OSCEM_Schemas/refs/heads/main/project/env_tomo/jsonschema/oscem_schemas_env_tomo.schema.json
+    - Name: LS
+      GithubOrg: SwissOpenEM
+      GithubProject: LS_Metadata_reader
+      Version: v2.0.1
+      Executable: LS_Metadata_reader
+      Checksum: 83ae1b2d469cec10fdcc3ad7cb6c824a389e501e7142417792f2ac836ab174c3
+      ChecksumAlg: sha256
+      CommandLineTemplate: "-i '{{.SourceFolder}}' -o '{{.OutputFile}}' --cs 2.7"
+      Methods:
+        - Name: Single Particle
+          Schema: oscem_schemas_spa.schema.json
+          Url: https://osc-em.github.io/oscem-schemas/artifacts/latest/spa/jsonschema/oscem_schemas_spa.schema.json
+        - Name: Cellular Tomography
+          Schema: oscem_cellular_tomo.json
+          Url: https://osc-em.github.io/oscem-schemas/artifacts/latest/cellular_tomo/jsonschema/oscem_schemas_cellular_tomo.schema.json
+        - Name: Tomography
+          Schema: oscem_tomo.json
+          Url: https://osc-em.github.io/oscem-schemas/artifacts/latest/subtomo/jsonschema/oscem_schemas_subtomo.schema.json
+        - Name: Environmental Tomography
+          Schema: oscem_env_tomo.json
+          Url: https://osc-em.github.io/oscem-schemas/artifacts/latest/env_tomo/jsonschema/oscem_schemas_env_tomo.schema.json
+
+    - Name: MS
+      GithubOrg: SwissOpenEM
+      GithubProject: MS_Metadata_reader
+      Version: v1.0.3
+      Executable: MS_Metadata_reader
+      Checksum: 56925ded88d6719d42eaafe66f98fce43a67f0132d6488ece8bcbcfd5f0704a3
+      ChecksumAlg: sha256
+      CommandLineTemplate: "'{{.SourceFolder}}' '{{.OutputFile}}'"
+      Methods:
+        - Name: Material Science
+          Schema: oscem_general.json
+          Url: https://osc-em.github.io/oscem-schemas/artifacts/latest/general/jsonschema/oscem_schemas_general.schema.json
+
 WebServer:
   Auth:
+    Disable: false
+    Frontend:
+      Origin: https://scicat.example.ch
+      RedirectPath: "/ingestor"
+    SessionDuration: 28800
     OAuth2:
       ClientID: "FACILITY_SPECIFIC_CLIENT_ID"
+      RedirectURL: "https://ingestor.facility.ch/callback"
+      Scopes:
+        - email
+    OIDC:
+      IssuerURL: "https://kc.example.ch/realms/kc_realm"
+    JWT:
+      UseJWKS: true
+      JwksURL: "https://kc.example.ch/realms/kc_realm/protocol/openid-connect/certs"
+      JwksSignatureMethods:
+        - RS256
     RBAC:
-      AdminRole: "FACILITY-ingestor-admin"
-      CreateModifyTasksRole: "FACILITY-ingestor-write"
-      ViewTasksRole: "FACILITY-ingestor-read"
+      AdminRole: "ingestor-admin-FACILITY"
+      CreateModifyTasksRole: "ingestor-write-FACILITY"
+      ViewTasksRole: "ingestor-read-FACILITY"
   Paths:
-    CollectionLocations: 
-      "path": "/some/paths"
+    CollectionLocations:
+      DataLocation: /mnt/data
   MetadataExtJobs:
     ConcurrencyLimit: 4
     QueueSize: 200
   Other:
-    Port: 8888
-    LogLevel: Info
+    BackendAddress: https://ingestor.facility.ch
+    Port: 8080
+    SecureCookies: true
+    LogLevel: Info 
+    DisableServiceAccountCheck: true
