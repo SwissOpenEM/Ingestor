@@ -4,7 +4,6 @@ import (
 	"embed"
 	"encoding/gob"
 	"fmt"
-	"log/slog"
 	"net"
 	"net/http"
 	"os"
@@ -18,9 +17,10 @@ import (
 	"github.com/gin-contrib/sessions/cookie"
 	gin "github.com/gin-gonic/gin"
 	middleware "github.com/oapi-codegen/gin-middleware"
-	sloggin "github.com/samber/slog-gin"
 	swaggerfiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
+
+	"github.com/gin-contrib/slog"
 )
 
 // Copy the openapi specs to local folder so it can be embedded in order to statically serve it
@@ -28,16 +28,6 @@ import (
 
 //go:embed openapi.yaml
 var swaggerYAML embed.FS
-
-var config = sloggin.Config{
-	DefaultLevel:       slog.LevelDebug,
-	ClientErrorLevel:   slog.LevelWarn,
-	ServerErrorLevel:   slog.LevelError,
-	WithRequestBody:    true,
-	WithResponseBody:   true,
-	WithRequestHeader:  false,
-	WithResponseHeader: false,
-}
 
 func NewIngesterServer(ingestor *IngestorWebServerImplemenation, port int) *http.Server {
 	swagger, err := GetSwagger()
@@ -51,7 +41,11 @@ func NewIngesterServer(ingestor *IngestorWebServerImplemenation, port int) *http
 	swagger.Servers = nil
 	// This is how you set up a basic gin router
 	r := gin.New()
-	r.Use(sloggin.NewWithConfig(slog.Default().With(), config))
+
+	r.Use(
+		slog.SetLogger(slog.WithSkipPath([]string{"/version", "/health"}),
+			slog.WithRequestHeader(false),
+		))
 	r.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{ingestor.frontend.origin},
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
