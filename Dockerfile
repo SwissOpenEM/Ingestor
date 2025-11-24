@@ -13,7 +13,7 @@ COPY ./api ./api
 COPY ./cmd ./cmd
 COPY ./internal ./internal
 
-ARG VERSION=1.2.3
+ARG VERSION=DEVELOPMENT_VERSION
 # Build
 RUN CGO_ENABLED=0 GOOS=linux go generate ./internal/webserver
 RUN CGO_ENABLED=0 GOOS=linux go build -C ./cmd/openem-ingestor-service/ -v -o /app/ingestor  -ldflags="-s -w  -X 'main.version=${VERSION}'"
@@ -26,6 +26,10 @@ RUN apt-get update && \
 COPY --from=builder /app/ingestor /app/ingestor
 
 EXPOSE 8080
+
 WORKDIR /app
+
+RUN chmod -R a+rwx /app
+
 # Run
 CMD ["./ingestor"]
