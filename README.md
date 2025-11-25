@@ -1,5 +1,7 @@
 # OpenEM Network Ingestor
 
+[![Build and Test](https://github.com/SwissOpenEM/Ingestor/actions/workflows/ci.yaml/badge.svg)](https://github.com/SwissOpenEM/Ingestor/actions/workflows/ci.yaml)
+
 > Please refer to [https://www.openem.ch/](https://www.openem.ch/) for an overview.
 
 This repository provides a data ingestion service for dataset transfer and metadata registration in a catalog. It targets [Scicat](https://scicatproject.github.io) as dataset catalog.
