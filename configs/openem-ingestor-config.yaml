@@ -31,16 +31,16 @@ MetadataExtractors:
       Methods:
         - Name: Single Particle
           Schema: oscem_schemas_spa.schema.json
-          Url: https://osc-em.github.io/oscem-schemas/artifacts/latest/spa/jsonschema/oscem_schemas_spa.schema.json
+          Url: https://w3id.org/oscem-schemas/latest/spa/jsonschema/oscem_schemas_spa.schema.json
         - Name: Cellular Tomography
           Schema: oscem_cellular_tomo.json
-          Url: https://osc-em.github.io/oscem-schemas/artifacts/latest/cellular_tomo/jsonschema/oscem_schemas_cellular_tomo.schema.json
+          Url: https://w3id.org/oscem-schemas/latest/cellular_tomo/jsonschema/oscem_schemas_cellular_tomo.schema.json
         - Name: Tomography
           Schema: oscem_tomo.json
-          Url: https://osc-em.github.io/oscem-schemas/artifacts/latest/subtomo/jsonschema/oscem_schemas_subtomo.schema.json
+          Url: https://w3id.org/oscem-schemas/latest/subtomo/jsonschema/oscem_schemas_subtomo.schema.json
         - Name: Environmental Tomography
           Schema: oscem_env_tomo.json
-          Url: https://osc-em.github.io/oscem-schemas/artifacts/latest/env_tomo/jsonschema/oscem_schemas_env_tomo.schema.json
+          Url: https://w3id.org/oscem-schemas/latest/env_tomo/jsonschema/oscem_schemas_env_tomo.schema.json
 
     - Name: MS
       GithubOrg: SwissOpenEM
@@ -53,7 +53,7 @@ MetadataExtractors:
       Methods:
         - Name: Material Science
           Schema: oscem_general.json
-          Url: https://osc-em.github.io/oscem-schemas/artifacts/latest/general/jsonschema/oscem_schemas_general.schema.json
+          Url: https://w3id.org/oscem-schemas/latest/general/jsonschema/oscem_schemas_general.schema.json
 
 WebServer:
   Auth:
