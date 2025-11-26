@@ -131,19 +131,19 @@ jobs:
       fail-fast: false
       matrix:
         build:
-          - name: 'App'
+          - name: 'openem-ingestor-service'
             goos: linux
             goarch: amd64
             os: ubuntu-22.04
-          - name: 'App'
+          - name: 'openem-ingestor-service'
             goos: windows
             goarch: amd64
             os: windows-latest
-          - name: 'App'
+          - name: 'openem-ingestor-service'
             goos: darwin
             goarch: amd64
             os: macos-latest
-          - name: 'App'
+          - name: 'openem-ingestor-service'
             goos: darwin
             goarch: arm64
             os: macos-latest

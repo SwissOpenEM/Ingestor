@@ -53,6 +53,9 @@ type PostTransferTaskParams struct {
 
 	// ScicatPid the pid of the dataset being transferred
 	ScicatPid string `form:"scicatPid" json:"scicatPid"`
+
+	// CollectionRootPath Path to the root of the globus collection on the source facility
+	CollectionRootPath string `form:"collectionRootPath" json:"collectionRootPath"`
 }
 
 // DeleteTransferTaskParams defines parameters for DeleteTransferTask.
@@ -255,6 +258,18 @@ func NewPostTransferTaskRequestWithBody(server string, params *PostTransferTaskP
 		}
 
 		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "scicatPid", runtime.ParamLocationQuery, params.ScicatPid); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "collectionRootPath", runtime.ParamLocationQuery, params.CollectionRootPath); err != nil {
 			return nil, err
 		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 			return nil, err

@@ -2,16 +2,6 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Debug Desktop App",
-      "type": "go",
-      "request": "launch",
-      "mode": "exec",
-      "program": "${workspaceFolder}/cmd/openem-ingestor-app/build/bin/openem-ingestor-app",
-      "preLaunchTask": "build app",
-      "cwd": "${workspaceFolder}/cmd/openem-ingestor-app/build/bin",
-      "env": {}
-    },
-    {
       "name": " Debug Service",
       "type": "go",
       "request": "launch",

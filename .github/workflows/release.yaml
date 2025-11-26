@@ -22,12 +22,6 @@ jobs:
         with:
           go-version: stable
 
-      # - name: Install Wails dependencies
-      #   run: sudo apt-get update && sudo apt-get install -qq -y libwebkit2gtk-4.0-dev libgtk-3-dev npm pkg-config
-    
-      # - name: Set up Wails
-      #   run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.9.2
-        
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v6
         with:
