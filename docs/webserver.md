@@ -5,6 +5,53 @@
 
 The API is defined using [OpenAPI specs](/api/openapi.yaml).
 
+## Creating Client Code using OpenApi Generator
+
+The OpenAPI Generator is an open source tool that provides code generators to generate client libraries, server stubs and API documentation from an OpenAPI specification (e.g. *openapi.yaml* or *open-api.json*). For more information, visit the [OpenAPI Generator website](https://openapi-generator.tech/).
+
+The tool works as follows:
+
+* Input: It takes an OpenAPI specification file (e.g. *openapi.yaml* or *openapi.json*) that describes how the API works, including endpoints, parameters, response structures and data models.
+* Generator selection: You choose a generator (e.g. for *TypeScript Angular*).
+* Output: The generator automatically creates source code that can be used to communicate with the API or as a framework for the API implementation.
+
+## Installation via Docker
+
+```sh
+docker pull openapitools/openapi-generator-cli
+```
+
+## Using the OpenAPI Generator for TypeScript Angular
+
+### Generation of Typescript Angular objects
+
+#### Using Docker
+
+```sh
+docker run --rm -v ${PWD}:/local openapitools/openapi-generator-cli generate \
+    -i /local/openapi.yaml \
+    -g typescript-angular \
+    -o /local/out
+```
+
+* -i: Path of the input file (openapi.yaml)
+* -g: Generator type (*typescript-angular*)
+* -o: target directory
+
+#### Using the OpenAPI Generator CLI
+
+```sh
+openapi-generator-cli generate \
+    -i openapi.yaml \
+    -g typescript-angular \
+    -o /local/out \
+    --additional-properties=ngVersion=16 # Optional: specify angular version
+```
+
+### Integration into an angular project
+
+* Copy the generated files from the *./local/out/model* folder into your Angular project (model folder).
+
 ## Authentication and Access Control
 
 ### Summary
@@ -15,35 +62,35 @@ Authentication can be disabled by setting `WebServer.Auth.Disable: true` in the 
 
 ### Technical details
 
-- The server uses the provider's token to estabilish its own user session
-- It does not directly accept bearer tokens estabilished by the SSO provider
-- It creates an HttpOnly cookie based user session using the claims provider by the IdP (SSO Provider)
-- This basically means that the server can't function as a "Resource server", you need a specific session with it
-- Currently 3 basic roles exist: `Admin`, `CreateModifyTasks` and `ViewTasks`
-- The roles' names can be defined in the config (eg. to add the facility name in the role name)
-- These roles should be associated with the server's ClientId
-- The roles must be served under the following claim in the `access_token`: `resource_access/[ClientId]/roles`, where `roles` is a list of strings
-- Keycloak serves client-specific roles assigned to the user under the claim mentioned above by default
+* The server uses the provider's token to estabilish its own user session
+* It does not directly accept bearer tokens estabilished by the SSO provider
+* It creates an HttpOnly cookie based user session using the claims provider by the IdP (SSO Provider)
+* This basically means that the server can't function as a "Resource server", you need a specific session with it
+* Currently 3 basic roles exist: `Admin`, `CreateModifyTasks` and `ViewTasks`
+* The roles' names can be defined in the config (eg. to add the facility name in the role name)
+* These roles should be associated with the server's ClientId
+* The roles must be served under the following claim in the `access_token`: `resource_access/[ClientId]/roles`, where `roles` is a list of strings
+* Keycloak serves client-specific roles assigned to the user under the claim mentioned above by default
 
 ### A typical Keycloak setup for development
 
 1. Create a keycloak instance (docker is recommended)
 2. Create a new realm (recommended, but you can use the master realm too)
 3. In that realm, create a client:
-    - ClientID: `ingestor`
-    - Root URL: `http://localhost:8888`
-    - Home URL: `/`
-    - Valid redirect URIs: `*`
-    - Valid post logout redirect URIs: `*`
-    - Add the following roles:
-      - ingestor-read
-      - ingestor-write
-      - ingestor-admin
+    * ClientID: `ingestor`
+    * Root URL: `http://localhost:8888`
+    * Home URL: `/`
+    * Valid redirect URIs: `*`
+    * Valid post logout redirect URIs: `*`
+    * Add the following roles:
+      * ingestor-read
+      * ingestor-write
+      * ingestor-admin
 4. In the same realm, create a user:
-    - username: `test`
-    - password: `test`
-    - email: `test@test.test`
-    - Role mapping: assign `ingestor-read`, `ingestor-write`
+    * username: `test`
+    * password: `test`
+    * email: `test@test.test`
+    * Role mapping: assign `ingestor-read`, `ingestor-write`
 5. Make sure you have the following section in your ingestor config file:
 
     ```yaml
@@ -105,10 +152,10 @@ WebServer:
 
 Please make sure the following fields are properly set:
 
-- **WebServer.Auth.ClientID**: this is the client id of the ingestor. It should be added to the IdP that you want to use with the ingestor. This id shouldn't be shared with other ingestor instances. Look up your IdP's docs for adding a new client.
-- **WebServer.Auth.OAuth2.RedirectURL**: The url at which the ingestor would be deployed. This should be known by you.
-- **WebServer.Auth.OIDC.IssuerURL**: the url to the OIDC provider. It should conform to the Discovery spec. In case of Keycloak, it usually looks like `http://[KEYCLOAK_URL]/realms/[REALM_NAME]`.
-- **WebServer.Auth.JWT.JwksURL**: It is the JwksURL of the OIDC provider. It is used to provide the client with the current set of public keys. It should have the same base url, but the rest of the path depends on the OIDC provider. In case of Keycloak, it should have the following format: `http://[KEYCLOAK_URL]/realms/[REALM_NAME]/protocol/openid-connect/certs`. If your provider does not support Jwks, then you can set the keys manually as follows:
+* **WebServer.Auth.ClientID**: this is the client id of the ingestor. It should be added to the IdP that you want to use with the ingestor. This id shouldn't be shared with other ingestor instances. Look up your IdP's docs for adding a new client.
+* **WebServer.Auth.OAuth2.RedirectURL**: The url at which the ingestor would be deployed. This should be known by you.
+* **WebServer.Auth.OIDC.IssuerURL**: the url to the OIDC provider. It should conform to the Discovery spec. In case of Keycloak, it usually looks like `http://[KEYCLOAK_URL]/realms/[REALM_NAME]`.
+* **WebServer.Auth.JWT.JwksURL**: It is the JwksURL of the OIDC provider. It is used to provide the client with the current set of public keys. It should have the same base url, but the rest of the path depends on the OIDC provider. In case of Keycloak, it should have the following format: `http://[KEYCLOAK_URL]/realms/[REALM_NAME]/protocol/openid-connect/certs`. If your provider does not support Jwks, then you can set the keys manually as follows:
 
 ```yaml
 ...
@@ -119,7 +166,7 @@ Please make sure the following fields are properly set:
 ...
 ```
 
-- **WebServer.Auth.RBAC.[X]Role**: this is where you set your expected role names. It's a way to customize role names, but you can leave them as is. If facilities use shared OAuth2 client-id's (shouldn't be the case) then these roles should contain the name of each facility to make. You should also customize these if your IdP of choice can't separate what roles to map to users based on clientid. These roles specifically give permission to interact with the ingestor endpoints, and nothing else. Accessing datasets is determined by the `AccessGroups` of the user on SciCat.
+* **WebServer.Auth.RBAC.[X]Role**: this is where you set your expected role names. It's a way to customize role names, but you can leave them as is. If facilities use shared OAuth2 client-id's (shouldn't be the case) then these roles should contain the name of each facility to make. You should also customize these if your IdP of choice can't separate what roles to map to users based on clientid. These roles specifically give permission to interact with the ingestor endpoints, and nothing else. Accessing datasets is determined by the `AccessGroups` of the user on SciCat.
 
 {: .box-note}
 If you're using the supplied example scicatlive config for testing, the roles are named `FAC_ingestor_[function]` where `[function]` can be "admin", "write" or "read".
@@ -140,9 +187,9 @@ WebServer:
 ...
 ```
 
-- It's important configure `CollectionLocation` as that is where the ingestor will look for to find datasets.
-- The ExtractorOutputLocation sets a custom path for the temporary extractor files. Normally they're outputted to /tmp.
-- Due to the way the config library works, all location keys will be lowercased.
+* It's important configure `CollectionLocation` as that is where the ingestor will look for to find datasets.
+* The ExtractorOutputLocation sets a custom path for the temporary extractor files. Normally they're outputted to /tmp.
+* Due to the way the config library works, all location keys will be lowercased.
 
 ## Configuration
 
