@@ -2,15 +2,6 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "copy app config",
-      "type": "shell",
-      "command": "cp",
-      "args": [
-        "${workspaceFolder}/configs/openem-ingestor-config.yaml",
-        "${workspaceFolder}/cmd/openem-ingestor-app/build/bin/"
-      ]
-    },
-    {
       "label": "copy service config",
       "type": "shell",
       "command": "cp",
@@ -20,19 +11,7 @@
       ]
     },
     {
-      "label": "build desktop app",
-      "type": "shell",
-      "options": {
-        "cwd": "${workspaceFolder}/cmd/openem-ingestor-app"
-      },
-      "command": "wails",
-      "args": [
-        "build",
-        "-debug"
-      ]
-    },
-    {
-      "label": "build service app",
+      "label": "build ingestor service",
       "type": "shell",
       "options": {
         "cwd": "${workspaceFolder}/cmd/openem-ingestor-service"
@@ -61,20 +40,6 @@
       ]
     },
     {
-      "label": "build app",
-      "group": {
-        "kind": "build",
-        "isDefault": true
-      },
-      "dependsOrder": "sequence",
-      "dependsOn": [
-        "go generate",
-        "build desktop app",
-        // Enable this to use local config during debugging
-        // "copy app config"
-      ]
-    },
-    {
       "label": "build service",
       "group": {
         "kind": "build",
@@ -83,7 +48,7 @@
       "dependsOrder": "sequence",
       "dependsOn": [
         "go generate",
-        "build service app",
+        "build ingestor service",
         // Enable this to use local config during debugging
         // "copy service config"
       ]
