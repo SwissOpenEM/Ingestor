@@ -8,7 +8,7 @@ This repository provides a data ingestion service for dataset transfer and metad
 
 Data can be transferred via [Globus](https://www.globus.org) or to an S3 compatible endpoint.
 
-There are two entrypoints, i.e. applications: a [desktop app](./cmd/openem-ingestor-app/) providing a minimal UI and a headless [service](./cmd/openem-ingestor-service/). Both provide a REST API in order to interact with each.
+The main entrypoint is a headless [service](./cmd/openem-ingestor-service/) that provides a REST API.
 
 ## Building the Service
 
@@ -17,18 +17,20 @@ There are two entrypoints, i.e. applications: a [desktop app](./cmd/openem-inges
 Based on the OpenApi specs in [openapi.yaml](./api/openapi.yaml), the REST API for the server implementation ([Gin](https://gin-gonic.com) can be built:
 
 ```bash
-../Ingestor go generate ./...
+/Ingestor$ go generate ./...
 ```
 
 this will update [api.gen.go](./internal/webserver/api.gen.go).
 
 ```bash
-../Ingestor> go build ./cmd/ingestor-web-service
+/Ingestor$ go build ./cmd/ingestor-web-service
 ```
 
 ## Debugging
 
-[launch.json](.vscode/launch.json) and [task.json](.vscode/tasks.json) are provided to define debug targets for VS Code.
+[launch.json](.vscode/launch.json) and [task.json](.vscode/tasks.json) are provided to define debug targets for VS Code. Running the `Debug Service` task will start the service on the configured port (default: 8888) and a Swagger UI documentation page can be accessed at
+
+<http://localhost:8888/docs/index.html>
 
 ## Configuration
 
@@ -44,7 +46,7 @@ See [configs/openem-ingestor-config.yaml](configs/openem-ingestor-config.yaml) f
 
 ## Core
 
-The core package contains shared functionality between the desktop app and the service. It makes use of the [scicat-cli tools](https://github.com/paulscherrerinstitute/scicat-cli/tree/main) for interactions with Scicat. Two APIs are provided; a REST API for it interact with it as a service, and a Go API to interact with it within the same application.
+The core package contains main functionality. It makes use of the [scicat-cli tools](https://github.com/paulscherrerinstitute/scicat-cli/tree/main) for interactions with Scicat. Two APIs are provided; a REST API for it interact with it as a service, and a Go API to interact with it within the same application.
 
 ## Further Documentation
 
