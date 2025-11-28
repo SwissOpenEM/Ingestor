@@ -15,7 +15,7 @@ jobs:
     name: Lint files
     runs-on: 'ubuntu-latest'
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - uses: actions/setup-go@v2
         with:
           go-version: '1.25'
@@ -45,7 +45,7 @@ jobs:
           goarch: amd64
           os: windows-latest
     steps:
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@v6
 
     - name: Set up Go
       uses: actions/setup-go@v5
@@ -94,7 +94,7 @@ jobs:
       contents: read
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
       - name: Log into registry ${{ env.REGISTRY }}
         # if: github.event_name != 'pull_request'
@@ -149,7 +149,7 @@ jobs:
             goarch: arm64
             os: macos-latest
     steps:
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@v6
 
     - name: Set up Go
       uses: actions/setup-go@v5
