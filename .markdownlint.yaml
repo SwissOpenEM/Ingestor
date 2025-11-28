@@ -2,3 +2,5 @@ line-length: false
 no-duplicate-heading:
   siblings_only: true
 descriptive-link-text: false
+no-inline-html: false
+ol-prefix: false
