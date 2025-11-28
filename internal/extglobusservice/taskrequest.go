@@ -1,4 +1,3 @@
-//go:generate wget https://raw.githubusercontent.com/SwissOpenEM/scicat-globus-proxy/refs/heads/main/internal/api/openapi.yaml -O openapi.yaml
 //go:generate go run github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen --config=./oapi-codegen-conf.yaml ./openapi.yaml
 package extglobusservice
 
@@ -42,7 +41,7 @@ func newRequestError(code uint, message *string, details *string) error {
 	}
 }
 
-func RequestExternalTransferTask(ctx context.Context, serviceURL string, scicatToken string, srcFacility string, dstFacility string, scicatPid string, fileList *[]FileToTransfer) (string, error) {
+func RequestExternalTransferTask(ctx context.Context, serviceURL string, scicatToken string, srcFacility string, dstFacility string, scicatPid string, collectionRootPath string, fileList *[]FileToTransfer) (string, error) {
 	client, err := NewClient(serviceURL)
 	if err != nil {
 		return "", err
@@ -56,9 +55,10 @@ func RequestExternalTransferTask(ctx context.Context, serviceURL string, scicatT
 	rawResp, err := client.PostTransferTask(
 		ctx,
 		&PostTransferTaskParams{
-			SourceFacility: srcFacility,
-			DestFacility:   dstFacility,
-			ScicatPid:      scicatPid,
+			SourceFacility:     srcFacility,
+			DestFacility:       dstFacility,
+			ScicatPid:          scicatPid,
+			CollectionRootPath: collectionRootPath,
 		},
 		PostTransferTaskJSONRequestBody{
 			FileList: fileList,

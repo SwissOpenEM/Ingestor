@@ -313,6 +313,7 @@ func (i *IngestorWebServerImplemenation) addExtGlobusTransferTask(ctx context.Co
 		i.taskQueue.Config.Transfer.ExtGlobus.SrcFacility,
 		i.taskQueue.Config.Transfer.ExtGlobus.DstFacility,
 		datasetID,
+		i.taskQueue.Config.Transfer.ExtGlobus.CollectionRootPath,
 		&filesToTransfer,
 	)
 }

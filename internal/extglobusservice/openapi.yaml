@@ -1,0 +1,209 @@
+openapi: 3.0.3
+info:
+  title: SciCat Globus Proxy API
+  description: |-
+    Rest API for the SciCat Globus Proxy. It uses Scicat tokens for authentication.
+  version: 1.1.0
+tags:
+  - name: auth
+    description: Operations related to authentication
+  - name: transfer
+    description: Operations related to data transfers
+  - name: health
+    description: Operations relating to service health
+
+paths:
+  /version:
+    get:
+      tags:
+        - health
+      summary: get SciCat Globus Proxy version
+      security: []
+      description: returns the current version of the proxy
+      operationId: GetVersion
+      responses:
+        "200":
+          description: successful response with version information
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  version:
+                    type: string
+                    description: the current version of the service
+                required:
+                  - version
+
+  /transfer:
+    post:
+      tags:
+        - transfer
+      summary: request a transfer task
+      description: It allows for requesting transfer tasks against a SciCat token. It uses the service account configured with the service's instance
+      operationId: PostTransferTask
+      parameters:
+        - name: sourceFacility
+          description: "the identifier name of the source facility"
+          in: query
+          required: true
+          schema:
+            type: string
+            description: facility to use as source
+        - name: destFacility
+          description: "the path in the destination collection to use for the transfer"
+          in: query
+          required: true
+          schema:
+            type: string
+            description: facility to use as destination
+        - name: scicatPid
+          description: "the pid of the dataset being transferred"
+          in: query
+          required: true
+          schema:
+            type: string
+            description: the SciCat PID of the dataset being transferred
+        - name: collectionRootPath
+          description: "Path to the root of the globus collection on the source facility"
+          in: query
+          required: true
+          schema:
+            type: string
+      requestBody:
+        description: If omitted, transfer the entire dataset source folder. If provided, only transfer the listed files.
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                fileList:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/FileToTransfer"
+
+      responses:
+        "200":
+          description: successfully started a transfer task
+          content:
+            application/json:
+              schema:
+                properties:
+                  jobId:
+                    type: string
+                    description: the SciCat job id of the transfer job
+                required:
+                  - jobId
+        "400":
+          description: something went wrong with the request, usually due to some external service signalling an error
+          $ref: "#/components/responses/GeneralErrorResponse"
+        "401":
+          description: the user does not have a valid auth session, so the request is rejected
+          $ref: "#/components/responses/GeneralErrorResponse"
+        "403":
+          description: the user doesn't have the right to request such a transfer task or there's no valid logged-in user
+          $ref: "#/components/responses/GeneralErrorResponse"
+        "500":
+          description: an internal server error was encountered
+          $ref: "#/components/responses/GeneralErrorResponse"
+        "503":
+          description: the server can't currently handle more requests, try again later
+          $ref: "#/components/responses/GeneralErrorResponse"
+  /transfer/{scicatJobId}:
+    delete:
+      tags:
+        - transfer
+      summary: cancels and/or deletes transfer entry
+      description: allows the user to cancel a transfer and/or delete the job from the scicat job system
+      operationId: DeleteTransferTask
+      parameters:
+        - name: scicatJobId
+          description: "nothing"
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: delete
+          description: Enables/disables deleting from scicat job system. By default, it's disabled (false).
+          in: query
+          required: false
+          schema:
+            type: boolean
+
+      responses:
+        "200":
+          description: deletion was carried out successfully
+        "400":
+          description: a generic request error has occured, usually due to some external service signalling an error
+          $ref: "#/components/responses/GeneralErrorResponse"
+        "401":
+          description: the user does not have a valid auth session, so the request is rejected
+          $ref: "#/components/responses/GeneralErrorResponse"
+        "403":
+          description: the user doesn't have the right to request the deletion
+          $ref: "#/components/responses/GeneralErrorResponse"
+        "500":
+          description: an internal server error was encountered
+          $ref: "#/components/responses/GeneralErrorResponse"
+components:
+  securitySchemes:
+    ScicatKeyAuth:
+      type: apiKey
+      in: header
+      name: SciCat-API-Key
+
+  schemas:
+    TransferItem:
+      type: object
+      properties:
+        transferId:
+          type: string
+        status:
+          type: string
+          enum: [waiting, transferring, finished, failed, cancelled, invalid status]
+        message:
+          type: string
+        bytesTransferred:
+          type: integer
+        bytesTotal:
+          type: integer
+        filesTransferred:
+          type: integer
+        filesTotal:
+          type: integer
+      required:
+        - transferId
+        - status
+    FileToTransfer:
+      description: the file to transfer as part of a transfer request
+      type: object
+      properties:
+        path:
+          type: string
+          description: the path of the file, it has to be relative to the dataset source folder
+        isSymlink:
+          type: boolean
+          description: specifies whether this file is a symlink
+      required:
+        - path
+        - isSymlink
+
+  responses:
+    GeneralErrorResponse:
+      description: a general error response
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+                description: the error message
+              details:
+                type: string
+                description: further details, debugging information
+
+
+security:
+  - ScicatKeyAuth: []
