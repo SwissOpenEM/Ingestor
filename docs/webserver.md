@@ -62,8 +62,8 @@ Authentication can be disabled by setting `WebServer.Auth.Disable: true` in the 
 
 ### Technical details
 
-* The server uses the provider's token to estabilish its own user session
-* It does not directly accept bearer tokens estabilished by the SSO provider
+* The server uses the provider's token to establish its own user session
+* It does not directly accept bearer tokens established by the SSO provider
 * It creates an HttpOnly cookie based user session using the claims provider by the IdP (SSO Provider)
 * This basically means that the server can't function as a "Resource server", you need a specific session with it
 * Currently 3 basic roles exist: `Admin`, `CreateModifyTasks` and `ViewTasks`
@@ -166,10 +166,10 @@ Please make sure the following fields are properly set:
 ...
 ```
 
-* **WebServer.Auth.RBAC.[X]Role**: this is where you set your expected role names. It's a way to customize role names, but you can leave them as is. If facilities use shared OAuth2 client-id's (shouldn't be the case) then these roles should contain the name of each facility to make. You should also customize these if your IdP of choice can't separate what roles to map to users based on clientid. These roles specifically give permission to interact with the ingestor endpoints, and nothing else. Accessing datasets is determined by the `AccessGroups` of the user on SciCat.
+* **WebServer.Auth.RBAC.[X]Role**: this is where you set your expected role names. It's a way to customize role names, but you can leave them as is. If facilities use shared OAuth2 client-id's (shouldn't be the case) then these roles should contain the name of each facility to make. You should also customize these if your IdP of choice can't separate what roles to map to users based on `ClientID`. These roles specifically give permission to interact with the ingestor endpoints, and nothing else. Accessing datasets is determined by the `AccessGroups` of the user on SciCat.
 
 {: .box-note}
-If you're using the supplied example scicatlive config for testing, the roles are named `FAC_ingestor_[function]` where `[function]` can be "admin", "write" or "read".
+If you're using the supplied example ScicatLive config for testing, the roles are named `FAC_ingestor_[function]` where `[function]` can be "admin", "write" or "read".
 
 {: .box-note}
 **Note:** If your IdP isn't keycloak you have to make sure that the roles are mapped to OAuth2 claims in the same way as Keycloak: `[access_token_jwt].resource_access[(client_id)].roles`

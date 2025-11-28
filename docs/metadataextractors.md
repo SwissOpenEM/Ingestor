@@ -114,7 +114,7 @@ MetadataExtractors:
   - **Executable** is the file that will be executed. Might have different names on different platforms.
   - **Checksum** is used to verify the integrity of the executable
   - **ChecksumAlg** is to define the algorithm used for the checksum (only sha256 is used)
-  - **CommandLineTemplate** is the command template to use with the executable, it appends a formatted list of paramters.
+  - **CommandLineTemplate** is the command template to use with the executable, it appends a formatted list of parameters.
   - **Methods** is where you can define a list of methods that can be used with a particular extractor.
     - **Name** is the name of the method
     - **Schema** is the metadata schema to use for this method (must exist in **SchemasLocation**)

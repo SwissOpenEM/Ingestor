@@ -36,7 +36,7 @@ Transfer:
 
 **Endpoint**: Endpoint of the archiver api service
 **TokenUrl**: Endpoint for OIDC token
-**ChunkSizeMB**: Size of chunks when doing mulitpart uploads
+**ChunkSizeMB**: Size of chunks when doing multipart uploads
 **CurrentFiles**: Number of files uploaded concurrently
 **PoolSize**: Number of Goroutines running concurrently for all the uploads
 
@@ -63,7 +63,7 @@ Transfer:
     SourceCollectionID: "uuid-of-source-collection"
     CollectionRootPath: "/insert/path/here"
     DestinationCollectionID: "uuid-of-destination-collection"
-    DestinationTemplate: "/nacsa/{{ .Username }}/{{ replace .Pid \".\" \"_\" }}/{{ .DatasetFolder }}"
+    DestinationTemplate: "/user/{{ .Username }}/{{ replace .Pid \".\" \"_\" }}/{{ .DatasetFolder }}"
 ...
 ```
 
