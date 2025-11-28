@@ -4,9 +4,10 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"log/slog"
 	"os"
 	"strings"
+
+	"log/slog"
 
 	core "github.com/SwissOpenEM/Ingestor/internal/core"
 	"github.com/SwissOpenEM/Ingestor/internal/metadataextractor"
@@ -101,6 +102,8 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	slog.Info("Ingestor started and listening", "port", config.WebServer.Port, "version", version)
 	s := webserver.NewIngesterServer(ingestor, config.WebServer.Port)
 	log.Fatal(s.ListenAndServe())
 }
