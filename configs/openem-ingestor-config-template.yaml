@@ -1,0 +1,76 @@
+Scicat:
+  Host: ${SCICAT_HOST}/api/v3
+Transfer:
+  StorageLocation: "ETHZ"
+  Method: S3
+  S3:
+    Endpoint: ${S3_HOST}/archiver/api/v1
+    TokenUrl: ${KEYCLOAK_HOST}/realms/awi/protocol/openid-connect/token
+    ClientID: scopem-archiver-service-api
+    ChunkSizeMB: 128
+    ConcurrentFiles: 8
+    PoolSize: 4
+
+MetadataExtractors:
+  InstallationPath: C:\Users\Public\Documents\OpenEM\extractors
+  SchemasLocation: C:\Users\Public\Documents\OpenEM\schemas
+  DownloadMissingExtractors: true
+  Timeout: 20m
+  Extractors:
+  - Name: LS
+    GithubOrg: osc-em
+    GithubProject: oscem-extractor-life
+    Version: v2.0.2
+    Executable: oscem-extractor-life.exe
+    Checksum: 0f7f2ef8ec641795ef322c765a504fd6a5a287e70071a79f42f5f73a7c892b1f
+    ChecksumAlg: sha256
+    CommandLineTemplate: "-i '{{.SourceFolder}}' -o '{{.OutputFile}}' --cs 2.7 --folder_filter=^.*(?i)(metadata).*$"
+    Methods:
+    - Name: Single Particle
+      Schema: oscem_schemas_spa.schema.json
+      Url: https://w3id.org/oscem-schemas/latest/spa/jsonschema/oscem_schemas_spa.schema.json
+    - Name: Cellular Tomography
+      Schema: oscem_cellular_tomo.json
+      Url: https://w3id.org/oscem-schemas/latest/cellular_tomo/jsonschema/oscem_schemas_cellular_tomo.schema.json
+    - Name: Tomography
+      Schema: oscem_tomo.json
+      Url: https://w3id.org/oscem-schemas/latest/subtomo/jsonschema/oscem_schemas_subtomo.schema.json
+    - Name: EnvironmentalTomography
+      Schema: oscem_env_tomo.json
+      Url: https://w3id.org/oscem-schemas/latest/env_tomo/jsonschema/oscem_schemas_env_tomo.schema.json
+WebServer:
+  Auth:
+    Disable: true
+    SessionDuration: 28800
+    Frontend:
+      Origin: ${FRONTEND_HOST}
+      RedirectPath: "/ingestor"
+    OAuth2:
+      ClientID: "ingestor"
+      RedirectURL: "http://localhost:8888/callback"
+      Scopes:
+        - email
+    OIDC:
+     IssuerURL: "${KEYCLOAK_HOST}/realms/awi"
+    JWT:
+      UseJWKS: true
+      JwksURL: "${KEYCLOAK_HOST}/realms/awi/protocol/openid-connect/certs"
+      JwksSignatureMethods:
+        - RS256
+    RBAC:
+      AdminRole: "ingestor-admin-scopem"
+      CreateModifyTasksRole: "ingestor-write-scopem"
+      ViewTasksRole: "ingestor-read-scopem"
+  Paths:
+    CollectionLocations:
+        "${COLLECTION_LOCATION1}": "${COLLECTION_LOCATION1_PATH}" 
+        "${COLLECTION_LOCATION2}": "${COLLECTION_LOCATION2_PATH}" 
+        "${COLLECTION_LOCATION3}": "${COLLECTION_LOCATION3_PATH}" 
+  MetadataExtJobs:
+    ConcurrencyLimit: 10
+    QueueSize: 200
+  Other:
+    Port: 8888
+    LogLevel: Info
+    DisableServiceAccountCheck: true
+    BackendAddress: http://localhost:8888

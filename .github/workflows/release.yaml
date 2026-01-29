@@ -8,6 +8,10 @@ on:
 
 permissions:
   contents: write
+  packages: write
+
+env:
+  NUGET_SOURCE_URL: "https://nuget.pkg.github.com/swissopenem/index.json" 
 
 jobs:
   goreleaser:
@@ -30,6 +34,27 @@ jobs:
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v2
+        with:
+          dotnet-version: 10.x.x 
+
+      # AI Generated step to parse the version
+      - name: Extract version from Git tag
+        id: extract_version
+        run: |
+          VERSION=${GITHUB_REF##*/} 
+          echo "VERSION=${VERSION/v/}" >> $GITHUB_ENV
+
+      - name: Create NuGet package
+        run: |
+          nuget pack openem-ingestor.nuspec -version ${{env.VERSION}} 
+
+      - name: Publish NuGet package to GitHub
+        run: |
+          nuget push *.nupkg -Source "${{env.NUGET_SOURCE_URL}}" -ApiKey ${{ secrets.GITHUB_TOKEN }} 
+
   build_docker_image_release:
     permissions:
       packages: write

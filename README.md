@@ -56,6 +56,30 @@ The core package contains main functionality. It makes use of the [scicat-cli to
 - WebServer: [docs/authentication.md](docs/webserver.md)
 - Keycloak Setup for development: [docs/keycloak-setup.md](docs/keycloak-setup.md)
 
-## Deployment
+## Linux Deployment
 
 For deployment instruction and example setup see [openem-deployment](https://github.com/SwissOpenEM/openem-deployment) repository.
+
+## Windows Deployment
+
+### Executable
+
+The executable can be download directly from the [releases page](https://github.com/SwissOpenEM/Ingestor/releases) and executed. Alternatively,
+a [Chocolatey](https://docs.chocolatey.org/en-us/) package can be downloaded which installs the ingestor as a Windows service.
+
+### Windows Service Deployment
+
+1. Install Shawl <https://github.com/mtkennerly/shawl> with `machine` scope to run the ingestor as a Windows services
+        ```pwsh
+        winget install --scope "machine" -e --id mtkennerly.shawl
+        ```
+
+2. Install the ingestor using `chocolatey`
+
+    ```pwsh
+    choco install openem-ingestor --source=https://nuget.pkg.github.com/swissopenem/index.json --params="'/Scicat.Host=\"https://dacat.psi.ch/api/v3\"'" -y
+    ```
+
+> **Note**: You will be prompted for a Github username and password as Github does not allow for unauthenticated downloads.
+
+3. Verify the ingestor is up and running by entering `http://localhost:8888/version` in a browser. The install version should appear.
