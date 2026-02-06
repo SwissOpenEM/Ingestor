@@ -308,7 +308,7 @@ func downloadExtractor(fullInstallPath string, config ExtractorConfig) error {
 		}
 		x := &xtractr.XFile{
 			FilePath:  path.Clean(file),
-			OutputDir: path.Dir(fullInstallPath),
+			OutputDir: path.Dir(path.Clean(fullInstallPath)),
 		}
 
 		size, files, _, err := x.Extract()
