@@ -15,6 +15,7 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"path/filepath"
 	"regexp"
 	"runtime"
 	"sort"
@@ -106,7 +107,7 @@ func NewExtractorHandler(config ExtractorsConfig) *ExtractorHandler {
 		if config.DownloadMissingExtractors {
 			err := downloadExtractor(fullInstallPath, extractorConfig)
 			if err != nil {
-				log().Error("Failed to download extractor", "name", extractorConfig.Name)
+				log().Error("Failed to download extractor", "name", extractorConfig.Name, "error", err.Error())
 				continue
 			}
 		}
@@ -307,8 +308,8 @@ func downloadExtractor(fullInstallPath string, config ExtractorConfig) error {
 			return err
 		}
 		x := &xtractr.XFile{
-			FilePath:  path.Clean(file),
-			OutputDir: path.Dir(path.Clean(fullInstallPath)),
+			FilePath:  filepath.Clean(file),
+			OutputDir: filepath.Clean(path.Dir(fullInstallPath)),
 		}
 
 		size, files, _, err := x.Extract()
