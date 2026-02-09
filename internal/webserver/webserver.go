@@ -23,9 +23,6 @@ import (
 	"github.com/gin-contrib/slog"
 )
 
-// Copy the openapi specs to local folder so it can be embedded in order to statically serve it
-//go:generate cp ../../api/openapi.yaml ./openapi.yaml
-
 //go:embed openapi.yaml
 var swaggerYAML embed.FS
 

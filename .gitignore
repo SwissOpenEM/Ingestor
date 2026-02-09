@@ -31,3 +31,4 @@ dist/**
 
 # backup files
 *.go.bak
+*.nupkg
