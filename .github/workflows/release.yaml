@@ -12,6 +12,8 @@ permissions:
 
 env:
   NUGET_SOURCE_URL: "https://nuget.pkg.github.com/swissopenem/index.json" 
+  # For deploying within ETHZ w/o authorization that is required for public github access
+  GITLAB_SOURCE_URL: "https://sissource.ethz.ch/api/v4/projects/1201/packages/nuget/index.json"
 
 jobs:
   goreleaser:
@@ -53,7 +55,9 @@ jobs:
 
       - name: Publish NuGet package to GitHub
         run: |
-          nuget push *.nupkg -Source "${{env.NUGET_SOURCE_URL}}" -ApiKey ${{ secrets.GITHUB_TOKEN }} 
+          nuget push *.nupkg -Source "${{env.NUGET_SOURCE_URL}}" -ApiKey ${{ secrets.GITHUB_TOKEN }}
+          nuget push *.nupkg -Source "${{env.GITLAB_SOURCE_URL}}" -ApiKey ${{ secrets.SISSOURCE_GITLAB_NUGET_REPO }} 
+
 
   build_docker_image_release:
     permissions:
