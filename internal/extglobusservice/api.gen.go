@@ -56,6 +56,9 @@ type PostTransferTaskParams struct {
 
 	// CollectionRootPath Path to the root of the globus collection on the source facility
 	CollectionRootPath string `form:"collectionRootPath" json:"collectionRootPath"`
+
+	// AutoArchive start archive job after successful transfer
+	AutoArchive *bool `form:"autoArchive,omitempty" json:"autoArchive,omitempty"`
 }
 
 // DeleteTransferTaskParams defines parameters for DeleteTransferTask.
@@ -279,6 +282,22 @@ func NewPostTransferTaskRequestWithBody(server string, params *PostTransferTaskP
 					queryValues.Add(k, v2)
 				}
 			}
+		}
+
+		if params.AutoArchive != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "autoArchive", runtime.ParamLocationQuery, *params.AutoArchive); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
 		}
 
 		queryURL.RawQuery = queryValues.Encode()
