@@ -41,7 +41,7 @@ func newRequestError(code uint, message *string, details *string) error {
 	}
 }
 
-func RequestExternalTransferTask(ctx context.Context, serviceURL string, scicatToken string, srcFacility string, dstFacility string, scicatPid string, collectionRootPath string, fileList *[]FileToTransfer) (string, error) {
+func RequestExternalTransferTask(ctx context.Context, serviceURL string, scicatToken string, srcFacility string, dstFacility string, scicatPid string, autoArchive bool, collectionRootPath string, fileList *[]FileToTransfer) (string, error) {
 	client, err := NewClient(serviceURL)
 	if err != nil {
 		return "", err
@@ -59,6 +59,7 @@ func RequestExternalTransferTask(ctx context.Context, serviceURL string, scicatT
 			DestFacility:       dstFacility,
 			ScicatPid:          scicatPid,
 			CollectionRootPath: collectionRootPath,
+			AutoArchive:        &autoArchive,
 		},
 		PostTransferTaskJSONRequestBody{
 			FileList: fileList,
