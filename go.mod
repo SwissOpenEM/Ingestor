@@ -11,7 +11,7 @@ require (
 	github.com/gin-contrib/slog v1.2.0
 	github.com/gin-gonic/gin v1.11.0
 	github.com/go-test/deep v1.1.1
-	github.com/golang-jwt/jwt/v5 v5.3.0
+	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/google/go-github v17.0.0+incompatible
 	github.com/google/uuid v1.6.0
 	github.com/hashicorp/go-retryablehttp v0.7.8
