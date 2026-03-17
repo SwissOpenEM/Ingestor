@@ -2,7 +2,7 @@ openapi: 3.0.3
 info:
   title: SciCat Ingestor API
   description: |-
-    Rest API for communication between the Ingestor UI and Ingestor backend service. The backend service communicates with the EM-SciCat service. 
+    Rest API for communication between the Ingestor UI and Ingestor backend service. The backend service communicates with the EM-SciCat service.
     The API allows the transfer of data, automatic metadata extraction and status message queries.
   version: 1.0.0
 tags:
@@ -287,7 +287,7 @@ paths:
           description: "OIDC callback failed due to invalid code or state"
           content:
             text/plain:
-              schema: 
+              schema:
                 type: string
         "500":
           description: "Internal Server Error"
@@ -446,7 +446,7 @@ paths:
             of the response. The data itself will be always encoded in base64, and its format depends on the the event type.
             Here's a list of possible event types and the corresponding data formats:
              - event: message
-               data: a string of the message sent by the server. It's most often used for communicating server status (not 
+               data: a string of the message sent by the server. It's most often used for communicating server status (not
                related to the extractor itself)
              - event: error
                data: a string that describes the error encountered. This event also normally means that the stream will be closed as
@@ -497,7 +497,8 @@ components:
           description: the scicat token for acting on behalf of the user
         autoArchive:
           type: boolean
-          description: whether to autoarchive the dataset. Default is TRUE
+          default: false
+          description: whether to autoarchive the dataset. Default is FALSE
       required:
         - metaData
         - userToken

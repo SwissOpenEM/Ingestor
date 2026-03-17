@@ -209,7 +209,7 @@ func (i *IngestorWebServerImplemenation) DatasetControllerIngestDataset(ctx cont
 	}
 
 	// set auto-archival parameter
-	autoArchive := true
+	autoArchive := false
 	if request.Body.AutoArchive != nil {
 		autoArchive = *request.Body.AutoArchive
 	}
