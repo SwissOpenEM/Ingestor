@@ -66,7 +66,7 @@ paths:
                     format: date-time
                     example: "2023-10-01T12:00:00Z"
         '503':
-          description: Service is not ready
+          description: Service is not ready 
           content:
             application/json:
               schema:
@@ -107,7 +107,7 @@ paths:
         - service_token
   /archiver/jobs:
     post:
-      security:
+      security: 
         - BasicAuth: []
       operationId: create_job
       requestBody:
@@ -708,7 +708,7 @@ components:
           title: requested size in GiB
           type: integer
       required:
-        - message
+        - message 
         - dataset_id
         - requested_size_gib
       title: UploadRequestUnsuccessfulResp
