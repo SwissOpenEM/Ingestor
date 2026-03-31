@@ -20,7 +20,11 @@ jobs:
         with:
           go-version: '1.25'
       - name: generate
-        run: go generate ./internal/webserver
+        run: go generate ./...
+
+      - name: Ensure generated code is up to date
+        run: git diff --exit-code
+
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v9.2.0
         with:
@@ -63,11 +67,10 @@ jobs:
 
     - name: Test Internal Package
       run: |
-        go generate ./internal/webserver
         go test -json -v  ./internal/... 2>&1 | tee gotestinternal-${{ matrix.build.goos }}-${{ matrix.build.goarch }}.log | gotestfmt
 
     - name: Upload Test Log
-      uses: actions/upload-artifact@v6
+      uses: actions/upload-artifact@v7
       if: success()
       with:
         name: internal-test-log-${{ matrix.build.goos }}-${{ matrix.build.goarch }}
@@ -79,7 +82,7 @@ jobs:
         go test -json -v  ./cmd/openem-ingestor-service/ 2>&1 | tee gotestservice-${{ matrix.build.goos }}-${{ matrix.build.goarch }}.log | gotestfmt
 
     - name: Upload Test Log
-      uses: actions/upload-artifact@v6
+      uses: actions/upload-artifact@v7
       if: success()
       with:
         name: service-test-log-${{ matrix.build.goos }}-${{ matrix.build.goarch }}
@@ -98,7 +101,7 @@ jobs:
 
       - name: Log into registry ${{ env.REGISTRY }}
         # if: github.event_name != 'pull_request'
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
@@ -106,7 +109,7 @@ jobs:
 
       - name: Extract Docker metadata
         id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ${{ env.REGISTRY }}/${{ env.INGESTOR_IMAGE_NAME }}
           tags: |
@@ -116,7 +119,7 @@ jobs:
 
       - name: Build and push Docker image
         id: build-and-push
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: ./
           file: ./Dockerfile
@@ -161,4 +164,3 @@ jobs:
 
     - name: Build Service
       run: GOOS=${{ matrix.build.goos }} GOARCH=${{ matrix.build.goarch }} go build -C ./cmd/openem-ingestor-service/ -v
-
