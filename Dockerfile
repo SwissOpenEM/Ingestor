@@ -1,4 +1,4 @@
-FROM golang:1.25.1-alpine AS builder
+FROM golang:1.25-alpine AS builder
 
 # Set destination for COPY
 WORKDIR /app
@@ -21,7 +21,7 @@ RUN CGO_ENABLED=0 GOOS=linux go build -C ./cmd/openem-ingestor-service/ -v -o /a
 FROM ubuntu:24.04
 
 RUN apt-get update && \
-    apt-get install -y ca-certificates 
+    apt-get install -y ca-certificates
 
 COPY --from=builder /app/ingestor /app/ingestor
 
