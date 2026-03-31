@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"html/template"
 	"io"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/exec"
@@ -384,6 +385,8 @@ func buildCommandline(templ *template.Template, templateParams ExtractorInvokati
 type outputCallback func(string)
 
 func runExtractor(ctx context.Context, executable string, args []string, stdoutCallback outputCallback, stderrCallback outputCallback) error {
+	slog.Info("Running extractor", "executable", executable, "args", args)
+
 	cmd := exec.CommandContext(ctx, executable, args...)
 
 	stdout, _ := cmd.StdoutPipe()
