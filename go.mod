@@ -108,7 +108,7 @@ require (
 	github.com/bytedance/sonic v1.15.0 // indirect
 	github.com/bytedance/sonic/loader v0.5.0 // indirect
 	github.com/cloudwego/base64x v0.1.6 // indirect
-	github.com/coreos/go-oidc/v3 v3.17.0
+	github.com/coreos/go-oidc/v3 v3.18.0
 	github.com/creack/pty v1.1.24 // indirect
 	github.com/elliotchance/orderedmap/v2 v2.7.0
 	github.com/gabriel-vasile/mimetype v1.4.13 // indirect
