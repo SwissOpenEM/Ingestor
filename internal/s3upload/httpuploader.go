@@ -286,7 +286,8 @@ func uploadData(ctx context.Context, data *[]byte, presignedURL string, httpClie
 
 	// The checksum algorithm needs to match the one defined in the presigned url
 	req.Header.Set("x-amz-checksum-sha256", base64Hash)
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", "")
+	req.Header.Set("x-amz-storage-class", "GLACIER")
 
 	resp, err := httpClient.Client.Do(req)
 	if err != nil {
