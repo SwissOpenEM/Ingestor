@@ -9,15 +9,6 @@ if ($package) {
     choco uninstall openem-ingestor -y
 }
 
-$serviceName = "OpenEM-Ingestor"
-try {
-    $service = Get-Service -Name $serviceName -ErrorAction Stop
-    Write-Host "Service '$serviceName' exists."
-    Stop-Service -Name $serviceName
-
-    sc.exe delete $serviceName
-} catch {}
-
 
 $packageName = 'openem-ingestor'
 
@@ -63,29 +54,8 @@ foreach ($key in $parameters.Keys) {
 # # Save the updated content back to the YAML file
 Set-Content -Path $configFilePath -Value $yamlContent
 
-Write-Host "Installing $packageName as a service."
-# Prompt for the password
-$password = Read-Host -Prompt "Enter admin password:" -AsSecureString
-
-# Convert the password to a credential object using the NETWORK SERVICE account
-$credential = New-Object System.Management.Automation.PSCredential("NT AUTHORITY\NETWORK SERVICE", $password)
-
-$shawlPath = (get-command shawl).path
-$shawlBinPath = "`"$shawlPath`" run --name `"$serviceName`" --cwd `"$extractPath`" -- `"$binarypath`""
-
-
-New-Service -Name $serviceName -DisplayName $serviceName -BinaryPathName $shawlBinPath -StartupType Automatic -Credential $credential
-$target = (get-item (Get-Item $shawlPath).Target).Directory.FullName
-
-Write-Host "Add firewall settings for $($binaryPath)"
-icacls $target /grant "NT AUTHORITY\NETWORK SERVICE:(OI)(CI)F" /T
-icacls $binaryPath /grant "NT AUTHORITY\NETWORK SERVICE:(OI)(CI)F" /T
-
-sc.exe config $serviceName obj="NT AUTHORITY\Network Service"
-
-Write-Host "Starting Service"
-Start-Service $serviceName
-
-Write-Host (Get-Service $serviceName)
+Install-ChocolateyShortcut `
+  -ShortcutFilePath $env:PUBLIC\Desktop `
+  -TargetPath $binaryPath `
 
 Write-Host "openem-ingestor installed successfully!"

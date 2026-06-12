@@ -1,4 +1,4 @@
-name: goreleaser
+name: build and publish release
 
 on:
   workflow_dispatch:
@@ -16,17 +16,35 @@ env:
   GITLAB_SOURCE_URL: "https://sissource.ethz.ch/api/v4/projects/1201/packages/nuget/index.json"
 
 jobs:
-  goreleaser:
+  release_app:
     runs-on: ubuntu-22.04
     steps:
       - name: Checkout
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
+
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
           go-version: stable
+
+      - name: Install Fyne dependencies
+        run: sudo apt-get update && sudo apt-get install libgl1-mesa-dev xorg-dev libxkbcommon-dev
+      
+      - name: Install MinGW
+        run: sudo apt-get update && sudo apt-get install mingw-w64 gcc-mingw-w64-x86-64
+
+      - name: Set up Fyne
+        run: |
+          go get fyne.io/fyne/v2@latest
+          go install fyne.io/tools/cmd/fyne@latest
+
+      - name: Test Fyne
+        run: |
+          echo $PATH
+          go env GOPATH
+          fyne --version && which fyne
 
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v7
@@ -47,11 +65,12 @@ jobs:
         id: extract_version
         run: |
           VERSION=${GITHUB_REF##*/} 
+          echo $VERSION
           echo "VERSION=${VERSION/v/}" >> $GITHUB_ENV
 
       - name: Create NuGet package
         run: |
-          nuget pack openem-ingestor.nuspec -version ${{env.VERSION}} 
+          nuget pack openem-ingestor.nuspec -version $VERSION
 
       - name: Publish NuGet package to GitHub
         run: |

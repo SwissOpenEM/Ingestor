@@ -26,6 +26,53 @@ this will update [api.gen.go](./internal/webserver/api.gen.go).
 /Ingestor$ go build ./cmd/ingestor-web-service
 ```
 
+## Building the App
+
+The app is based on [Fyne](https://fyne.io) and can be cross-compiled for Windows on Linux. See the [setup pages](https://docs.fyne.io/started/quick/) and the [cross-compilation](https://docs.fyne.io/started/cross-compiling/) for the required dependencies.
+
+## Linux Build
+
+### Prerequisites
+
+```bash
+sudo apt-get update && sudo apt-get install libgl1-mesa-dev xorg-dev libxkbcommon-dev -y
+```
+
+In order to avoid doubly defined macros, the `CGO_CFLAGS` need to be set
+
+```bash
+CGO_CFLAGS="-Wno-error -U_FORTIFY_SOURCE" fyne build  --src cmd/openem-ingestor-ap
+```
+
+## Windows Build
+
+Windows builds can be created by cross-compiling the application
+
+### Prerequisites
+
+On Ubuntu, in addition to the previous prerequisites, MinGW needs to be installed
+
+```bash
+sudo apt-get update && sudo apt-get install mingw-w64 gcc-mingw-w64-x86-64 -y
+
+```
+
+To following environment variables need to be set
+
+|               |                        |
+|---------------|------------------------|
+| `CC`          | x86_64-w64-mingw32-gcc |
+| `CGO_ENABLED` | 1                      |
+| `CGO_LDFLAGS` | -static -lssp          |
+| `GOOS`        | 'amd64'                |
+| `GOARCH`      | 'windows'              |
+
+and the same build command can be used
+
+```bash
+fyne build  --src cmd/openem-ingestor-ap
+```
+
 ## Debugging
 
 [launch.json](.vscode/launch.json) and [task.json](.vscode/tasks.json) are provided to define debug targets for VS Code. Running the `Debug Service` task will start the service on the configured port (default: 8888) and a Swagger UI documentation page can be accessed at
