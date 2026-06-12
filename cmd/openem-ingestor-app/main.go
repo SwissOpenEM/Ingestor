@@ -7,12 +7,20 @@ import (
 	"log"
 	"os"
 	"strings"
+	"time"
 
 	"log/slog"
 
+	"fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/app"
+	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/driver/desktop"
+	"fyne.io/fyne/v2/widget"
 	core "github.com/SwissOpenEM/Ingestor/internal/core"
 	"github.com/SwissOpenEM/Ingestor/internal/metadataextractor"
 	"github.com/SwissOpenEM/Ingestor/internal/s3upload"
+	"github.com/SwissOpenEM/Ingestor/internal/transfertask"
+	"github.com/SwissOpenEM/Ingestor/internal/ui"
 	"github.com/SwissOpenEM/Ingestor/internal/webserver"
 	"github.com/SwissOpenEM/Ingestor/internal/webserver/metadatatasks"
 	"github.com/alitto/pond/v2"
@@ -22,7 +30,9 @@ import (
 // String can be overwritten by using linker flags: -ldflags "-X main.version=VERSION"
 var version string = "DEVELOPMENT_VERSION"
 
-func setupLogging(logLevel string) {
+var gTaskQueue *core.TaskQueue
+
+func setupLogging(logLevel string, widget *ui.LogWidget) {
 	level := slog.LevelDebug
 	switch logLevel {
 	case "Info":
@@ -36,12 +46,16 @@ func setupLogging(logLevel string) {
 	}
 
 	opts := &slog.HandlerOptions{Level: level}
-	h := slog.NewTextHandler(os.Stdout, opts)
-	slog.SetDefault(slog.New(h))
+	// h := slog.NewTextHandler(os.Stdout, opts)
+
+	handler := ui.NewWidgetHandler(widget, opts.Level.Level())
+	slog.SetDefault(slog.New(handler))
 }
 
 func main() {
 	slog.Info("Starting ingestor service", "Version", version)
+	logWidget := ui.NewLogWidget()
+	setupLogging("Info", logWidget)
 
 	var config core.Config
 	configFileReader := core.NewConfigReader()
@@ -53,10 +67,10 @@ func main() {
 
 	slog.Info("Config read", "Filepath", configFileReader.GetCurrentConfigFilePath())
 
+	setupLogging(config.WebServer.LogLevel, logWidget)
+
 	configData, _ := yaml.Marshal(configFileReader.GetFullConfig())
 	println(string(configData))
-
-	setupLogging(config.WebServer.LogLevel)
 
 	if !strings.HasSuffix(config.Scicat.Host, "v3") {
 		panic(fmt.Sprintf("Only Scicat API v3 is supported. No v3 suffix found in API path. Got '%s'", config.Scicat.Host))
@@ -93,6 +107,7 @@ func main() {
 
 	taskQueuePool := mainPool.NewSubpool(config.Transfer.ConcurrencyLimit, pond.WithNonBlocking(true))
 	taskQueue := core.NewTaskQueueFromPool(ctx, config, core.NewLoggingNotifier(), serviceAcc, taskQueuePool)
+	gTaskQueue = taskQueue
 
 	if strings.ToLower(config.Transfer.Method) == "s3" {
 		s3PoolSize := min(config.Transfer.S3.PoolSize, totalConcurrencyLimit-config.WebServer.MetadataExtJobsConf.ConcurrencyLimit-config.WebServer.ConcurrencyLimit)
@@ -106,63 +121,96 @@ func main() {
 
 	slog.Info("Ingestor started and listening", "port", config.WebServer.Port, "version", version)
 	s := webserver.NewIngesterServer(ingestor, config.WebServer.Port)
-	log.Fatal(s.ListenAndServe())
+
+	go func() {
+		log.Fatal(s.ListenAndServe())
+	}()
+
+	a := app.New()
+
+	a.Settings().SetTheme(ui.PsiTheme{})
+	w := a.NewWindow(fmt.Sprintf("OpenEM Ingestor %s", version))
+
+	// logger := slog.New(handler)
+
+	var tasks []*transfertask.TransferTask
+
+	ui := ui.NewTaskListUI(tasks)
+
+	go func() {
+		for range time.Tick(1000 * time.Millisecond) {
+			go func() {
+				fyne.DoAndWait(func() {
+					tasks, _ := gTaskQueue.GetTasks()
+					ui.SetTasks(tasks)
+					ui.Refresh()
+				})
+			}()
+
+		}
+	}()
+
+	header := widget.NewLabelWithStyle(
+		"Transfer Tasks",
+		fyne.TextAlignLeading,
+		fyne.TextStyle{Bold: true},
+	)
+
+	logHeader := widget.NewLabelWithStyle(
+		"Output",
+		fyne.TextAlignLeading,
+		fyne.TextStyle{Bold: true},
+	)
+
+	defaultSize := fyne.NewSize(800, 600)
+	w.Resize(defaultSize)
+	menu := fyne.NewMenu(fmt.Sprintf("OpenEM Ingestor %s", version),
+		fyne.NewMenuItem("Show", func() {
+			w.Resize(defaultSize)
+			w.Show()
+			w.RequestFocus()
+		}),
+		fyne.NewMenuItem("Hide", func() {
+			w.Hide()
+		}),
+	)
+
+	res := fyne.NewStaticResource("openem", iconData)
+	a.SetIcon(res)
+	if desk, ok := a.(desktop.App); ok {
+		desk.SetSystemTrayIcon(res)
+		desk.SetSystemTrayMenu(menu)
+	}
+	// // header
+	// // bottom
+	// // left
+	// // right
+	// // center
+	w.SetContent(container.NewBorder(
+		nil,
+		container.NewBorder(
+			container.NewVBox(
+				logHeader,
+				widget.NewSeparator(),
+			),
+			logWidget, nil, nil, nil,
+		),
+		nil,
+		nil,
+		container.NewBorder(
+			container.NewVBox(
+				header,
+				widget.NewSeparator(),
+			),
+			nil, nil, nil, ui.Container(),
+		),
+	))
+
+	w.SetCloseIntercept(func() { w.Hide() })
+
+	w.ShowAndRun()
+
 }
 
-// 	go func() {
-// 		log.Fatal(s.ListenAndServe())
-// 	}()
-
-// 	a := app.New()
-// 	a.Settings().SetTheme(ui.PsiTheme{})
-// 	w := a.NewWindow("OpenEM Ingestor")
-
-// 	menu := fyne.NewMenu("OpenEM Ingestor",
-// 		fyne.NewMenuItem("Show", func() {
-// 			w.Resize(fyne.NewSize(640, 400))
-// 			w.Show()
-// 			w.RequestFocus()
-// 		}))
-
-// 	res := fyne.NewStaticResource("openem", iconData)
-// 	if desk, ok := a.(desktop.App); ok {
-// 		desk.SetSystemTrayIcon(res)
-// 		desk.SetSystemTrayMenu(menu)
-// 	}
-// 	a.SetIcon(res)
-// 	w.SetCloseIntercept(func() { w.Hide() })
-// 	w.Resize(fyne.NewSize(640, 400))
-
-// 	var tasks []*transfertask.TransferTask
-
-// 	ui := ui.NewTaskListUI(tasks)
-
-// 	go func() {
-// 		for range time.Tick(1000 * time.Millisecond) {
-// 			fyne.DoAndWait(func() {
-// 				tasks, _ := gTaskQueue.GetTasks()
-
-// 				ui.SetTasks(tasks)
-// 				ui.Refresh()
-// 			})
-
-// 		}
-// 	}()
-
-// 	header := widget.NewLabelWithStyle(
-// 		"Transfer Tasks",
-// 		fyne.TextAlignLeading,
-// 		fyne.TextStyle{Bold: true},
-// 	)
-
-// 	w.SetContent(container.NewBorder(
-// 		container.NewVBox(header, widget.NewSeparator()),
-// 		nil, nil, nil,
-// 		ui.Container(),
-// 	))
-
-// 	w.ShowAndRun()
-// }
-
-// //go:embed openem.ico
-// var iconData []byte
+//go:embed openem.ico
+var iconData []byte
