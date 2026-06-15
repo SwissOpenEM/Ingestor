@@ -1,12 +1,9 @@
 package main
 
 import (
-	"context"
 	_ "embed"
 	"fmt"
-	"log"
-	"os"
-	"strings"
+	"runtime"
 	"time"
 
 	"log/slog"
@@ -16,23 +13,20 @@ import (
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/driver/desktop"
 	"fyne.io/fyne/v2/widget"
-	core "github.com/SwissOpenEM/Ingestor/internal/core"
-	"github.com/SwissOpenEM/Ingestor/internal/metadataextractor"
-	"github.com/SwissOpenEM/Ingestor/internal/s3upload"
+	"github.com/SwissOpenEM/Ingestor/internal/core"
 	"github.com/SwissOpenEM/Ingestor/internal/transfertask"
 	"github.com/SwissOpenEM/Ingestor/internal/ui"
 	"github.com/SwissOpenEM/Ingestor/internal/webserver"
-	"github.com/SwissOpenEM/Ingestor/internal/webserver/metadatatasks"
-	"github.com/alitto/pond/v2"
 	"gopkg.in/yaml.v2"
 )
 
 // String can be overwritten by using linker flags: -ldflags "-X main.version=VERSION"
 var version string = "DEVELOPMENT_VERSION"
 
-var gTaskQueue *core.TaskQueue
+//go:embed openem.ico
+var iconData []byte
 
-func setupLogging(logLevel string, widget *ui.LogWidget) {
+func convertLogLevel(logLevel string) slog.Level {
 	level := slog.LevelDebug
 	switch logLevel {
 	case "Info":
@@ -44,18 +38,23 @@ func setupLogging(logLevel string, widget *ui.LogWidget) {
 	case "Warning":
 		level = slog.LevelWarn
 	}
+	return level
+}
 
+func setupLogging(logLevel string, widget *ui.LogWidget) {
+
+	level := convertLogLevel(logLevel)
 	opts := &slog.HandlerOptions{Level: level}
-	// h := slog.NewTextHandler(os.Stdout, opts)
 
 	handler := ui.NewWidgetHandler(widget, opts.Level.Level())
 	slog.SetDefault(slog.New(handler))
 }
 
 func main() {
-	slog.Info("Starting ingestor service", "Version", version)
 	logWidget := ui.NewLogWidget()
 	setupLogging("Info", logWidget)
+
+	slog.Info("Starting ingestor app", "Version", version)
 
 	var config core.Config
 	configFileReader := core.NewConfigReader()
@@ -67,71 +66,17 @@ func main() {
 
 	slog.Info("Config read", "Filepath", configFileReader.GetCurrentConfigFilePath())
 
-	setupLogging(config.WebServer.LogLevel, logWidget)
+	slog.SetLogLoggerLevel(convertLogLevel(config.WebServer.LogLevel))
 
 	configData, _ := yaml.Marshal(configFileReader.GetFullConfig())
 	println(string(configData))
 
-	if !strings.HasSuffix(config.Scicat.Host, "v3") {
-		panic(fmt.Sprintf("Only Scicat API v3 is supported. No v3 suffix found in API path. Got '%s'", config.Scicat.Host))
-	}
-
-	for location := range config.WebServer.CollectionLocations {
-		if strings.Contains(location, "/") {
-			panic(fmt.Sprintf("Invalid name `%s` in 'Collectionlocations`. Cannot be a path or contain `/`", location))
-		}
-	}
-
-	ctx := context.Background()
-
-	u, foundName := os.LookupEnv("INGESTOR_SERVICE_USER_NAME")
-	p, foundPass := os.LookupEnv("INGESTOR_SERVICE_USER_PASS")
-	var serviceAcc *core.UserCreds = nil
-
-	if foundName && foundPass {
-		serviceAcc = &core.UserCreds{
-			Username: u,
-			Password: p,
-		}
-	}
-
-	totalConcurrencyLimit := config.WebServer.GlobalConcurrencyLimit
-	mainPool := pond.NewPool(totalConcurrencyLimit)
-
-	extractorHandler := metadataextractor.NewExtractorHandler(config.MetadataExtractors)
-
-	metadataExtractorPool := metadatatasks.NewTaskPoolFromPool(config.WebServer.MetadataExtJobsConf.ConcurrencyLimit,
-		config.WebServer.MetadataExtJobsConf.QueueSize,
-		extractorHandler,
-		&mainPool)
-
-	taskQueuePool := mainPool.NewSubpool(config.Transfer.ConcurrencyLimit, pond.WithNonBlocking(true))
-	taskQueue := core.NewTaskQueueFromPool(ctx, config, core.NewLoggingNotifier(), serviceAcc, taskQueuePool)
-	gTaskQueue = taskQueue
-
-	if strings.ToLower(config.Transfer.Method) == "s3" {
-		s3PoolSize := min(config.Transfer.S3.PoolSize, totalConcurrencyLimit-config.WebServer.MetadataExtJobsConf.ConcurrencyLimit-config.WebServer.ConcurrencyLimit)
-		s3upload.InitHTTPUploaderWithPool(mainPool.NewSubpool(s3PoolSize))
-	}
-
-	ingestor, err := webserver.NewIngestorWebServer(version, taskQueue, extractorHandler, metadataExtractorPool, config.WebServer)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	slog.Info("Ingestor started and listening", "port", config.WebServer.Port, "version", version)
-	s := webserver.NewIngesterServer(ingestor, config.WebServer.Port)
-
-	go func() {
-		log.Fatal(s.ListenAndServe())
-	}()
+	ingestorImplementation := webserver.SetupAndRun(&config, version, true)
 
 	a := app.New()
 
 	a.Settings().SetTheme(ui.PsiTheme{})
 	w := a.NewWindow(fmt.Sprintf("OpenEM Ingestor %s", version))
-
-	// logger := slog.New(handler)
 
 	var tasks []*transfertask.TransferTask
 
@@ -141,13 +86,14 @@ func main() {
 		for range time.Tick(1000 * time.Millisecond) {
 			go func() {
 				fyne.DoAndWait(func() {
-					tasks, _ := gTaskQueue.GetTasks()
+					tasks, _ := ingestorImplementation.GetTasks()
 					ui.SetTasks(tasks)
 					ui.Refresh()
 				})
 			}()
-
 		}
+		// not sure it is really needed
+		runtime.KeepAlive(ingestorImplementation)
 	}()
 
 	header := widget.NewLabelWithStyle(
@@ -206,11 +152,9 @@ func main() {
 		),
 	))
 
+	// Keep app running in system tray
 	w.SetCloseIntercept(func() { w.Hide() })
 
 	w.ShowAndRun()
 
 }
-
-//go:embed openem.ico
-var iconData []byte
