@@ -1,6 +1,6 @@
 module github.com/SwissOpenEM/Ingestor
 
-go 1.25.7
+go 1.26.4
 
 require (
 	github.com/SwissOpenEM/globus v0.1.2
@@ -26,6 +26,7 @@ require (
 	github.com/wailsapp/wails/v2 v2.12.0
 	golang.org/x/oauth2 v0.36.0
 	golift.io/xtractr v0.3.1
+	gopkg.in/natefinch/lumberjack.v2 v2.2.1
 )
 
 require (

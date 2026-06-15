@@ -61,6 +61,7 @@ func NewLogWidget() *LogWidget {
 			}()
 		})
 
+	lw.list.HideSeparators = true
 	lw.scroll = container.NewScroll(lw.list)
 	return lw
 }
