@@ -3,6 +3,8 @@ package main
 import (
 	_ "embed"
 	"fmt"
+	"os"
+	"path"
 	"runtime"
 	"time"
 
@@ -17,6 +19,7 @@ import (
 	"github.com/SwissOpenEM/Ingestor/internal/transfertask"
 	"github.com/SwissOpenEM/Ingestor/internal/ui"
 	"github.com/SwissOpenEM/Ingestor/internal/webserver"
+	"gopkg.in/natefinch/lumberjack.v2"
 	"gopkg.in/yaml.v2"
 )
 
@@ -45,9 +48,22 @@ func setupLogging(logLevel string, widget *ui.LogWidget) {
 
 	level := convertLogLevel(logLevel)
 	opts := &slog.HandlerOptions{Level: level}
+	cacheDir, _ := os.UserCacheDir()
+	logDir := path.Join(cacheDir, "openem-ingestor")
+	os.MkdirAll(logDir, 0666)
+	logPath := path.Join(logDir, "log.txt")
 
 	handler := ui.NewWidgetHandler(widget, opts.Level.Level())
-	slog.SetDefault(slog.New(handler))
+	rotator := &lumberjack.Logger{
+		Filename:   logPath,
+		MaxSize:    10,
+		MaxBackups: 5,
+		MaxAge:     28,
+		Compress:   true,
+	}
+	jsonHandler := slog.NewTextHandler(rotator, &slog.HandlerOptions{})
+	multiHandler := slog.NewMultiHandler(handler, jsonHandler)
+	slog.SetDefault(slog.New(multiHandler))
 }
 
 func main() {
@@ -127,11 +143,11 @@ func main() {
 		desk.SetSystemTrayIcon(res)
 		desk.SetSystemTrayMenu(menu)
 	}
-	// // header
-	// // bottom
-	// // left
-	// // right
-	// // center
+	// header
+	// bottom
+	// left
+	// right
+	// center
 	w.SetContent(container.NewBorder(
 		nil,
 		container.NewBorder(
@@ -156,5 +172,6 @@ func main() {
 	w.SetCloseIntercept(func() { w.Hide() })
 
 	w.ShowAndRun()
+	slog.Info("Shutting down ingestor")
 
 }
