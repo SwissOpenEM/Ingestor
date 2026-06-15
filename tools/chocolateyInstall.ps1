@@ -39,7 +39,7 @@ for ($index = 0; $index -lt $locationPairs.Length; $index++) {
 
 
 $extractPath = "$Env:ChocolateyInstall\lib\$packageName"
-$binaryPath = "$extractPath\openem-ingestor-service.exe"
+$binaryPath = "$extractPath\OpenEM-Ingestor.exe"
 
 $yamlFilePath = "$extractPath\openem-ingestor-config-template.yaml"
 $configFilePath = "$extractPath\openem-ingestor-config.yaml"
