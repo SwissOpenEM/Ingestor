@@ -105,12 +105,12 @@ func (lw *LogWidget) MinSize() fyne.Size {
 func levelColor(l slog.Level) color.Color {
 	switch {
 	case l >= slog.LevelError:
-		return color.NRGBA{R: 255, G: 80, B: 80, A: 255}
+		return color.NRGBA{R: 220, G: 0, B: 37, A: 255}
 	case l >= slog.LevelWarn:
 		return color.NRGBA{R: 255, G: 200, B: 50, A: 255}
 	case l >= slog.LevelInfo:
 		return color.Color(theme.Color(theme.ColorNameForeground))
 	default:
-		return color.NRGBA{R: 140, G: 140, B: 140, A: 255}
+		return color.NRGBA{R: 67, G: 70, B: 75, A: 255}
 	}
 }

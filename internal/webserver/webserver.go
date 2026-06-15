@@ -26,7 +26,7 @@ import (
 //go:embed openapi.yaml
 var swaggerYAML embed.FS
 
-func NewIngesterServer(ingestor *IngestorWebServerImplemenation, port int) *http.Server {
+func NewIngestorServer(ingestor *IngestorWebServerImplemenation, port int) *http.Server {
 	swagger, err := GetSwagger()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error loading swagger spec\n: %s", err)

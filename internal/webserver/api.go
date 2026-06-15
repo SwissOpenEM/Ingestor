@@ -9,6 +9,7 @@ import (
 
 	"github.com/SwissOpenEM/Ingestor/internal/core"
 	"github.com/SwissOpenEM/Ingestor/internal/metadataextractor"
+	task "github.com/SwissOpenEM/Ingestor/internal/transfertask"
 	"github.com/SwissOpenEM/Ingestor/internal/webserver/metadatatasks"
 	"github.com/SwissOpenEM/Ingestor/internal/webserver/wsconfig"
 	"github.com/SwissOpenEM/globus"
@@ -117,4 +118,9 @@ func NewIngestorWebServer(version string, transferQueue *core.TaskQueue, extract
 			redirectPath: serverConf.FrontendConf.RedirectPath,
 		},
 	}, nil
+}
+
+func (i *IngestorWebServerImplemenation) GetTasks() ([]task.TransferTask, error) {
+	return i.taskQueue.GetTasks()
+
 }
