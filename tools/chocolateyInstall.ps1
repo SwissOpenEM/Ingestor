@@ -40,6 +40,7 @@ for ($index = 0; $index -lt $locationPairs.Length; $index++) {
 
 $extractPath = "$Env:ChocolateyInstall\lib\$packageName"
 $binaryPath = "$extractPath\OpenEM-Ingestor.exe"
+$iconPath = "$extractPath\openem.ico"
 
 $yamlFilePath = "$extractPath\openem-ingestor-config-template.yaml"
 $configFilePath = "$extractPath\openem-ingestor-config.yaml"
@@ -54,8 +55,12 @@ foreach ($key in $parameters.Keys) {
 # # Save the updated content back to the YAML file
 Set-Content -Path $configFilePath -Value $yamlContent
 
+Write-Host "Creating shortcut"
+
 Install-ChocolateyShortcut `
-  -ShortcutFilePath $env:PUBLIC\Desktop `
+  -ShortcutFilePath $env:PUBLIC\Desktop\OpenEM-Ingestor.lnk `
   -TargetPath $binaryPath `
+  -WorkingDirectory (Split-Path $binaryPath) `
+  -IconPath $iconPath
 
 Write-Host "openem-ingestor installed successfully!"
