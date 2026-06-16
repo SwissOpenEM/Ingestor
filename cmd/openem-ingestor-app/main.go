@@ -23,9 +23,6 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-// String can be overwritten by using linker flags: -ldflags "-X main.version=VERSION"
-var version string = "DEVELOPMENT_VERSION"
-
 //go:embed openem.ico
 var iconData []byte
 
@@ -70,8 +67,6 @@ func main() {
 	logWidget := ui.NewLogWidget()
 	setupLogging("Info", logWidget)
 
-	slog.Info("Starting ingestor app", "Version", version)
-
 	var config core.Config
 	configFileReader := core.NewConfigReader()
 	var err error
@@ -87,9 +82,14 @@ func main() {
 	configData, _ := yaml.Marshal(configFileReader.GetFullConfig())
 	println(string(configData))
 
-	ingestorImplementation := webserver.SetupAndRun(&config, version, true)
-
 	a := app.New()
+	m := a.Metadata()
+	var version = m.Version
+	if version == "" {
+		version = "DEVELOPMENT_VERSION"
+	}
+
+	ingestorImplementation := webserver.SetupAndRun(&config, version, true)
 
 	a.Settings().SetTheme(ui.PsiTheme{})
 	w := a.NewWindow(fmt.Sprintf("OpenEM Ingestor %s", version))
