@@ -112,21 +112,32 @@ For deployment instruction and example setup see [openem-deployment](https://git
 ### Executable
 
 The executable can be download directly from the [releases page](https://github.com/SwissOpenEM/Ingestor/releases) and executed. Alternatively,
-a [Chocolatey](https://docs.chocolatey.org/en-us/) package can be downloaded which installs the ingestor as a Windows service.
+a [Chocolatey](https://docs.chocolatey.org/en-us/) package can be downloaded which installs the ingestor for all users.
 
-### Windows Service Deployment
+### Choco Package From Github
 
-1. Install Shawl <https://github.com/mtkennerly/shawl> with `machine` scope to run the ingestor as a Windows services
-        ```pwsh
-        winget install --scope "machine" -e --id mtkennerly.shawl
-        ```
+Install the ingestor using `chocolatey`
 
-2. Install the ingestor using `chocolatey`
-
-    ```pwsh
-    choco install openem-ingestor --source=https://nuget.pkg.github.com/swissopenem/index.json --params="'/Scicat.Host=\"https://dacat.psi.ch/api/v3\"'" -y
-    ```
+```pwsh
+choco install openem-ingestor --source=https://nuget.pkg.github.com/swissopenem/index.json --params="'/Scicat.Host=\"https://dacat.psi.ch/api/v3\"'" -y
+```
 
 > **Note**: You will be prompted for a Github username and password as Github does not allow for unauthenticated downloads.
 
-3. Verify the ingestor is up and running by entering `http://localhost:8888/version` in a browser. The install version should appear.
+There should be a Desktop shortcut. After starting, verify the ingestor is up and running by entering `http://localhost:8888/version` in a browser. The installed version should appear
+
+### Choco Package From Gitlab at ETHZ
+
+From within the ETHZ network, no authentication is necessary and the Ingestor can be installed from gitlab.ethz.ch:
+
+```pwsh
+choco install openem-ingestor --source=https://gitlab.ethz.ch/api/v4/projects/64653/packages/nuget/index.json --params="'/Scicat.Host=\"https://dacat.psi.ch/api/v3\"'" -y
+```
+
+### Choco Package Parameters
+
+- `/Scicat.Host:` - Scicat backend URL - defaults to: `https://dacat.psi.ch`
+- `/Frontend.Host:` - Scicat Frontend URL - defaults to `https://discovery.psi.ch`
+- `/Keycloak.Host` - Keycloak URL - defaults to `https://kc.psi.ch`
+- `/S3.Host:` - S3 host URL - defaults to `https://scopem-openem.ethz.ch`
+- `/CollectionLocations:` List of collection location name and path - example --params="'/CollectionLocations:storage1:\\\\path\\to\\storage1;storage2:\\\\path\\to\\storage2'"
