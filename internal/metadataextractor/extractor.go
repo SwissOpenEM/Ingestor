@@ -389,6 +389,8 @@ func runExtractor(ctx context.Context, executable string, args []string, stdoutC
 
 	cmd := exec.CommandContext(ctx, executable, args...)
 
+	hideWindow(cmd)
+
 	stdout, _ := cmd.StdoutPipe()
 	stderr, _ := cmd.StderrPipe()
 
