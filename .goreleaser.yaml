@@ -29,10 +29,10 @@ builds:
         - cmd: mkdir -p {{dir .Path}}
         post:
         - dir: cmd/openem-ingestor-app
-          cmd: fyne build --tags "-s -w  -X 'main.version={{.Version}}'"
+          cmd: fyne package  -release --app-version {{.Version}} --icon openem.ico --metadata version={{.Version}}
           output: true
         - dir: cmd/openem-ingestor-app
-          cmd: cp openem-ingestor-app {{dir .Path}}/
+          cmd: cp OpenEM-Ingestor.tar.xz {{dir .Path}}/
           output: true
     env:
       - CGO_ENABLED=0
@@ -50,7 +50,7 @@ builds:
     hooks:
         post:
         - dir: ./cmd/openem-ingestor-app
-          cmd: fyne package  -release --app-version {{.Version}} --icon openem.ico --tags -s,-w,-X 'main.version={{.Version}}'
+          cmd: fyne package  -release --app-version {{.Version}} --icon openem.ico --metadata version={{.Version}}
           output: true
         - dir: cmd/openem-ingestor-app
           cmd: cp OpenEM-Ingestor.exe {{dir .Path}}/
