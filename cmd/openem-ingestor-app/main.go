@@ -78,6 +78,7 @@ func main() {
 	slog.Info("Config read", "Filepath", configFileReader.GetCurrentConfigFilePath())
 
 	slog.SetLogLoggerLevel(convertLogLevel(config.WebServer.LogLevel))
+	slog.Info("Loglevel changed", "Loglevel", config.WebServer.LogLevel)
 
 	configData, _ := yaml.Marshal(configFileReader.GetFullConfig())
 	println(string(configData))

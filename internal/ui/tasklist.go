@@ -46,9 +46,8 @@ type TaskDetails struct {
 
 type taskRow struct {
 	widget.BaseWidget
-	task   *transfertask.TransferTask
-	folder *widget.Label
-	// method   *widget.Label
+	task     *transfertask.TransferTask
+	folder   *widget.Label
 	status   *widget.Label
 	progress *widget.ProgressBar
 	cancel   *widget.Button
@@ -92,9 +91,9 @@ func (r *taskRow) Refresh() {
 		r.status.Importance = widget.DangerImportance
 		r.cancel.Disable()
 	case transfertask.Transferring:
-		mb := float64(d.BytesTransferred) / 1024 / 1024
-		total := float64(d.BytesTotal) / 1024 / 1024
-		r.status.SetText(fmt.Sprintf("Uploading %.1f / %.1f MB", mb, total))
+		gb := float64(d.BytesTransferred) / 1024 / 1024 / 1024
+		total := float64(d.BytesTotal) / 1024 / 1024 / 1024
+		r.status.SetText(fmt.Sprintf("Uploading %.1f / %.1f GB", gb, total))
 		r.status.Importance = widget.MediumImportance
 	default:
 		r.status.SetText(d.Status.ToStr())
