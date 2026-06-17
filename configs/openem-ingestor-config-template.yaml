@@ -51,10 +51,10 @@ WebServer:
       Scopes:
         - email
     OIDC:
-     IssuerURL: "${KEYCLOAK_HOST}/realms/awi"
+     IssuerURL: "${KEYCLOAK_HOST}/realms/${KEYCLOAK_REALM}"
     JWT:
       UseJWKS: true
-      JwksURL: "${KEYCLOAK_HOST}/realms/awi/protocol/openid-connect/certs"
+      JwksURL: "${KEYCLOAK_HOST}/realms/${KEYCLOAK_REALM}/protocol/openid-connect/certs"
       JwksSignatureMethods:
         - RS256
     RBAC:
