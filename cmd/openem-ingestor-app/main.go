@@ -71,7 +71,7 @@ func main() {
 	configFileReader := core.NewConfigReader()
 	var err error
 	if config, err = configFileReader.ReadConfig(core.DefaultConfigFileName()); err != nil {
-		slog.Info("Reading config", "file", configFileReader.GetCurrentConfigFilePath())
+		slog.Error("Reading config failed", "file", configFileReader.GetCurrentConfigFilePath(), "error", err)
 		panic(fmt.Errorf("failed to read config file: %w", err))
 	}
 

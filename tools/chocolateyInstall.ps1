@@ -2,32 +2,54 @@ $ErrorActionPreference = 'Stop';
 
 $package = Get-Package -Name 'Openem-Ingestor' -ErrorAction SilentlyContinue
 
-
-
 if ($package) {
     Write-Host "Package already installed. Uninstalling first."
     choco uninstall openem-ingestor -y
 }
 
-
 $packageName = 'openem-ingestor'
-
 
 $pp = Get-PackageParameters
 
-if (!$pp['Scicat.Host']) { $pp['Scicat.Host'] = 'https://dacat.psi.ch' }
-if (!$pp['Frontend.Host']) { $pp['Frontend.Host'] = 'https://discovery.psi.ch' }
-if (!$pp['Keycloak.Host']) { $pp['Keycloak.Host'] = 'https://kc.psi.ch' }
-if (!$pp['S3.Host']) { $pp['S3.Host'] = 'https://scopem-openem.ethz.ch' }
 
-# Copy the executable
+if (!$pp['environment']) { 
+    Write-Error -Message "No environment specified (dev, qa, prod)" 
+    Exit -1
+}
+
+$deployment_env = $pp['Environment']
 
 # Define the string to find and the string to replace it with
 $parameters = @{}; 
-$parameters["SCICAT_HOST"] = $pp['Scicat.Host']
-$parameters["FRONTEND_HOST"] = $pp['Frontend.Host']
-$parameters["KEYCLOAK_HOST"] = $pp['Keycloak.Host']
-$parameters["S3_HOST"] = $pp['S3.Host']
+
+if ($deployment_env -eq "dev"){
+    $parameters["SCICAT_HOST"] = "https://scopem-openem2.ethz.ch/scicat/backend"
+    $parameters["FRONTEND_HOST"] = "https://scopem-openem2.ethz.ch"
+    $parameters["KEYCLOAK_HOST"] = "https://scopem-openem2.ethz.ch/keycloak"
+    $parameters["KEYCLOAK_REALM"] = "facility"
+    $parameters["S3_HOST"] = "https://scopem-openem2.ethz.ch"
+} elseif ($deployment_env -eq "qa") {
+    $parameters["SCICAT_HOST"] = "https://dacat-qa.psi.ch"
+    $parameters["FRONTEND_HOST"] = "https://discovery-qa.psi.ch"
+    $parameters["KEYCLOAK_HOST"] = "https://kc.psi.ch"
+    $parameters["KEYCLOAK_REALM"] = "awi"
+    $parameters["S3_HOST"] = "https://scopem-openem.ethz.ch"
+} elseif ($deployment_env -eq "prod") {
+    $parameters["SCICAT_HOST"] = "https://dacat.psi.ch"
+    $parameters["FRONTEND_HOST"] = "https://discovery.psi.ch"
+    $parameters["KEYCLOAK_HOST"] = "https://kc.psi.ch"
+    $parameters["KEYCLOAK_REALM"] = "awi"
+    $parameters["S3_HOST"] = "https://scopem-openem.ethz.ch"
+}else{
+    Write-Error -Message "Unknown environment specified (allowed: dev, qa, prod)" 
+    Exit -1
+}
+
+if ($pp['Scicat.Host']) { $parameters['SCICAT_HOST'] = $pp['Scicat.Host'] }
+if ($pp['Frontend.Host']) { $parameters['FRONTEND_HOST'] = $pp['Frontend.Host'] }
+if ($pp['Keycloak.Host']) { $parameters['KEYCLOAK_HOST'] = $pp['Keycloak.Host'] }
+if ($pp['Keycloak.Realm']) { $parameters['KEYCLOAK_REALM'] = $pp['Keycloak.Realm'] }
+if ($pp['S3.Host']) { $parameters['S3_HOST'] = $pp['S3.Host'] }
 
 $locationPairs = $pp['CollectionLocations'] -split ';'
 for ($index = 0; $index -lt $locationPairs.Length; $index++) {
