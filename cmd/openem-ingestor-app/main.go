@@ -76,6 +76,7 @@ func main() {
 	}
 
 	slog.Info("Config read", "Filepath", configFileReader.GetCurrentConfigFilePath())
+	slog.Info("Connected", "Scicat", config.Scicat.Host, "S3 Endpoint", config.Transfer.S3.Endpoint)
 
 	slog.SetLogLoggerLevel(convertLogLevel(config.WebServer.LogLevel))
 	slog.Info("Loglevel changed", "Loglevel", config.WebServer.LogLevel)
