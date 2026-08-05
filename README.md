@@ -138,7 +138,7 @@ There should be a Desktop shortcut. After starting, verify the ingestor is up an
 From within the ETHZ network, no authentication is necessary and the Ingestor can be installed from gitlab.ethz.ch:
 
 ```pwsh
-choco install openem-ingestor --version=1.2.5 --force --source=https://gitlab.ethz.ch/api/v4/projects/64653/packages/nuget/index.json -params="'/Environment:prod'"
+choco install openem-ingestor --force --source=https://gitlab.ethz.ch/api/v4/projects/64653/packages/nuget/index.json -params="'/Environment:prod'"
 ```
 
 ### Choco Package Parameters
