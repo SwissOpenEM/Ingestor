@@ -48,13 +48,13 @@
       "options": {
         "cwd": "${workspaceFolder}/cmd/openem-ingestor-app"
       },
-      "command": "go",
+      "command": "fyne",
       "args": [
         "build",
-        "-tags",
+        "--tags",
         "dev",
-        "-gcflags",
-        "all=-N -l",
+        // "-gcflags",
+        // "all=-N -l",
         "-o",
         "build/bin/openem-ingestor-app"
       ]
