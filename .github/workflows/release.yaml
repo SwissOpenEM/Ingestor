@@ -30,15 +30,15 @@ jobs:
           go-version: stable
 
       - name: Install Fyne dependencies
-        run: sudo apt-get update && sudo apt-get install libgl1-mesa-dev xorg-dev libxkbcommon-dev
-      
+        run: sudo apt-get update && sudo apt-get install -y libgl1-mesa-dev xorg-dev libxkbcommon-dev libwayland-dev wayland-protocols
+       
       - name: Install MinGW
         run: sudo apt-get update && sudo apt-get install mingw-w64 gcc-mingw-w64-x86-64
 
       - name: Set up Fyne
         run: |
-          go get fyne.io/fyne/v2@latest
-          go install fyne.io/tools/cmd/fyne@latest
+          go get fyne.io/fyne/v2@v2.8.0
+          go install fyne.io/tools/cmd/fyne@v1.7.2
 
       - name: Test Fyne
         run: |
