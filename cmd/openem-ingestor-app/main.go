@@ -64,6 +64,8 @@ func setupLogging(logLevel string, widget *ui.LogWidget) {
 }
 
 func main() {
+	a := app.New()
+
 	logWidget := ui.NewLogWidget()
 	setupLogging("Info", logWidget)
 
@@ -84,7 +86,6 @@ func main() {
 	configData, _ := yaml.Marshal(configFileReader.GetFullConfig())
 	println(string(configData))
 
-	a := app.New()
 	m := a.Metadata()
 	var version = m.Version
 	if version == "" {

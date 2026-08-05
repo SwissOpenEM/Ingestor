@@ -27,9 +27,9 @@ jobs:
         
       - name: Set up Fyne
         run: |
-          go get fyne.io/fyne/v2@latest
-          go install fyne.io/tools/cmd/fyne@latest
-
+          go get fyne.io/fyne/v2@v2.8.0
+          go install fyne.io/tools/cmd/fyne@v1.7.2
+          
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v9.2.0
         with:
