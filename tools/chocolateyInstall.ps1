@@ -33,7 +33,7 @@ if ($deployment_env -eq "dev"){
     $parameters["FRONTEND_HOST"] = "https://discovery-qa.psi.ch"
     $parameters["KEYCLOAK_HOST"] = "https://kc.psi.ch"
     $parameters["KEYCLOAK_REALM"] = "awi"
-    $parameters["S3_HOST"] = "https://scopem-openem.ethz.ch"
+    $parameters["S3_HOST"] = "https://scopem-openem.ethz.ch/qa"
 } elseif ($deployment_env -eq "prod") {
     $parameters["SCICAT_HOST"] = "https://dacat.psi.ch"
     $parameters["FRONTEND_HOST"] = "https://discovery.psi.ch"
