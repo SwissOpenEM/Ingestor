@@ -12,24 +12,22 @@
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <description>
 OpenEM Ingestor Package
-This package installs the ingestor as a windows network service. The config file is templated using the package parameters and saved
+This package installs the openem-ingestor. The config file is templated using the package parameters and saved
 at "$Env:ChocolateyInstall\lib\openem-ingestor-config.yaml", i.e. next to the binary. Any changes need to be done there.
-The service name "OpenEM-Ingestor" and needs to be stopped before making changes to the config file.
-
-The service depends on https://github.com/mtkennerly/shawl. Install with winget:
-
-`winget install --scope "machine" -e --id mtkennerly.shawl`
-
-The log file can be found in the directory of the shawl executable; using powershell this can be found by `get-command shawl`.
 
 #### Package Parameters
 The following package parameters can be set:
 
+  * `/Environment:` Deployment environement one of dev, qa, prod - example --params="'/Environment:dev'"
+  * `/CollectionLocations:` List of collection location name and path - example --params="'/CollectionLocations:storage1:\\\\path\\to\\storage1;storage2:\\\\path\\to\\storage2'"
+
+The parameter environment will set the following values that can be overridden:
+
   * `/Scicat.Host:` - Scicat backend URL - defaults to: "https://dacat.psi.ch"
   * `/Frontend.Host:` - Scicat Frontend URL - defaults to "https://discovery.psi.ch"
   * `/Keycloak.Host` - Keycloak URL - defaults to "https://kc.psi.ch"
+  * `/Keycloak.Realm` - Keycloak URL - defaults to "awi"
   * `/S3.Host:` - S3 host URL - defaults to "https://scopem-openem.ethz.ch"
-  * `/CollectionLocations:` List of collection location name and path - example --params="'/CollectionLocations:storage1:\\\\path\\to\\storage1;storage2:\\\\path\\to\\storage2'"
 
 To pass parameters, use `--params "''"` (e.g. `choco install openem-ingestor [other options] --params="'/ITEM:value /ITEM2:value2 /FLAG_BOOLEAN'"`).
 To have choco remember parameters on upgrade, be sure to set `choco feature enable -n=useRememberedArgumentsForUpgrades`.
@@ -38,7 +36,8 @@ To have choco remember parameters on upgrade, be sure to set `choco feature enab
   </metadata>
   <files>
     <file src="tools\*.ps1" target="tools/"/>
-    <file src="configs\openem-ingestor-config-template.yaml" target="./"/>
-    <file src="dist/openem-ingestor-service_windows_amd64_v1/openem-ingestor-service.exe" target="./"/>
+    <file src="configs/openem-ingestor-config-template.yaml" target="./"/>
+    <file src="cmd/openem-ingestor-app/openem.ico" target="./"/>
+    <file src="dist/openem-ingestor-app-win_windows_amd64_v1/OpenEM-Ingestor.exe" target="./"/>
   </files>
 </package>

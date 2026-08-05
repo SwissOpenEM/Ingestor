@@ -26,6 +26,53 @@ this will update [api.gen.go](./internal/webserver/api.gen.go).
 /Ingestor$ go build ./cmd/ingestor-web-service
 ```
 
+## Building the App
+
+The app is based on [Fyne](https://fyne.io) and can be cross-compiled for Windows on Linux. See the [setup pages](https://docs.fyne.io/started/quick/) and the [cross-compilation](https://docs.fyne.io/started/cross-compiling/) for the required dependencies.
+
+## Linux Build
+
+### Prerequisites
+
+```bash
+sudo apt-get update && sudo apt-get install libgl1-mesa-dev xorg-dev libxkbcommon-dev -y
+```
+
+In order to avoid doubly defined macros, the `CGO_CFLAGS` need to be set
+
+```bash
+CGO_CFLAGS="-Wno-error -U_FORTIFY_SOURCE" fyne build  --src cmd/openem-ingestor-ap
+```
+
+## Windows Build
+
+Windows builds can be created by cross-compiling the application
+
+### Prerequisites
+
+On Ubuntu, in addition to the previous prerequisites, MinGW needs to be installed
+
+```bash
+sudo apt-get update && sudo apt-get install mingw-w64 gcc-mingw-w64-x86-64 -y
+
+```
+
+To following environment variables need to be set
+
+|               |                        |
+| ------------- | ---------------------- |
+| `CC`          | x86_64-w64-mingw32-gcc |
+| `CGO_ENABLED` | 1                      |
+| `CGO_LDFLAGS` | -static -lssp          |
+| `GOOS`        | 'amd64'                |
+| `GOARCH`      | 'windows'              |
+
+and the same build command can be used
+
+```bash
+fyne build  --src cmd/openem-ingestor-ap
+```
+
 ## Debugging
 
 [launch.json](.vscode/launch.json) and [task.json](.vscode/tasks.json) are provided to define debug targets for VS Code. Running the `Debug Service` task will start the service on the configured port (default: 8888) and a Swagger UI documentation page can be accessed at
@@ -65,21 +112,36 @@ For deployment instruction and example setup see [openem-deployment](https://git
 ### Executable
 
 The executable can be download directly from the [releases page](https://github.com/SwissOpenEM/Ingestor/releases) and executed. Alternatively,
-a [Chocolatey](https://docs.chocolatey.org/en-us/) package can be downloaded which installs the ingestor as a Windows service.
+a [Chocolatey](https://docs.chocolatey.org/en-us/) package can be downloaded which installs the ingestor for all users.
 
-### Windows Service Deployment
+### Choco Package From Github
 
-1. Install Shawl <https://github.com/mtkennerly/shawl> with `machine` scope to run the ingestor as a Windows services
-        ```pwsh
-        winget install --scope "machine" -e --id mtkennerly.shawl
-        ```
+Install the ingestor using `chocolatey`
 
-2. Install the ingestor using `chocolatey`
+```pwsh
+choco install openem-ingestor --source=https://nuget.pkg.github.com/swissopenem/index.json -params="'/Environment:prod'"
+```
 
-    ```pwsh
-    choco install openem-ingestor --source=https://nuget.pkg.github.com/swissopenem/index.json --params="'/Scicat.Host=\"https://dacat.psi.ch/api/v3\"'" -y
-    ```
+| Parameter | Description                                                        |
+| --------- | ------------------------------------------------------------------ |
+| `--force` | to (re-)install a specific version or apply a configuration change |
+| `-y`      | accept w/o prompting                                               |
 
 > **Note**: You will be prompted for a Github username and password as Github does not allow for unauthenticated downloads.
 
-3. Verify the ingestor is up and running by entering `http://localhost:8888/version` in a browser. The install version should appear.
+There should be a Desktop shortcut. After starting, verify the ingestor is up and running by entering `http://localhost:8888/version` in a browser. The installed version should appear
+
+> **Note**: This command is lacking the collection location. See below.
+
+### Choco Package From Gitlab at ETHZ
+
+From within the ETHZ network, no authentication is necessary and the Ingestor can be installed from gitlab.ethz.ch:
+
+```pwsh
+choco install openem-ingestor --version=1.2.5 --force --source=https://gitlab.ethz.ch/api/v4/projects/64653/packages/nuget/index.json -params="'/Environment:prod'"
+```
+
+### Choco Package Parameters
+
+- `/Environment:` - One of "dev", "qa", "prod", will set the corresponding Scicat and backend URLs`
+- `/CollectionLocations:` List of collection location name and path - example --params="'/CollectionLocations:storage1:\\\\path\\to\\storage1;storage2:\\\\path\\to\\storage2'"

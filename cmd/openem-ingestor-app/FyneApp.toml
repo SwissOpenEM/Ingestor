@@ -1,0 +1,7 @@
+Website = "https://www.openem.ch"
+
+[Details]
+Icon = "openem.ico"
+Name = "OpenEM-Ingestor"
+ID = "com.openem-ingestor.app"
+Build = 2

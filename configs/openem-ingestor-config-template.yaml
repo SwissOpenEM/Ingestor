@@ -5,7 +5,7 @@ Transfer:
   Method: S3
   S3:
     Endpoint: ${S3_HOST}/archiver/api/v1
-    TokenUrl: ${KEYCLOAK_HOST}/realms/awi/protocol/openid-connect/token
+    TokenUrl: ${KEYCLOAK_HOST}/realms/${KEYCLOAK_REALM}/protocol/openid-connect/token
     ClientID: scopem-archiver-service-api
     ChunkSizeMB: 128
     ConcurrentFiles: 8
@@ -51,10 +51,10 @@ WebServer:
       Scopes:
         - email
     OIDC:
-     IssuerURL: "${KEYCLOAK_HOST}/realms/awi"
+     IssuerURL: "${KEYCLOAK_HOST}/realms/${KEYCLOAK_REALM}"
     JWT:
       UseJWKS: true
-      JwksURL: "${KEYCLOAK_HOST}/realms/awi/protocol/openid-connect/certs"
+      JwksURL: "${KEYCLOAK_HOST}/realms/${KEYCLOAK_REALM}/protocol/openid-connect/certs"
       JwksSignatureMethods:
         - RS256
     RBAC:
