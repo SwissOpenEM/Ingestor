@@ -23,7 +23,7 @@ require (
 	github.com/swaggo/files v1.0.1
 	github.com/swaggo/gin-swagger v1.6.1
 	github.com/swaggo/swag v1.16.6
-	github.com/wailsapp/wails/v2 v2.12.0
+	github.com/wailsapp/wails/v2 v2.15.0
 	golang.org/x/oauth2 v0.36.0
 	golift.io/xtractr v0.4.0
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1
@@ -125,7 +125,7 @@ require (
 	go.mongodb.org/mongo-driver/v2 v2.5.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	go4.org v0.0.0-20260112195520-a5071408f32f // indirect
-	golang.org/x/image v0.38.0 // indirect
+	golang.org/x/image v0.41.0 // indirect
 	golang.org/x/time v0.15.0 // indirect
 	golift.io/udf v0.0.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
