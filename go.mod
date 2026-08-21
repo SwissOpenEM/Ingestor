@@ -25,7 +25,7 @@ require (
 	github.com/swaggo/swag v1.16.6
 	github.com/wailsapp/wails/v2 v2.12.0
 	golang.org/x/oauth2 v0.36.0
-	golift.io/xtractr v0.3.2
+	golift.io/xtractr v0.4.0
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1
 )
 
