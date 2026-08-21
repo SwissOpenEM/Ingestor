@@ -28,6 +28,8 @@ go.work.sum
 !cmd/openem-ingestor-app/build/appicon.png
 
 dist/**
+/openem-ingestor-app
+/openem-ingestor-service
 
 # backup files
 *.go.bak
