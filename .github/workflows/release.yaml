@@ -1,4 +1,4 @@
-name: goreleaser
+name: build and publish release
 
 on:
   workflow_dispatch:
@@ -13,20 +13,38 @@ permissions:
 env:
   NUGET_SOURCE_URL: "https://nuget.pkg.github.com/swissopenem/index.json" 
   # For deploying within ETHZ w/o authorization that is required for public github access
-  GITLAB_SOURCE_URL: "https://sissource.ethz.ch/api/v4/projects/1201/packages/nuget/index.json"
+  GITLAB_SOURCE_URL: "https://gitlab.ethz.ch/api/v4/projects/64653/packages/nuget/index.json"
 
 jobs:
-  goreleaser:
+  release_app:
     runs-on: ubuntu-22.04
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
+
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
           go-version: stable
+
+      - name: Install Fyne dependencies
+        run: sudo apt-get update && sudo apt-get install -y libgl1-mesa-dev xorg-dev libxkbcommon-dev libwayland-dev wayland-protocols
+       
+      - name: Install MinGW
+        run: sudo apt-get update && sudo apt-get install mingw-w64 gcc-mingw-w64-x86-64
+
+      - name: Set up Fyne
+        run: |
+          go get fyne.io/fyne/v2@v2.8.0
+          go install fyne.io/tools/cmd/fyne@v1.7.2
+
+      - name: Test Fyne
+        run: |
+          echo $PATH
+          go env GOPATH
+          fyne --version && which fyne
 
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v7
@@ -43,20 +61,28 @@ jobs:
           dotnet-version: 10.x.x 
 
       # AI Generated step to parse the version
+      # For Nuget, convert the version from 1.3.0-test.9.2 to 1.3.0.92
+      # This is only needed for the Windows assembly, not Nuget itself
       - name: Extract version from Git tag
         id: extract_version
         run: |
-          VERSION=${GITHUB_REF##*/} 
-          echo "VERSION=${VERSION/v/}" >> $GITHUB_ENV
+          GIT_REF=${GITHUB_REF##*/} 
+          echo "Git ref: $GIT_REF"
+          VERSION=${GIT_REF/v/}
+          echo "Parsed version: $VERSION"
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          NUGET_VERSION=$(echo "$VERSION" | sed 's/-[^.]*\.\([0-9]*\)$/.\1/')
+          echo "Nuget version: $NUGET_VERSION"
+          echo "NUGET_VERSION=$NUGET_VERSION" >> $GITHUB_ENV
 
       - name: Create NuGet package
         run: |
-          nuget pack openem-ingestor.nuspec -version ${{env.VERSION}} 
+          nuget pack openem-ingestor.nuspec -version $NUGET_VERSION
 
       - name: Publish NuGet package to GitHub
         run: |
           nuget push *.nupkg -Source "${{env.NUGET_SOURCE_URL}}" -ApiKey ${{ secrets.GITHUB_TOKEN }}
-          nuget push *.nupkg -Source "${{env.GITLAB_SOURCE_URL}}" -ApiKey ${{ secrets.SISSOURCE_GITLAB_NUGET_REPO }} 
+          nuget push *.nupkg -Source "${{env.GITLAB_SOURCE_URL}}" -ApiKey ${{ secrets.GITLAB_ETHZ_TOKEN }} 
 
 
   build_docker_image_release:
@@ -68,7 +94,7 @@ jobs:
   #   runs-on: macos-latest
   #   steps:
   #     - name: Checkout
-  #       uses: actions/checkout@v6
+  #       uses: actions/checkout@v7
   #       with:
   #         fetch-depth: 0
   #     - name: Set up Go

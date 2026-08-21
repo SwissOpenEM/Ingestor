@@ -149,6 +149,22 @@ func (w *TaskQueue) GetTaskDetails(id uuid.UUID) (task.TaskDetails, error) {
 	return t.GetDetails(), nil
 }
 
+func (w *TaskQueue) GetTasks() ([]task.TransferTask, error) {
+
+	w.taskListLock.RLock()
+	defer w.taskListLock.RUnlock()
+
+	taskListLen := w.datasetUploadTasks.Len()
+
+	keys := w.datasetUploadTasks.Keys()
+	tasks := []task.TransferTask{}
+	for i := 0; i < taskListLen; i++ {
+		task, _ := w.datasetUploadTasks.Get(keys[i])
+		tasks = append(tasks, *task)
+	}
+	return tasks, nil
+}
+
 func (w *TaskQueue) GetTaskDetailsList(start uint, end uint) (idList []uuid.UUID, detailsList []task.TaskDetails, err error) {
 	if end < start {
 		return idList, detailsList, errors.New("end index is smaller than start index")
