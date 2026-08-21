@@ -59,14 +59,15 @@ func (i *IngestorWebServerImplemenation) GetLogin(ctx context.Context, request G
 	}
 
 	// redirect to login page
+	redirectURL := i.oauth2Config.AuthCodeURL(
+		state,
+		oauth2.AccessTypeOffline,
+		oauth2.S256ChallengeOption(verifier),
+		oidc.Nonce(nonce),
+	)
 	return GetLogin302Response{
 		Headers: GetLogin302ResponseHeaders{
-			Location: i.oauth2Config.AuthCodeURL(
-				state,
-				oauth2.AccessTypeOffline,
-				oauth2.S256ChallengeOption(verifier),
-				oidc.Nonce(nonce),
-			),
+			Location: &redirectURL,
 		},
 	}, nil
 }
@@ -193,7 +194,7 @@ func (i *IngestorWebServerImplemenation) GetCallback(ctx context.Context, reques
 	// standard redirect to frontend if there's nothing else to do
 	return GetCallback302Response{
 		Headers: GetCallback302ResponseHeaders{
-			Location: redirectURL,
+			Location: &redirectURL,
 		},
 	}, nil
 }
@@ -233,7 +234,7 @@ func (i *IngestorWebServerImplemenation) GetLogout(ctx context.Context, request 
 	ginCtx.Redirect(302, fmt.Sprintf("%s?post_logout_redirect_uri=%s&client_id=%s", logoutURI, redirectURI, i.oauth2Config.ClientID))
 
 	return GetLogout302Response{GetLogout302ResponseHeaders{
-		Location: redirectURI,
+		Location: &redirectURI,
 	}}, nil
 }
 
@@ -354,7 +355,7 @@ func (i *IngestorWebServerImplemenation) GetGlobusCallback(ctx context.Context, 
 	}
 	return GetGlobusCallback302Response{
 		Headers: GetGlobusCallback302ResponseHeaders{
-			Location: redirectURL,
+			Location: &redirectURL,
 		},
 	}, nil
 }
@@ -367,7 +368,7 @@ func globusCallbackRedirect(ctx context.Context, globusAuthConf *oauth2.Config, 
 
 	return GetCallback302Response{
 		Headers: GetCallback302ResponseHeaders{
-			Location: redirectURL,
+			Location: &redirectURL,
 		},
 	}, nil
 }
