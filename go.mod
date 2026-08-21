@@ -6,7 +6,7 @@ require (
 	github.com/SwissOpenEM/globus v0.1.2
 	github.com/SwissOpenEM/globus-transfer-service v0.2.2
 	github.com/alitto/pond/v2 v2.7.1
-	github.com/getkin/kin-openapi v0.142.0
+	github.com/getkin/kin-openapi v0.146.0
 	github.com/gin-contrib/cors v1.7.7
 	github.com/gin-contrib/slog v1.2.1
 	github.com/gin-gonic/gin v1.12.0
