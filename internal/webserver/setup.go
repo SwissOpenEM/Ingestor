@@ -13,9 +13,18 @@ import (
 	"github.com/SwissOpenEM/Ingestor/internal/s3upload"
 	"github.com/SwissOpenEM/Ingestor/internal/webserver/metadatatasks"
 	"github.com/alitto/pond/v2"
+	"github.com/oapi-codegen/runtime"
 )
 
+// Should run once at the start of the program to set up the runtime for oapi-codegen
+func initAPIRuntime() {
+	// Opt-in to OpenAPI 3.1 type arrays
+	runtime.NarrowUnionNumericFormats = true
+}
+
 func SetupAndRun(config *core.Config, version string, async bool) *IngestorWebServerImplemenation {
+	initAPIRuntime()
+
 	if !strings.HasSuffix(config.Scicat.Host, "v3") {
 		panic(fmt.Sprintf("Only Scicat API v3 is supported. No v3 suffix found in API path. Got '%s'", config.Scicat.Host))
 	}
