@@ -23,7 +23,7 @@ Based on the OpenApi specs in [openapi.yaml](./api/openapi.yaml), the REST API f
 this will update [api.gen.go](./internal/webserver/api.gen.go).
 
 ```bash
-/Ingestor$ go build ./cmd/ingestor-web-service
+/Ingestor$ go build ./cmd/openem-ingestor-service
 ```
 
 ## Building the App
@@ -41,7 +41,7 @@ sudo apt-get update && sudo apt-get install libgl1-mesa-dev xorg-dev libxkbcommo
 In order to avoid doubly defined macros, the `CGO_CFLAGS` need to be set
 
 ```bash
-CGO_CFLAGS="-Wno-error -U_FORTIFY_SOURCE" fyne build  --src cmd/openem-ingestor-ap
+CGO_CFLAGS="-Wno-error -U_FORTIFY_SOURCE" fyne build  --src cmd/openem-ingestor-app
 ```
 
 ## Windows Build
@@ -70,7 +70,7 @@ To following environment variables need to be set
 and the same build command can be used
 
 ```bash
-fyne build  --src cmd/openem-ingestor-ap
+fyne build  --src cmd/openem-ingestor-app
 ```
 
 ## Debugging
