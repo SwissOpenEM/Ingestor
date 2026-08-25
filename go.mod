@@ -25,7 +25,7 @@ require (
 	github.com/swaggo/swag v1.16.6
 	github.com/wailsapp/wails/v2 v2.15.0
 	golang.org/x/oauth2 v0.36.0
-	golift.io/xtractr v0.4.1
+	golift.io/xtractr v0.4.2
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1
 )
 
@@ -89,7 +89,7 @@ require (
 	github.com/mewpkg/term v0.0.0-20241026122259-37a80af23985 // indirect
 	github.com/nfnt/resize v0.0.0-20180221191011-83c6a9932646 // indirect
 	github.com/nicksnyder/go-i18n/v2 v2.5.1 // indirect
-	github.com/nwaples/rardecode/v2 v2.3.0 // indirect
+	github.com/nwaples/rardecode/v2 v2.4.1 // indirect
 	github.com/oasdiff/yaml v0.1.1 // indirect
 	github.com/oasdiff/yaml3 v0.0.14 // indirect
 	github.com/pelletier/go-toml/v2 v2.4.3 // indirect
