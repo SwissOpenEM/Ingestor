@@ -6,7 +6,7 @@ require (
 	github.com/SwissOpenEM/globus v0.1.2
 	github.com/SwissOpenEM/globus-transfer-service v0.2.2
 	github.com/alitto/pond/v2 v2.7.1
-	github.com/getkin/kin-openapi v0.147.0
+	github.com/getkin/kin-openapi v0.149.0
 	github.com/gin-contrib/cors v1.7.7
 	github.com/gin-contrib/slog v1.2.1
 	github.com/gin-gonic/gin v1.12.0
@@ -102,7 +102,7 @@ require (
 	github.com/rymdport/portal v0.4.2 // indirect
 	github.com/sagikazarmark/locafero v0.11.0 // indirect
 	github.com/saintfish/chardet v0.0.0-20230101081208-5e3ef4b5456d // indirect
-	github.com/santhosh-tekuri/jsonschema/v6 v6.0.2 // indirect
+	github.com/santhosh-tekuri/jsonschema/v6 v6.0.3 // indirect
 	github.com/sourcegraph/conc v0.3.1-0.20240121214520-5f936abd7ae8 // indirect
 	github.com/speakeasy-api/jsonpath v0.6.3 // indirect
 	github.com/speakeasy-api/openapi v1.24.0 // indirect
