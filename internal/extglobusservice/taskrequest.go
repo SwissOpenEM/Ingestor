@@ -41,6 +41,16 @@ func newRequestError(code uint, message *string, details *string) error {
 	}
 }
 
+// newRequestErrorFromResponse builds a RequestError from a GeneralErrorResponse,
+// which is nil when the server returned a non-JSON body for the status code
+// (e.g. an error page from a proxy in front of the service).
+func newRequestErrorFromResponse(code uint, resp *GeneralErrorResponse) error {
+	if resp == nil {
+		return newRequestError(code, nil, nil)
+	}
+	return newRequestError(code, resp.Message, resp.Details)
+}
+
 func RequestExternalTransferTask(ctx context.Context, serviceURL string, scicatToken string, srcFacility string, dstFacility string, scicatPid string, autoArchive bool, collectionRootPath string, fileList *[]FileToTransfer) (string, error) {
 	client, err := NewClient(serviceURL)
 	if err != nil {
@@ -77,17 +87,20 @@ func RequestExternalTransferTask(ctx context.Context, serviceURL string, scicatT
 
 	switch parsedResp.StatusCode() {
 	case 200:
+		if parsedResp.JSON200 == nil {
+			return "", fmt.Errorf("external globus task request error - unexpected content type for status 200")
+		}
 		return parsedResp.JSON200.JobId, nil
 	case 400:
-		return "", newRequestError(400, parsedResp.JSON400.Message, parsedResp.JSON400.Details)
+		return "", newRequestErrorFromResponse(400, parsedResp.JSON400)
 	case 401:
-		return "", newRequestError(401, parsedResp.JSON401.Message, parsedResp.JSON401.Details)
+		return "", newRequestErrorFromResponse(401, parsedResp.JSON401)
 	case 403:
-		return "", newRequestError(403, parsedResp.JSON403.Message, parsedResp.JSON403.Details)
+		return "", newRequestErrorFromResponse(403, parsedResp.JSON403)
 	case 500:
-		return "", newRequestError(500, parsedResp.JSON500.Message, parsedResp.JSON500.Details)
+		return "", newRequestErrorFromResponse(500, parsedResp.JSON500)
 	case 503:
-		return "", newRequestError(503, parsedResp.JSON503.Message, parsedResp.JSON503.Details)
+		return "", newRequestErrorFromResponse(503, parsedResp.JSON503)
 	}
 	return "", fmt.Errorf("external globus task request error - unexpected status code: %d", parsedResp.StatusCode())
 }

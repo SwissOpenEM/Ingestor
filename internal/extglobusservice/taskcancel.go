@@ -31,13 +31,13 @@ func CancelTask(ctx context.Context, serviceURL string, scicatToken string, jobI
 	case 200:
 		return nil
 	case 400:
-		return newRequestError(400, parsedResp.JSON400.Message, parsedResp.JSON400.Details)
+		return newRequestErrorFromResponse(400, parsedResp.JSON400)
 	case 401:
-		return newRequestError(401, parsedResp.JSON401.Message, parsedResp.JSON401.Details)
+		return newRequestErrorFromResponse(401, parsedResp.JSON401)
 	case 403:
-		return newRequestError(403, parsedResp.JSON403.Message, parsedResp.JSON403.Details)
+		return newRequestErrorFromResponse(403, parsedResp.JSON403)
 	case 500:
-		return newRequestError(500, parsedResp.JSON500.Message, parsedResp.JSON500.Details)
+		return newRequestErrorFromResponse(500, parsedResp.JSON500)
 	default:
 		return fmt.Errorf("unknown status code: %d", parsedResp.StatusCode())
 	}
