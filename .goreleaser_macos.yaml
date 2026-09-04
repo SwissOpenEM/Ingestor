@@ -46,9 +46,9 @@ builds:
 
 archives:
   - id: "openem-ingestor-app"
-    builds: 
+    ids:
       - openem-ingestor-app
-    format: tar.gz
+    formats: tar.gz
 
     wrap_in_directory: true
     name_template: >-

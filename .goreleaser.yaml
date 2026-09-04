@@ -44,8 +44,8 @@ builds:
   #     - amd64
   #   main: .
   #   binary: openem-ingestor-app
-  #   tool: echo 
-    
+  #   tool: echo
+
   - id: openem-ingestor-app-win
     hooks:
         post:
@@ -71,10 +71,10 @@ builds:
 
 archives:
   - id: "openem-ingestor-app"
-    builds: 
+    ids:
       # - openem-ingestor-app-linux
       - openem-ingestor-app-win
-    format: tar.gz
+    formats: tar.gz
 
     wrap_in_directory: true
     name_template: >-
@@ -88,7 +88,7 @@ archives:
     # use zip for windows archives
     format_overrides:
       - goos: windows
-        format: zip
+        formats: zip
     files:
     - src: configs/*.yaml
       dst: ./
@@ -96,12 +96,12 @@ archives:
       dst: schemas
 
   - id: "openem-ingestor-service"
-    builds: 
+    ids:
       - openem-ingestor-service
-    format: tar.gz
+    formats: tar.gz
     format_overrides:
       - goos: windows
-        format: zip
+        formats: zip
     wrap_in_directory: true
     name_template: >-
       {{ .ProjectName }}_service_
@@ -116,7 +116,7 @@ archives:
       dst: ./README.md
     - src: configs/*.yaml
       dst: ./
-      
+
 changelog:
   sort: asc
   filters:
