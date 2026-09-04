@@ -43,6 +43,7 @@ func NewIngestorServer(ingestor *IngestorWebServerImplemenation, port int) *http
 		slog.SetLogger(slog.WithSkipPath([]string{"/version", "/health"}),
 			slog.WithRequestHeader(false),
 		))
+	r.Use(gin.Recovery())
 	r.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{ingestor.frontend.origin},
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
