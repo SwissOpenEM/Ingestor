@@ -7,8 +7,8 @@ require (
 	github.com/SwissOpenEM/globus-transfer-service v0.2.2
 	github.com/alitto/pond/v2 v2.7.1
 	github.com/getkin/kin-openapi v0.149.0
-	github.com/gin-contrib/cors v1.7.7
-	github.com/gin-contrib/slog v1.2.1
+	github.com/gin-contrib/cors v1.7.8
+	github.com/gin-contrib/slog v1.2.2
 	github.com/gin-gonic/gin v1.12.0
 	github.com/go-test/deep v1.1.1
 	github.com/golang-jwt/jwt/v5 v5.3.1
@@ -30,9 +30,9 @@ require (
 )
 
 require (
-	fyne.io/systray v1.12.2 // indirect
+	fyne.io/systray v1.12.3-0.20260810170012-af4e8e793ec4 // indirect
 	github.com/BurntSushi/toml v1.6.0 // indirect
-	github.com/MicahParks/jwkset v0.11.1 // indirect
+	github.com/MicahParks/jwkset v0.11.3 // indirect
 	github.com/Unpackerr/iso9660 v0.0.3 // indirect
 	github.com/andybalholm/brotli v1.2.2 // indirect
 	github.com/anthonynsimon/bild v0.14.0 // indirect
@@ -46,7 +46,6 @@ require (
 	github.com/cpuguy83/go-md2man/v2 v2.0.7 // indirect
 	github.com/dprotaso/go-yit v0.0.0-20220510233725-9ba8df137936 // indirect
 	github.com/fatih/color v1.18.0 // indirect
-	github.com/fredbi/uri v1.1.1 // indirect
 	github.com/fsnotify/fsnotify v1.9.0 // indirect
 	github.com/fyne-io/gl-js v0.2.1-0.20260315212741-029c47fd27e8 // indirect
 	github.com/fyne-io/glfw-js v0.4.0 // indirect
@@ -130,9 +129,9 @@ require (
 )
 
 require (
-	fyne.io/fyne/v2 v2.8.0
+	fyne.io/fyne/v2 v2.8.1
 	github.com/KyleBanks/depth v1.2.1 // indirect
-	github.com/MicahParks/keyfunc/v3 v3.8.1
+	github.com/MicahParks/keyfunc/v3 v3.8.2
 	github.com/Netflix/go-expect v0.0.0-20220104043353-73e0943537d2 // indirect
 	github.com/apapsch/go-jsonmerge/v2 v2.0.0 // indirect
 	github.com/bytedance/sonic v1.15.2 // indirect
@@ -141,8 +140,8 @@ require (
 	github.com/coreos/go-oidc/v3 v3.20.0
 	github.com/creack/pty v1.1.24 // indirect
 	github.com/elliotchance/orderedmap/v2 v2.7.0
-	github.com/gabriel-vasile/mimetype v1.4.13 // indirect
-	github.com/gin-contrib/sessions v1.1.0
+	github.com/gabriel-vasile/mimetype v1.4.15 // indirect
+	github.com/gin-contrib/sessions v1.1.1
 	github.com/gin-contrib/sse v1.1.1 // indirect
 	github.com/go-openapi/jsonpointer v1.0.0 // indirect
 	github.com/go-openapi/jsonreference v0.21.1 // indirect
@@ -150,7 +149,7 @@ require (
 	github.com/go-openapi/swag v0.27.0 // indirect
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
-	github.com/go-playground/validator/v10 v10.30.3
+	github.com/go-playground/validator/v10 v10.30.4
 	github.com/goccy/go-json v0.10.6 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51 // indirect
@@ -158,7 +157,7 @@ require (
 	github.com/klauspost/cpuid/v2 v2.4.0 // indirect
 	github.com/leaanthony/slicer v1.6.0 // indirect
 	github.com/leaanthony/u v1.1.1 // indirect
-	github.com/leodido/go-urn v1.4.0 // indirect
+	github.com/leodido/go-urn v1.5.0 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.23 // indirect
 	github.com/mcuadros/go-version v0.0.0-20190830083331-035f6764e8d2 // indirect
