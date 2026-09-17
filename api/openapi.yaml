@@ -239,7 +239,27 @@ paths:
             text/plain:
               schema:
                 type: string
-
+  /configurations:
+    get:
+      tags:
+        - other
+      summary: Get available dataset frontend configurations
+      security: []
+      description: Retrieve the list of configured Scicat frontend configurations.
+      operationId: OtherController_getConfigurations
+      responses:
+        "200":
+          description: Configurations retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OtherConfigurationsResponse"
+        "400":
+          description: Invalid request
+          content:
+            text/plain:
+              schema:
+                type: string
   /login:
     get:
       tags:
@@ -637,6 +657,16 @@ components:
         - status
         - scicatStatus
         - globusStatus
+    OtherConfigurationsResponse:
+      type: object
+      properties:
+        creationLocations:
+          type: array
+          items:
+            type: string
+          description: List of configured dataset creation locations.
+      required:
+        - creationLocations
     GetExtractorResponse:
       type: object
       properties:
