@@ -14,6 +14,7 @@ import (
 
 type ScicatConfig struct {
 	Host string `string:"Host" validate:"required,url"`
+	CreationLocations []string `[]string:"CreationLocations"`
 }
 
 type Config struct {

@@ -1,5 +1,7 @@
 Scicat:
   Host: https://scicat.example.ch/api/v3
+  CreationLocations: 
+    - /foo/bar/microscop
 Transfer:
   StorageLocation: PSI
   Method: ExtGlobus

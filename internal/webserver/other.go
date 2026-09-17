@@ -36,3 +36,9 @@ func (i *IngestorWebServerImplemenation) OtherControllerGetHealth(ctx context.Co
 		}, nil
 	}
 }
+
+func (i *IngestorWebServerImplemenation) OtherControllerGetConfigurations(ctx context.Context, request OtherControllerGetConfigurationsRequestObject) (OtherControllerGetConfigurationsResponseObject, error) {
+    return OtherControllerGetConfigurations200JSONResponse{
+        CreationLocations: i.taskQueue.Config.Scicat.CreationLocations,
+    }, nil
+}
