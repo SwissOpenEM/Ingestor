@@ -3,7 +3,6 @@ package core
 import (
 	"bufio"
 	"context"
-	"crypto/tls"
 	"errors"
 	"fmt"
 	"net/http"
@@ -128,8 +127,7 @@ func AddDatasetToScicat(
 	isOnCentralDisk bool,
 ) (datasetID string, totalSize int64, fileList []datasetIngestor.Datafile, username string, err error) {
 	var httpClient = &http.Client{
-		Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}},
-		Timeout:   120 * time.Second}
+		Timeout: 120 * time.Second}
 
 	ScicatAPIURL := scicatURL
 
@@ -290,8 +288,8 @@ func TransferDataset(
 
 func FinalizeTransfer(serviceUser *UserCreds, config Config, datasetID string, archivalJobInfo transfertask.ArchivalJobInfo) error {
 	var httpClient = &http.Client{
-		Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}},
-		Timeout:   120 * time.Second}
+		Timeout: 120 * time.Second,
+	}
 	// mark dataset archivable
 	if serviceUser == nil {
 		return fmt.Errorf("no service user was set, can't mark dataset as archivable")
