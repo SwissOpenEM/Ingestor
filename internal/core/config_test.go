@@ -46,7 +46,8 @@ func createExpectedValidConfigGlobus() transfertask.TransferConfig {
 
 func createExpectedValidConfig(transferConfig transfertask.TransferConfig) Config {
 	expectedScicat := ScicatConfig{
-		Host: "http://scicat:8080/api/v3",
+		Host:              "http://scicat:8080/api/v3",
+		CreationLocations: []string{},
 	}
 
 	expectedTransfer := transferConfig
@@ -163,6 +164,43 @@ func createExpectedValidConfig(transferConfig transfertask.TransferConfig) Confi
 		WebServer:          expectedWS,
 	}
 	return expectedConfig
+}
+
+func TestReadConfigCreationLocations(t *testing.T) {
+	tests := []struct {
+		name      string
+		locations []string
+	}{
+		{name: "omitted"},
+		{name: "explicitly empty", locations: []string{}},
+		{name: "configured", locations: []string{"Facility A", "Facility B"}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			viperTestConf := viper.New()
+			viperTestConf.SetConfigType("yaml")
+			viperTestConf.AddConfigPath("../../test/testdata")
+			configReader := ConfigReader{viperConf: viperTestConf}
+			if tt.locations != nil {
+				configReader.SetConfKey("Scicat.CreationLocations", tt.locations)
+			}
+
+			got, err := configReader.ReadConfig("valid_config_s3.yaml")
+			if err != nil {
+				t.Fatalf("ReadConfig() error = %v", err)
+			}
+			if got.Scicat.CreationLocations == nil {
+				t.Fatal("CreationLocations must be a non-nil slice")
+			}
+			want := tt.locations
+			if want == nil {
+				want = []string{}
+			}
+			if diff := deep.Equal(got.Scicat.CreationLocations, want); diff != nil {
+				t.Errorf("compare failed: %v", diff)
+			}
+		})
+	}
 }
 
 func TestReadConfigS3(t *testing.T) {
