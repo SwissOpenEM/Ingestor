@@ -39,5 +39,26 @@ func GetDatasetAbsolutePath(collectionLocations map[string]string, path string) 
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(colPath, relPath), nil
+
+	basePath := filepath.Clean(colPath)
+	resolvedPath := filepath.Clean(filepath.Join(basePath, relPath))
+
+	absBasePath, err := filepath.Abs(basePath)
+	if err != nil {
+		return "", fmt.Errorf("sourceFolder contains an invalid path")
+	}
+	absResolvedPath, err := filepath.Abs(resolvedPath)
+	if err != nil {
+		return "", fmt.Errorf("sourceFolder contains an invalid path")
+	}
+
+	relToBase, err := filepath.Rel(absBasePath, absResolvedPath)
+	if err != nil {
+		return "", fmt.Errorf("sourceFolder contains an invalid path")
+	}
+	if relToBase == ".." || strings.HasPrefix(relToBase, ".."+string(filepath.Separator)) {
+		return "", fmt.Errorf("sourceFolder contains an invalid path")
+	}
+
+	return absResolvedPath, nil
 }
