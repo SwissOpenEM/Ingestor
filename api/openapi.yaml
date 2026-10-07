@@ -244,7 +244,9 @@ paths:
       tags:
         - other
       summary: Get available dataset frontend configurations
-      security: []
+      security:
+        - cookieAuth:
+          - ingestor_read
       description: Retrieve the list of configured Scicat frontend configurations.
       operationId: OtherController_getConfigurations
       responses:
