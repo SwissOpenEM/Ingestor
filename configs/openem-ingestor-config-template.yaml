@@ -1,5 +1,7 @@
 Scicat:
   Host: ${SCICAT_HOST}/api/v3
+  CreationLocations: 
+    - /ETHZ/SCOPEM
 Transfer:
   StorageLocation: "ETHZ"
   Method: S3
