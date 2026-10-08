@@ -13,7 +13,8 @@ import (
 )
 
 type ScicatConfig struct {
-	Host string `string:"Host" validate:"required,url"`
+	Host              string   `string:"Host" validate:"required,url"`
+	CreationLocations []string `mapstructure:"CreationLocations"`
 }
 
 type Config struct {
@@ -63,6 +64,7 @@ func (c *ConfigReader) ReadConfig(configFileName string) (Config, error) {
 	c.viperConf.SetConfigName(configFileName) // name of config file (without extension)
 
 	c.viperConf.SetDefault("Scicat.Host", "https://datcat.psi.ch/api/v3")
+	c.viperConf.SetDefault("Scicat.CreationLocations", []string{})
 
 	c.viperConf.SetDefault("MetadataExtractors.InstallationPath", "./extractors/")
 	c.viperConf.SetDefault("MetadataExtractors.SchemasLocation", "./schemas/")
