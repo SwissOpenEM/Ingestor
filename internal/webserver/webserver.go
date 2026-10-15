@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"path"
 
 	"github.com/SwissOpenEM/Ingestor/internal/transfertask"
 	"github.com/SwissOpenEM/Ingestor/internal/webserver/randomfuncs"
@@ -25,6 +26,13 @@ import (
 
 //go:embed openapi.yaml
 var swaggerYAML embed.FS
+
+// Add the X-Forwarded-Prefix header to the redirect URL if it exists. This is used when the ingestor is behind a reverse proxy that strips a prefix from the URL path.
+func addForwardedPrefix(c *gin.Context, target string) string{
+	prefix := c.GetHeader("X-Forwarded-Prefix")
+	// Use 'Join' to collapse `//`, ensuring we don't redirect to an external site.
+	return path.Join("/", prefix, target)
+}
 
 func NewIngestorServer(ingestor *IngestorWebServerImplemenation, port int) *http.Server {
 	swagger, err := GetSwagger()
@@ -58,7 +66,20 @@ func NewIngestorServer(ingestor *IngestorWebServerImplemenation, port int) *http
 	})
 
 	// The swagger docs have to come before the default handlers
-	r.GET("/docs/*any", ginSwagger.WrapHandler(swaggerfiles.Handler, ginSwagger.URL("/openapi.yaml")))
+	swaggerHandler := ginSwagger.WrapHandler(swaggerfiles.Handler, ginSwagger.URL("../openapi.yaml"))
+	r.GET("/docs/*any", func(c *gin.Context) {
+		if c.Param("any") == "/" {
+			// redirect so it still works behind a prefix-stripping proxy
+			c.Redirect(http.StatusFound, addForwardedPrefix(c, "/docs/index.html"))
+			return
+		}
+		swaggerHandler(c)
+	})
+
+	// Redirect / to swagger
+	r.GET("/", func(c *gin.Context) {
+		c.Redirect(http.StatusFound, addForwardedPrefix(c, "/docs/index.html"))
+	})
 
 	// setup auth session store
 	authKey, err := randomfuncs.GenerateRandomByteSlice(64) // authentication key
